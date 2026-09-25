@@ -20,7 +20,9 @@
   style-src 'unsafe-inline';
   img-src data: blob:;
   media-src blob: mediastream:;
-  connect-src https://ptkefnqrhlsfbnktnvec.supabase.co;
+  connect-src 'self' https://ptkefnqrhlsfbnktnvec.supabase.co;
+  worker-src 'self';
+  manifest-src 'self';
   base-uri 'none';
   form-action 'none'">
 <title>ASA Sniper</title>
@@ -2991,6 +2993,13 @@ function demarre(){
 
   window.addEventListener('online',  () => { majBandeau(); videFile(); });
   window.addEventListener('offline', majBandeau);
+
+  /* Le service worker garde une copie de la page. Sans lui, tout le travail
+     fait pour le hors-ligne ne sert à rien : la page ne se charge pas.
+     Il n'existe qu'en https ou en local — donc jamais en file:// */
+  if ('serviceWorker' in navigator && location.protocol !== 'file:'){
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
 
   /* Mode serveur : un appareil déjà connecté reprend sa session sans réseau.
      C'est ce qui permet à l'assistant d'ouvrir l'appel dans un gymnase sans
