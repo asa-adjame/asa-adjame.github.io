@@ -3,6 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<!-- Ceinture de sécurité. L'application est une page unique, sans ressource
+     distante : on peut donc tout interdire par défaut. Ce qui reste permis est
+     exactement ce dont elle se sert. L'intérêt principal est « connect-src » :
+     même si du code hostile arrivait à s'exécuter dans la page, il ne pourrait
+     l'envoyer nulle part. 'unsafe-inline' reste nécessaire tant que les
+     gestionnaires sont écrits dans les attributs onclick — mais 'unsafe-eval'
+     est absent, donc eval() et new Function() sont morts.
+     Limite connue : frame-ancestors est ignoré dans une balise meta, et
+     GitHub Pages ne permet pas d'envoyer d'en-tête. Pas de protection contre
+     l'insertion de la page dans un cadre tiers. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'none';
+  script-src 'unsafe-inline';
+  style-src 'unsafe-inline';
+  img-src data: blob:;
+  media-src blob: mediastream:;
+  connect-src https://ptkefnqrhlsfbnktnvec.supabase.co;
+  base-uri 'none';
+  form-action 'none'">
 <title>ASA Sniper</title>
 <style>
 /* ══════════════════════════════════════════════════════════════════════════
@@ -855,7 +875,7 @@ const QR = (() => {
    Rien n'est partagé à l'exécution avec la plateforme ASA.
    ══════════════════════════════════════════════════════════════════════════ */
 
-const D = {"app":"ASA Sniper","club":{"nom":"Association Sportive Adjamé","sigle":"ASA","ville":"Adjamé, Abidjan"},"saison":"2026-2027","aujourdhui":"2026-09-24","aujourdhuiFr":"24/09/2026","equipes":[{"id":"pro","nom":"Équipe Pro"}],"spotsExt":[{"id":"c1","nom":"Corner gauche","court":"0° G","x":26.0,"y":10.0,"consigne":"Pieds dans le corner, tir en un temps sur réception."},{"id":"a1","nom":"Aile gauche","court":"45° G","x":127.0,"y":54.5,"consigne":"Sortie d'écran, mains prêtes avant la réception."},{"id":"ax","nom":"Axe","court":"Axe","x":166.5,"y":150.0,"consigne":"Face au cercle, équilibre avant tout."},{"id":"a2","nom":"Aile droite","court":"45° D","x":127.0,"y":245.5,"consigne":"Sortie d'écran, mains prêtes avant la réception."},{"id":"c2","nom":"Corner droit","court":"0° D","x":26.0,"y":290.0,"consigne":"Pieds dans le corner, tir en un temps sur réception."}],"spotsInt":[{"id":"crc","nom":"Cercle","court":"Cercle","x":48.0,"y":150.0,"consigne":"Finition alternée main droite / main gauche, appui pris avant le contact."},{"id":"pbg","nom":"Poste bas gauche","court":"PB G","x":54.0,"y":112.0,"consigne":"Crochet ou drop step. Le pied de pivot ne bouge pas."},{"id":"pbd","nom":"Poste bas droit","court":"PB D","x":54.0,"y":188.0,"consigne":"Crochet ou drop step. Le pied de pivot ne bouge pas."},{"id":"scg","nom":"Short corner gauche","court":"SC G","x":28.0,"y":74.0,"consigne":"Réception face au cercle, tir en un temps."},{"id":"scd","nom":"Short corner droit","court":"SC D","x":28.0,"y":226.0,"consigne":"Réception face au cercle, tir en un temps."},{"id":"cdg","nom":"Coude gauche","court":"Coude G","x":112.0,"y":114.0,"consigne":"Sortie de pick and pop, pieds déjà orientés."},{"id":"cdd","nom":"Coude droit","court":"Coude D","x":112.0,"y":186.0,"consigne":"Sortie de pick and pop, pieds déjà orientés."}],"lfPos":{"x":116.0,"y":150.0},"tirsParSerie":20,"parcours":{"ext":{"nom":"Extérieur","court":"EXT","spots":["c1","a1","ax","a2","c2"],"allerRetour":true,"seriesLf":5,"resume":"5 spots en aller-retour, 20 tirs par série, plus 100 lancers francs."},"int":{"nom":"Intérieur","court":"INT","spots":["crc","pbg","pbd","scg","scd","cdg","cdd"],"allerRetour":true,"seriesLf":5,"resume":"7 postes en aller-retour, 20 tirs par série, plus 100 lancers francs."},"complet":{"nom":"Complet","court":"CPL","spots":["c1","a1","ax","a2","c2","crc","pbg","pbd","scg","scd","cdg","cdd"],"allerRetour":true,"seriesLf":5,"resume":"Les 12 spots en aller-retour, 20 tirs par série, plus 100 lancers francs."}},"joueurs":[{"id":"pr01","nom":"Yao Diomandé","equipe":"pro","poste":"Meneur","numero":4,"code":"4944","secret":"RCBEU6D2M7","parcours":"ext","taille":178,"tir":{"sessions":[{"date":"2026-09-13","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":5},{"spot":"a1","sens":"aller","reussis":8},{"spot":"ax","sens":"aller","reussis":5},{"spot":"a2","sens":"aller","reussis":6},{"spot":"c2","sens":"aller","reussis":6},{"spot":"c1","sens":"retour","reussis":6},{"spot":"a1","sens":"retour","reussis":7},{"spot":"ax","sens":"retour","reussis":10},{"spot":"a2","sens":"retour","reussis":4},{"spot":"c2","sens":"retour","reussis":6}],"lf":[11,10,11,11,8],"saisiPar":"binome"},{"date":"2026-09-14","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":7},{"spot":"a1","sens":"aller","reussis":2},{"spot":"ax","sens":"aller","reussis":8},{"spot":"a2","sens":"aller","reussis":0},{"spot":"c2","sens":"aller","reussis":8},{"spot":"c1","sens":"retour","reussis":6},{"spot":"a1","sens":"retour","reussis":5},{"spot":"ax","sens":"retour","reussis":10},{"spot":"a2","sens":"retour","reussis":6},{"spot":"c2","sens":"retour","reussis":7}],"lf":[11,11,10,14,12],"saisiPar":"binome"},{"date":"2026-09-15","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":10},{"spot":"a1","sens":"aller","reussis":6},{"spot":"ax","sens":"aller","reussis":7},{"spot":"a2","sens":"aller","reussis":11},{"spot":"c2","sens":"aller","reussis":8},{"spot":"c1","sens":"retour","reussis":4},{"spot":"a1","sens":"retour","reussis":3},{"spot":"ax","sens":"retour","reussis":3},{"spot":"a2","sens":"retour","reussis":8},{"spot":"c2","sens":"retour","reussis":4}],"lf":[9,9,11,9,9],"saisiPar":"binome"},{"date":"2026-09-17","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":6},{"spot":"a1","sens":"aller","reussis":3},{"spot":"ax","sens":"aller","reussis":2},{"spot":"a2","sens":"aller","reussis":7},{"spot":"c2","sens":"aller","reussis":6},{"spot":"c1","sens":"retour","reussis":6},{"spot":"a1","sens":"retour","reussis":10},{"spot":"ax","sens":"retour","reussis":5},{"spot":"a2","sens":"retour","reussis":2},{"spot":"c2","sens":"retour","reussis":6}],"lf":[12,10,12,8,11],"saisiPar":"binome"},{"date":"2026-09-19","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":8},{"spot":"a1","sens":"aller","reussis":4},{"spot":"ax","sens":"aller","reussis":7},{"spot":"a2","sens":"aller","reussis":8},{"spot":"c2","sens":"aller","reussis":7},{"spot":"c1","sens":"retour","reussis":6},{"spot":"a1","sens":"retour","reussis":4},{"spot":"ax","sens":"retour","reussis":7},{"spot":"a2","sens":"retour","reussis":6},{"spot":"c2","sens":"retour","reussis":9}],"lf":[12,11,11,9,8],"saisiPar":"binome"},{"date":"2026-09-23","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":6},{"spot":"a1","sens":"aller","reussis":3},{"spot":"ax","sens":"aller","reussis":11},{"spot":"a2","sens":"aller","reussis":8},{"spot":"c2","sens":"aller","reussis":9},{"spot":"c1","sens":"retour","reussis":9},{"spot":"a1","sens":"retour","reussis":9},{"spot":"ax","sens":"retour","reussis":7},{"spot":"a2","sens":"retour","reussis":10},{"spot":"c2","sens":"retour","reussis":4}],"lf":[11,11,9,10,12],"saisiPar":"binome"}]}},{"id":"pr02","nom":"Koffi Cissé","equipe":"pro","poste":"Arrière","numero":5,"code":"4929","secret":"9A58V4SKB5","parcours":"ext","taille":191,"tir":{"sessions":[{"date":"2026-09-07","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":8},{"spot":"a1","sens":"aller","reussis":7},{"spot":"ax","sens":"aller","reussis":5},{"spot":"a2","sens":"aller","reussis":5},{"spot":"c2","sens":"aller","reussis":5},{"spot":"c1","sens":"retour","reussis":6},{"spot":"a1","sens":"retour","reussis":8},{"spot":"ax","sens":"retour","reussis":5},{"spot":"a2","sens":"retour","reussis":7},{"spot":"c2","sens":"retour","reussis":7}],"lf":[9,15,11,14,14],"saisiPar":"binome"},{"date":"2026-09-17","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":6},{"spot":"a1","sens":"aller","reussis":11},{"spot":"ax","sens":"aller","reussis":6},{"spot":"a2","sens":"aller","reussis":7},{"spot":"c2","sens":"aller","reussis":8},{"spot":"c1","sens":"retour","reussis":5},{"spot":"a1","sens":"retour","reussis":8},{"spot":"ax","sens":"retour","reussis":4},{"spot":"a2","sens":"retour","reussis":1},{"spot":"c2","sens":"retour","reussis":10}],"lf":[12,11,12,13,10],"saisiPar":"binome"},{"date":"2026-09-19","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":9},{"spot":"a1","sens":"aller","reussis":5},{"spot":"ax","sens":"aller","reussis":1},{"spot":"a2","sens":"aller","reussis":5},{"spot":"c2","sens":"aller","reussis":8},{"spot":"c1","sens":"retour","reussis":3},{"spot":"a1","sens":"retour","reussis":6},{"spot":"ax","sens":"retour","reussis":8},{"spot":"a2","sens":"retour","reussis":7},{"spot":"c2","sens":"retour","reussis":7}],"lf":[10,12,9,9,13],"saisiPar":"binome"},{"date":"2026-09-21","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":7},{"spot":"a1","sens":"aller","reussis":7},{"spot":"ax","sens":"aller","reussis":9},{"spot":"a2","sens":"aller","reussis":9},{"spot":"c2","sens":"aller","reussis":9},{"spot":"c1","sens":"retour","reussis":10},{"spot":"a1","sens":"retour","reussis":7},{"spot":"ax","sens":"retour","reussis":9},{"spot":"a2","sens":"retour","reussis":8},{"spot":"c2","sens":"retour","reussis":7}],"lf":[8,14,12,7,10],"saisiPar":"binome"},{"date":"2026-09-23","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":4},{"spot":"a1","sens":"aller","reussis":6},{"spot":"ax","sens":"aller","reussis":3},{"spot":"a2","sens":"aller","reussis":9},{"spot":"c2","sens":"aller","reussis":6},{"spot":"c1","sens":"retour","reussis":8},{"spot":"a1","sens":"retour","reussis":6},{"spot":"ax","sens":"retour","reussis":6},{"spot":"a2","sens":"retour","reussis":8},{"spot":"c2","sens":"retour","reussis":8}],"lf":[10,14,9,11,13],"saisiPar":"binome"}]}},{"id":"pr03","nom":"Mamadou Ehui","equipe":"pro","poste":"Ailier","numero":6,"code":"6339","secret":"2URT5FSSFM","parcours":"ext","taille":198,"tir":{"sessions":[{"date":"2026-09-07","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":8},{"spot":"a1","sens":"aller","reussis":8},{"spot":"ax","sens":"aller","reussis":7},{"spot":"a2","sens":"aller","reussis":7},{"spot":"c2","sens":"aller","reussis":8},{"spot":"c1","sens":"retour","reussis":6},{"spot":"a1","sens":"retour","reussis":6},{"spot":"ax","sens":"retour","reussis":5},{"spot":"a2","sens":"retour","reussis":4},{"spot":"c2","sens":"retour","reussis":8}],"lf":[9,11,10,11,9],"saisiPar":"binome"},{"date":"2026-09-11","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":6},{"spot":"a1","sens":"aller","reussis":8},{"spot":"ax","sens":"aller","reussis":4},{"spot":"a2","sens":"aller","reussis":7},{"spot":"c2","sens":"aller","reussis":8},{"spot":"c1","sens":"retour","reussis":4},{"spot":"a1","sens":"retour","reussis":4},{"spot":"ax","sens":"retour","reussis":3},{"spot":"a2","sens":"retour","reussis":4},{"spot":"c2","sens":"retour","reussis":6}],"lf":[13,13,10,13,12],"saisiPar":"binome"},{"date":"2026-09-13","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":9},{"spot":"a1","sens":"aller","reussis":11},{"spot":"ax","sens":"aller","reussis":3},{"spot":"a2","sens":"aller","reussis":12},{"spot":"c2","sens":"aller","reussis":9},{"spot":"c1","sens":"retour","reussis":4},{"spot":"a1","sens":"retour","reussis":10},{"spot":"ax","sens":"retour","reussis":8},{"spot":"a2","sens":"retour","reussis":5},{"spot":"c2","sens":"retour","reussis":6}],"lf":[10,12,14,13,6],"saisiPar":"binome"},{"date":"2026-09-15","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":10},{"spot":"a1","sens":"aller","reussis":10},{"spot":"ax","sens":"aller","reussis":9},{"spot":"a2","sens":"aller","reussis":7},{"spot":"c2","sens":"aller","reussis":7},{"spot":"c1","sens":"retour","reussis":11},{"spot":"a1","sens":"retour","reussis":6},{"spot":"ax","sens":"retour","reussis":6},{"spot":"a2","sens":"retour","reussis":4},{"spot":"c2","sens":"retour","reussis":4}],"lf":[12,11,6,10,11],"saisiPar":"binome"},{"date":"2026-09-17","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":6},{"spot":"a1","sens":"aller","reussis":10},{"spot":"ax","sens":"aller","reussis":6},{"spot":"a2","sens":"aller","reussis":6},{"spot":"c2","sens":"aller","reussis":6},{"spot":"c1","sens":"retour","reussis":5},{"spot":"a1","sens":"retour","reussis":11},{"spot":"ax","sens":"retour","reussis":10},{"spot":"a2","sens":"retour","reussis":7},{"spot":"c2","sens":"retour","reussis":9}],"lf":[11,11,7,13,11],"saisiPar":"binome"},{"date":"2026-09-20","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":8},{"spot":"a1","sens":"aller","reussis":9},{"spot":"ax","sens":"aller","reussis":9},{"spot":"a2","sens":"aller","reussis":10},{"spot":"c2","sens":"aller","reussis":10},{"spot":"c1","sens":"retour","reussis":6},{"spot":"a1","sens":"retour","reussis":10},{"spot":"ax","sens":"retour","reussis":3},{"spot":"a2","sens":"retour","reussis":6},{"spot":"c2","sens":"retour","reussis":7}],"lf":[13,14,11,10,14],"saisiPar":"binome"},{"date":"2026-09-23","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":9},{"spot":"a1","sens":"aller","reussis":5},{"spot":"ax","sens":"aller","reussis":9},{"spot":"a2","sens":"aller","reussis":7},{"spot":"c2","sens":"aller","reussis":10},{"spot":"c1","sens":"retour","reussis":9},{"spot":"a1","sens":"retour","reussis":5},{"spot":"ax","sens":"retour","reussis":6},{"spot":"a2","sens":"retour","reussis":6},{"spot":"c2","sens":"retour","reussis":6}],"lf":[10,9,12,11,12],"saisiPar":"binome"}]}},{"id":"pr04","nom":"Serge Kablan","equipe":"pro","poste":"Ailier fort","numero":7,"code":"7034","secret":"U8ZGYKS8X7","parcours":"int","taille":203,"tir":{"sessions":[{"date":"2026-09-15","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":12},{"spot":"pbg","sens":"aller","reussis":12},{"spot":"pbd","sens":"aller","reussis":14},{"spot":"scg","sens":"aller","reussis":17},{"spot":"scd","sens":"aller","reussis":12},{"spot":"cdg","sens":"aller","reussis":14},{"spot":"cdd","sens":"aller","reussis":10},{"spot":"crc","sens":"retour","reussis":13},{"spot":"pbg","sens":"retour","reussis":12},{"spot":"pbd","sens":"retour","reussis":12},{"spot":"scg","sens":"retour","reussis":12},{"spot":"scd","sens":"retour","reussis":10},{"spot":"cdg","sens":"retour","reussis":17},{"spot":"cdd","sens":"retour","reussis":11}],"lf":[11,9,13,13,10],"saisiPar":"binome"},{"date":"2026-09-20","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":16},{"spot":"pbg","sens":"aller","reussis":9},{"spot":"pbd","sens":"aller","reussis":13},{"spot":"scg","sens":"aller","reussis":16},{"spot":"scd","sens":"aller","reussis":14},{"spot":"cdg","sens":"aller","reussis":12},{"spot":"cdd","sens":"aller","reussis":13},{"spot":"crc","sens":"retour","reussis":14},{"spot":"pbg","sens":"retour","reussis":15},{"spot":"pbd","sens":"retour","reussis":9},{"spot":"scg","sens":"retour","reussis":13},{"spot":"scd","sens":"retour","reussis":12},{"spot":"cdg","sens":"retour","reussis":13},{"spot":"cdd","sens":"retour","reussis":11}],"lf":[12,10,14,14,12],"saisiPar":"binome"},{"date":"2026-09-23","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":12},{"spot":"pbg","sens":"aller","reussis":16},{"spot":"pbd","sens":"aller","reussis":9},{"spot":"scg","sens":"aller","reussis":14},{"spot":"scd","sens":"aller","reussis":16},{"spot":"cdg","sens":"aller","reussis":10},{"spot":"cdd","sens":"aller","reussis":12},{"spot":"crc","sens":"retour","reussis":15},{"spot":"pbg","sens":"retour","reussis":12},{"spot":"pbd","sens":"retour","reussis":10},{"spot":"scg","sens":"retour","reussis":11},{"spot":"scd","sens":"retour","reussis":11},{"spot":"cdg","sens":"retour","reussis":15},{"spot":"cdd","sens":"retour","reussis":16}],"lf":[10,11,12,10,12],"saisiPar":"binome"}]}},{"id":"pr05","nom":"Arsène Yao","equipe":"pro","poste":"Pivot","numero":8,"code":"6903","secret":"ZRWC2LPRBV","parcours":"int","taille":207,"tir":{"sessions":[{"date":"2026-09-17","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":15},{"spot":"pbg","sens":"aller","reussis":11},{"spot":"pbd","sens":"aller","reussis":8},{"spot":"scg","sens":"aller","reussis":14},{"spot":"scd","sens":"aller","reussis":14},{"spot":"cdg","sens":"aller","reussis":12},{"spot":"cdd","sens":"aller","reussis":9},{"spot":"crc","sens":"retour","reussis":11},{"spot":"pbg","sens":"retour","reussis":9},{"spot":"pbd","sens":"retour","reussis":13},{"spot":"scg","sens":"retour","reussis":12},{"spot":"scd","sens":"retour","reussis":12},{"spot":"cdg","sens":"retour","reussis":12},{"spot":"cdd","sens":"retour","reussis":11}],"lf":[8,6,9,9,13],"saisiPar":"binome"},{"date":"2026-09-21","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":17},{"spot":"pbg","sens":"aller","reussis":11},{"spot":"pbd","sens":"aller","reussis":10},{"spot":"scg","sens":"aller","reussis":13},{"spot":"scd","sens":"aller","reussis":12},{"spot":"cdg","sens":"aller","reussis":10},{"spot":"cdd","sens":"aller","reussis":10},{"spot":"crc","sens":"retour","reussis":13},{"spot":"pbg","sens":"retour","reussis":12},{"spot":"pbd","sens":"retour","reussis":9},{"spot":"scg","sens":"retour","reussis":11},{"spot":"scd","sens":"retour","reussis":8},{"spot":"cdg","sens":"retour","reussis":11},{"spot":"cdd","sens":"retour","reussis":7}],"lf":[10,9,10,10,11],"saisiPar":"binome"},{"date":"2026-09-23","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":13},{"spot":"pbg","sens":"aller","reussis":13},{"spot":"pbd","sens":"aller","reussis":15},{"spot":"scg","sens":"aller","reussis":13},{"spot":"scd","sens":"aller","reussis":9},{"spot":"cdg","sens":"aller","reussis":11},{"spot":"cdd","sens":"aller","reussis":13},{"spot":"crc","sens":"retour","reussis":15},{"spot":"pbg","sens":"retour","reussis":15},{"spot":"pbd","sens":"retour","reussis":11},{"spot":"scg","sens":"retour","reussis":12},{"spot":"scd","sens":"retour","reussis":6},{"spot":"cdg","sens":"retour","reussis":13},{"spot":"cdd","sens":"retour","reussis":10}],"lf":[7,9,10,12,9],"saisiPar":"binome"}]}},{"id":"pr06","nom":"Ibrahim Tanoh","equipe":"pro","poste":"Meneur","numero":9,"code":"3101","secret":"8A8NFR2F6S","parcours":"ext","taille":188,"tir":{"sessions":[{"date":"2026-09-15","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":5},{"spot":"a1","sens":"aller","reussis":9},{"spot":"ax","sens":"aller","reussis":10},{"spot":"a2","sens":"aller","reussis":11},{"spot":"c2","sens":"aller","reussis":4},{"spot":"c1","sens":"retour","reussis":4},{"spot":"a1","sens":"retour","reussis":7},{"spot":"ax","sens":"retour","reussis":9},{"spot":"a2","sens":"retour","reussis":7},{"spot":"c2","sens":"retour","reussis":5}],"lf":[12,11,12,12,13],"saisiPar":"binome"},{"date":"2026-09-15","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":6},{"spot":"a1","sens":"aller","reussis":8},{"spot":"ax","sens":"aller","reussis":11},{"spot":"a2","sens":"aller","reussis":8},{"spot":"c2","sens":"aller","reussis":8},{"spot":"c1","sens":"retour","reussis":9},{"spot":"a1","sens":"retour","reussis":4},{"spot":"ax","sens":"retour","reussis":10},{"spot":"a2","sens":"retour","reussis":9},{"spot":"c2","sens":"retour","reussis":0}],"lf":[9,13,16,11,14],"saisiPar":"binome"},{"date":"2026-09-17","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":11},{"spot":"a1","sens":"aller","reussis":7},{"spot":"ax","sens":"aller","reussis":6},{"spot":"a2","sens":"aller","reussis":11},{"spot":"c2","sens":"aller","reussis":10},{"spot":"c1","sens":"retour","reussis":7},{"spot":"a1","sens":"retour","reussis":8},{"spot":"ax","sens":"retour","reussis":3},{"spot":"a2","sens":"retour","reussis":8},{"spot":"c2","sens":"retour","reussis":7}],"lf":[11,11,13,9,8],"saisiPar":"binome"},{"date":"2026-09-21","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":9},{"spot":"a1","sens":"aller","reussis":7},{"spot":"ax","sens":"aller","reussis":7},{"spot":"a2","sens":"aller","reussis":6},{"spot":"c2","sens":"aller","reussis":9},{"spot":"c1","sens":"retour","reussis":9},{"spot":"a1","sens":"retour","reussis":3},{"spot":"ax","sens":"retour","reussis":4},{"spot":"a2","sens":"retour","reussis":9},{"spot":"c2","sens":"retour","reussis":8}],"lf":[11,7,12,11,11],"saisiPar":"binome"},{"date":"2026-09-23","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":8},{"spot":"a1","sens":"aller","reussis":8},{"spot":"ax","sens":"aller","reussis":4},{"spot":"a2","sens":"aller","reussis":6},{"spot":"c2","sens":"aller","reussis":6},{"spot":"c1","sens":"retour","reussis":5},{"spot":"a1","sens":"retour","reussis":6},{"spot":"ax","sens":"retour","reussis":4},{"spot":"a2","sens":"retour","reussis":8},{"spot":"c2","sens":"retour","reussis":6}],"lf":[10,12,12,13,14],"saisiPar":"binome"}]}},{"id":"pr07","nom":"Didier Doumbia","equipe":"pro","poste":"Arrière","numero":10,"code":"6907","secret":"A36L2D5AG3","parcours":"ext","taille":195,"tir":{"sessions":[{"date":"2026-09-17","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":9},{"spot":"a1","sens":"aller","reussis":7},{"spot":"ax","sens":"aller","reussis":7},{"spot":"a2","sens":"aller","reussis":11},{"spot":"c2","sens":"aller","reussis":10},{"spot":"c1","sens":"retour","reussis":6},{"spot":"a1","sens":"retour","reussis":10},{"spot":"ax","sens":"retour","reussis":8},{"spot":"a2","sens":"retour","reussis":7},{"spot":"c2","sens":"retour","reussis":7}],"lf":[14,10,10,11,13],"saisiPar":"binome"},{"date":"2026-09-17","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":6},{"spot":"a1","sens":"aller","reussis":9},{"spot":"ax","sens":"aller","reussis":8},{"spot":"a2","sens":"aller","reussis":4},{"spot":"c2","sens":"aller","reussis":5},{"spot":"c1","sens":"retour","reussis":11},{"spot":"a1","sens":"retour","reussis":7},{"spot":"ax","sens":"retour","reussis":6},{"spot":"a2","sens":"retour","reussis":4},{"spot":"c2","sens":"retour","reussis":6}],"lf":[13,13,11,12,11],"saisiPar":"binome"},{"date":"2026-09-20","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":7},{"spot":"a1","sens":"aller","reussis":11},{"spot":"ax","sens":"aller","reussis":6},{"spot":"a2","sens":"aller","reussis":10},{"spot":"c2","sens":"aller","reussis":13},{"spot":"c1","sens":"retour","reussis":4},{"spot":"a1","sens":"retour","reussis":7},{"spot":"ax","sens":"retour","reussis":6},{"spot":"a2","sens":"retour","reussis":9},{"spot":"c2","sens":"retour","reussis":6}],"lf":[11,10,13,11,13],"saisiPar":"binome"},{"date":"2026-09-23","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":5},{"spot":"a1","sens":"aller","reussis":8},{"spot":"ax","sens":"aller","reussis":10},{"spot":"a2","sens":"aller","reussis":9},{"spot":"c2","sens":"aller","reussis":8},{"spot":"c1","sens":"retour","reussis":10},{"spot":"a1","sens":"retour","reussis":9},{"spot":"ax","sens":"retour","reussis":11},{"spot":"a2","sens":"retour","reussis":7},{"spot":"c2","sens":"retour","reussis":7}],"lf":[9,14,12,12,9],"saisiPar":"binome"}]}},{"id":"pr08","nom":"Cédric Traoré","equipe":"pro","poste":"Ailier","numero":11,"code":"7025","secret":"DCVSLS4ETG","parcours":"ext","taille":199,"tir":{"sessions":[{"date":"2026-09-03","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":5},{"spot":"a1","sens":"aller","reussis":11},{"spot":"ax","sens":"aller","reussis":8},{"spot":"a2","sens":"aller","reussis":11},{"spot":"c2","sens":"aller","reussis":11},{"spot":"c1","sens":"retour","reussis":11},{"spot":"a1","sens":"retour","reussis":5},{"spot":"ax","sens":"retour","reussis":9},{"spot":"a2","sens":"retour","reussis":9},{"spot":"c2","sens":"retour","reussis":5}],"lf":[11,12,12,7,11],"saisiPar":"binome"},{"date":"2026-09-11","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":9},{"spot":"a1","sens":"aller","reussis":9},{"spot":"ax","sens":"aller","reussis":8},{"spot":"a2","sens":"aller","reussis":9},{"spot":"c2","sens":"aller","reussis":8},{"spot":"c1","sens":"retour","reussis":4},{"spot":"a1","sens":"retour","reussis":9},{"spot":"ax","sens":"retour","reussis":7},{"spot":"a2","sens":"retour","reussis":7},{"spot":"c2","sens":"retour","reussis":9}],"lf":[14,13,9,9,9],"saisiPar":"binome"},{"date":"2026-09-14","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":5},{"spot":"a1","sens":"aller","reussis":11},{"spot":"ax","sens":"aller","reussis":13},{"spot":"a2","sens":"aller","reussis":9},{"spot":"c2","sens":"aller","reussis":9},{"spot":"c1","sens":"retour","reussis":7},{"spot":"a1","sens":"retour","reussis":6},{"spot":"ax","sens":"retour","reussis":14},{"spot":"a2","sens":"retour","reussis":10},{"spot":"c2","sens":"retour","reussis":1}],"lf":[9,10,12,10,9],"saisiPar":"binome"},{"date":"2026-09-15","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":9},{"spot":"a1","sens":"aller","reussis":9},{"spot":"ax","sens":"aller","reussis":5},{"spot":"a2","sens":"aller","reussis":9},{"spot":"c2","sens":"aller","reussis":8},{"spot":"c1","sens":"retour","reussis":4},{"spot":"a1","sens":"retour","reussis":9},{"spot":"ax","sens":"retour","reussis":2},{"spot":"a2","sens":"retour","reussis":6},{"spot":"c2","sens":"retour","reussis":9}],"lf":[9,10,9,9,11],"saisiPar":"binome"},{"date":"2026-09-20","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":9},{"spot":"a1","sens":"aller","reussis":9},{"spot":"ax","sens":"aller","reussis":8},{"spot":"a2","sens":"aller","reussis":5},{"spot":"c2","sens":"aller","reussis":7},{"spot":"c1","sens":"retour","reussis":9},{"spot":"a1","sens":"retour","reussis":5},{"spot":"ax","sens":"retour","reussis":3},{"spot":"a2","sens":"retour","reussis":8},{"spot":"c2","sens":"retour","reussis":7}],"lf":[11,12,10,12,13],"saisiPar":"binome"},{"date":"2026-09-23","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":11},{"spot":"a1","sens":"aller","reussis":10},{"spot":"ax","sens":"aller","reussis":7},{"spot":"a2","sens":"aller","reussis":6},{"spot":"c2","sens":"aller","reussis":8},{"spot":"c1","sens":"retour","reussis":5},{"spot":"a1","sens":"retour","reussis":9},{"spot":"ax","sens":"retour","reussis":9},{"spot":"a2","sens":"retour","reussis":6},{"spot":"c2","sens":"retour","reussis":8}],"lf":[7,11,12,8,12],"saisiPar":"binome"}]}},{"id":"pr09","nom":"Salif Sangaré","equipe":"pro","poste":"Ailier fort","numero":12,"code":"2240","secret":"QKGSBH96GA","parcours":"int","taille":198,"tir":{"sessions":[{"date":"2026-09-07","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":13},{"spot":"pbg","sens":"aller","reussis":12},{"spot":"pbd","sens":"aller","reussis":10},{"spot":"scg","sens":"aller","reussis":14},{"spot":"scd","sens":"aller","reussis":16},{"spot":"cdg","sens":"aller","reussis":12},{"spot":"cdd","sens":"aller","reussis":15},{"spot":"crc","sens":"retour","reussis":15},{"spot":"pbg","sens":"retour","reussis":9},{"spot":"pbd","sens":"retour","reussis":12},{"spot":"scg","sens":"retour","reussis":17},{"spot":"scd","sens":"retour","reussis":12},{"spot":"cdg","sens":"retour","reussis":10},{"spot":"cdd","sens":"retour","reussis":13}],"lf":[14,11,12,10,11],"saisiPar":"binome"},{"date":"2026-09-13","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":13},{"spot":"pbg","sens":"aller","reussis":11},{"spot":"pbd","sens":"aller","reussis":7},{"spot":"scg","sens":"aller","reussis":9},{"spot":"scd","sens":"aller","reussis":12},{"spot":"cdg","sens":"aller","reussis":11},{"spot":"cdd","sens":"aller","reussis":8},{"spot":"crc","sens":"retour","reussis":10},{"spot":"pbg","sens":"retour","reussis":12},{"spot":"pbd","sens":"retour","reussis":13},{"spot":"scg","sens":"retour","reussis":13},{"spot":"scd","sens":"retour","reussis":13},{"spot":"cdg","sens":"retour","reussis":14},{"spot":"cdd","sens":"retour","reussis":14}],"lf":[14,10,14,13,10],"saisiPar":"binome"},{"date":"2026-09-17","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":20},{"spot":"pbg","sens":"aller","reussis":14},{"spot":"pbd","sens":"aller","reussis":12},{"spot":"scg","sens":"aller","reussis":16},{"spot":"scd","sens":"aller","reussis":11},{"spot":"cdg","sens":"aller","reussis":9},{"spot":"cdd","sens":"aller","reussis":9},{"spot":"crc","sens":"retour","reussis":17},{"spot":"pbg","sens":"retour","reussis":8},{"spot":"pbd","sens":"retour","reussis":9},{"spot":"scg","sens":"retour","reussis":5},{"spot":"scd","sens":"retour","reussis":13},{"spot":"cdg","sens":"retour","reussis":13},{"spot":"cdd","sens":"retour","reussis":11}],"lf":[12,13,9,13,13],"saisiPar":"binome"},{"date":"2026-09-19","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":16},{"spot":"pbg","sens":"aller","reussis":13},{"spot":"pbd","sens":"aller","reussis":13},{"spot":"scg","sens":"aller","reussis":10},{"spot":"scd","sens":"aller","reussis":16},{"spot":"cdg","sens":"aller","reussis":11},{"spot":"cdd","sens":"aller","reussis":14},{"spot":"crc","sens":"retour","reussis":17},{"spot":"pbg","sens":"retour","reussis":11},{"spot":"pbd","sens":"retour","reussis":11},{"spot":"scg","sens":"retour","reussis":12},{"spot":"scd","sens":"retour","reussis":10},{"spot":"cdg","sens":"retour","reussis":13},{"spot":"cdd","sens":"retour","reussis":11}],"lf":[13,14,13,10,11],"saisiPar":"binome"},{"date":"2026-09-19","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":15},{"spot":"pbg","sens":"aller","reussis":13},{"spot":"pbd","sens":"aller","reussis":13},{"spot":"scg","sens":"aller","reussis":11},{"spot":"scd","sens":"aller","reussis":13},{"spot":"cdg","sens":"aller","reussis":13},{"spot":"cdd","sens":"aller","reussis":13},{"spot":"crc","sens":"retour","reussis":15},{"spot":"pbg","sens":"retour","reussis":11},{"spot":"pbd","sens":"retour","reussis":6},{"spot":"scg","sens":"retour","reussis":16},{"spot":"scd","sens":"retour","reussis":7},{"spot":"cdg","sens":"retour","reussis":14},{"spot":"cdd","sens":"retour","reussis":11}],"lf":[14,15,10,8,10],"saisiPar":"binome"},{"date":"2026-09-23","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":17},{"spot":"pbg","sens":"aller","reussis":10},{"spot":"pbd","sens":"aller","reussis":9},{"spot":"scg","sens":"aller","reussis":14},{"spot":"scd","sens":"aller","reussis":14},{"spot":"cdg","sens":"aller","reussis":13},{"spot":"cdd","sens":"aller","reussis":13},{"spot":"crc","sens":"retour","reussis":17},{"spot":"pbg","sens":"retour","reussis":14},{"spot":"pbd","sens":"retour","reussis":12},{"spot":"scg","sens":"retour","reussis":12},{"spot":"scd","sens":"retour","reussis":11},{"spot":"cdg","sens":"retour","reussis":15},{"spot":"cdd","sens":"retour","reussis":10}],"lf":[11,13,9,13,12],"saisiPar":"binome"}]}},{"id":"pr10","nom":"Moussa Bamba","equipe":"pro","poste":"Pivot","numero":13,"code":"6228","secret":"7TLRBJ34SZ","parcours":"int","taille":200,"tir":{"sessions":[{"date":"2026-09-11","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":17},{"spot":"pbg","sens":"aller","reussis":8},{"spot":"pbd","sens":"aller","reussis":12},{"spot":"scg","sens":"aller","reussis":9},{"spot":"scd","sens":"aller","reussis":9},{"spot":"cdg","sens":"aller","reussis":10},{"spot":"cdd","sens":"aller","reussis":9},{"spot":"crc","sens":"retour","reussis":10},{"spot":"pbg","sens":"retour","reussis":11},{"spot":"pbd","sens":"retour","reussis":11},{"spot":"scg","sens":"retour","reussis":11},{"spot":"scd","sens":"retour","reussis":15},{"spot":"cdg","sens":"retour","reussis":11},{"spot":"cdd","sens":"retour","reussis":10}],"lf":[12,12,11,13,9],"saisiPar":"binome"},{"date":"2026-09-19","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":12},{"spot":"pbg","sens":"aller","reussis":10},{"spot":"pbd","sens":"aller","reussis":13},{"spot":"scg","sens":"aller","reussis":9},{"spot":"scd","sens":"aller","reussis":10},{"spot":"cdg","sens":"aller","reussis":10},{"spot":"cdd","sens":"aller","reussis":16},{"spot":"crc","sens":"retour","reussis":13},{"spot":"pbg","sens":"retour","reussis":13},{"spot":"pbd","sens":"retour","reussis":13},{"spot":"scg","sens":"retour","reussis":14},{"spot":"scd","sens":"retour","reussis":12},{"spot":"cdg","sens":"retour","reussis":12},{"spot":"cdd","sens":"retour","reussis":10}],"lf":[10,11,9,14,9],"saisiPar":"binome"},{"date":"2026-09-20","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":17},{"spot":"pbg","sens":"aller","reussis":8},{"spot":"pbd","sens":"aller","reussis":13},{"spot":"scg","sens":"aller","reussis":8},{"spot":"scd","sens":"aller","reussis":7},{"spot":"cdg","sens":"aller","reussis":11},{"spot":"cdd","sens":"aller","reussis":12},{"spot":"crc","sens":"retour","reussis":14},{"spot":"pbg","sens":"retour","reussis":11},{"spot":"pbd","sens":"retour","reussis":10},{"spot":"scg","sens":"retour","reussis":13},{"spot":"scd","sens":"retour","reussis":9},{"spot":"cdg","sens":"retour","reussis":10},{"spot":"cdd","sens":"retour","reussis":17}],"lf":[14,15,11,13,8],"saisiPar":"binome"},{"date":"2026-09-23","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":16},{"spot":"pbg","sens":"aller","reussis":11},{"spot":"pbd","sens":"aller","reussis":15},{"spot":"scg","sens":"aller","reussis":12},{"spot":"scd","sens":"aller","reussis":12},{"spot":"cdg","sens":"aller","reussis":8},{"spot":"cdd","sens":"aller","reussis":11},{"spot":"crc","sens":"retour","reussis":14},{"spot":"pbg","sens":"retour","reussis":12},{"spot":"pbd","sens":"retour","reussis":12},{"spot":"scg","sens":"retour","reussis":15},{"spot":"scd","sens":"retour","reussis":11},{"spot":"cdg","sens":"retour","reussis":9},{"spot":"cdd","sens":"retour","reussis":8}],"lf":[10,10,14,10,15],"saisiPar":"binome"}]}},{"id":"pr11","nom":"Adama Touré","equipe":"pro","poste":"Meneur","numero":14,"code":"4205","secret":"AKVYFFWMWC","parcours":"ext","taille":188,"tir":{"sessions":[{"date":"2026-09-03","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":6},{"spot":"a1","sens":"aller","reussis":9},{"spot":"ax","sens":"aller","reussis":10},{"spot":"a2","sens":"aller","reussis":7},{"spot":"c2","sens":"aller","reussis":6},{"spot":"c1","sens":"retour","reussis":7},{"spot":"a1","sens":"retour","reussis":8},{"spot":"ax","sens":"retour","reussis":6},{"spot":"a2","sens":"retour","reussis":8},{"spot":"c2","sens":"retour","reussis":7}],"lf":[13,11,12,10,14],"saisiPar":"binome"},{"date":"2026-09-11","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":10},{"spot":"a1","sens":"aller","reussis":5},{"spot":"ax","sens":"aller","reussis":5},{"spot":"a2","sens":"aller","reussis":4},{"spot":"c2","sens":"aller","reussis":8},{"spot":"c1","sens":"retour","reussis":3},{"spot":"a1","sens":"retour","reussis":8},{"spot":"ax","sens":"retour","reussis":6},{"spot":"a2","sens":"retour","reussis":9},{"spot":"c2","sens":"retour","reussis":6}],"lf":[14,14,10,9,13],"saisiPar":"binome"},{"date":"2026-09-11","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":9},{"spot":"a1","sens":"aller","reussis":9},{"spot":"ax","sens":"aller","reussis":7},{"spot":"a2","sens":"aller","reussis":11},{"spot":"c2","sens":"aller","reussis":4},{"spot":"c1","sens":"retour","reussis":6},{"spot":"a1","sens":"retour","reussis":6},{"spot":"ax","sens":"retour","reussis":6},{"spot":"a2","sens":"retour","reussis":6},{"spot":"c2","sens":"retour","reussis":6}],"lf":[12,10,10,10,11],"saisiPar":"binome"},{"date":"2026-09-15","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":11},{"spot":"a1","sens":"aller","reussis":4},{"spot":"ax","sens":"aller","reussis":5},{"spot":"a2","sens":"aller","reussis":8},{"spot":"c2","sens":"aller","reussis":9},{"spot":"c1","sens":"retour","reussis":3},{"spot":"a1","sens":"retour","reussis":8},{"spot":"ax","sens":"retour","reussis":8},{"spot":"a2","sens":"retour","reussis":10},{"spot":"c2","sens":"retour","reussis":8}],"lf":[14,15,7,12,13],"saisiPar":"binome"},{"date":"2026-09-17","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":11},{"spot":"a1","sens":"aller","reussis":7},{"spot":"ax","sens":"aller","reussis":10},{"spot":"a2","sens":"aller","reussis":8},{"spot":"c2","sens":"aller","reussis":8},{"spot":"c1","sens":"retour","reussis":10},{"spot":"a1","sens":"retour","reussis":7},{"spot":"ax","sens":"retour","reussis":7},{"spot":"a2","sens":"retour","reussis":8},{"spot":"c2","sens":"retour","reussis":6}],"lf":[10,11,13,11,11],"saisiPar":"binome"},{"date":"2026-09-19","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":11},{"spot":"a1","sens":"aller","reussis":8},{"spot":"ax","sens":"aller","reussis":10},{"spot":"a2","sens":"aller","reussis":8},{"spot":"c2","sens":"aller","reussis":5},{"spot":"c1","sens":"retour","reussis":10},{"spot":"a1","sens":"retour","reussis":10},{"spot":"ax","sens":"retour","reussis":9},{"spot":"a2","sens":"retour","reussis":5},{"spot":"c2","sens":"retour","reussis":8}],"lf":[11,10,12,13,14],"saisiPar":"binome"},{"date":"2026-09-23","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":3},{"spot":"a1","sens":"aller","reussis":7},{"spot":"ax","sens":"aller","reussis":6},{"spot":"a2","sens":"aller","reussis":7},{"spot":"c2","sens":"aller","reussis":11},{"spot":"c1","sens":"retour","reussis":10},{"spot":"a1","sens":"retour","reussis":8},{"spot":"ax","sens":"retour","reussis":6},{"spot":"a2","sens":"retour","reussis":11},{"spot":"c2","sens":"retour","reussis":6}],"lf":[11,13,12,15,14],"saisiPar":"binome"}]}},{"id":"pr12","nom":"Olivier Silué","equipe":"pro","poste":"Arrière","numero":15,"code":"9451","secret":"YJHBFH3YTX","parcours":"ext","taille":184,"tir":{"sessions":[{"date":"2026-09-08","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":9},{"spot":"a1","sens":"aller","reussis":5},{"spot":"ax","sens":"aller","reussis":7},{"spot":"a2","sens":"aller","reussis":9},{"spot":"c2","sens":"aller","reussis":5},{"spot":"c1","sens":"retour","reussis":2},{"spot":"a1","sens":"retour","reussis":8},{"spot":"ax","sens":"retour","reussis":8},{"spot":"a2","sens":"retour","reussis":4},{"spot":"c2","sens":"retour","reussis":7}],"lf":[11,12,13,13,15],"saisiPar":"binome"},{"date":"2026-09-14","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":9},{"spot":"a1","sens":"aller","reussis":6},{"spot":"ax","sens":"aller","reussis":8},{"spot":"a2","sens":"aller","reussis":9},{"spot":"c2","sens":"aller","reussis":9},{"spot":"c1","sens":"retour","reussis":10},{"spot":"a1","sens":"retour","reussis":5},{"spot":"ax","sens":"retour","reussis":7},{"spot":"a2","sens":"retour","reussis":6},{"spot":"c2","sens":"retour","reussis":9}],"lf":[9,16,11,10,11],"saisiPar":"binome"},{"date":"2026-09-15","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":6},{"spot":"a1","sens":"aller","reussis":8},{"spot":"ax","sens":"aller","reussis":2},{"spot":"a2","sens":"aller","reussis":11},{"spot":"c2","sens":"aller","reussis":9},{"spot":"c1","sens":"retour","reussis":7},{"spot":"a1","sens":"retour","reussis":3},{"spot":"ax","sens":"retour","reussis":7},{"spot":"a2","sens":"retour","reussis":7},{"spot":"c2","sens":"retour","reussis":11}],"lf":[12,12,11,8,15],"saisiPar":"binome"},{"date":"2026-09-15","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":12},{"spot":"a1","sens":"aller","reussis":10},{"spot":"ax","sens":"aller","reussis":8},{"spot":"a2","sens":"aller","reussis":9},{"spot":"c2","sens":"aller","reussis":9},{"spot":"c1","sens":"retour","reussis":6},{"spot":"a1","sens":"retour","reussis":11},{"spot":"ax","sens":"retour","reussis":5},{"spot":"a2","sens":"retour","reussis":8},{"spot":"c2","sens":"retour","reussis":9}],"lf":[13,6,13,13,11],"saisiPar":"binome"},{"date":"2026-09-21","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":10},{"spot":"a1","sens":"aller","reussis":10},{"spot":"ax","sens":"aller","reussis":9},{"spot":"a2","sens":"aller","reussis":10},{"spot":"c2","sens":"aller","reussis":7},{"spot":"c1","sens":"retour","reussis":2},{"spot":"a1","sens":"retour","reussis":3},{"spot":"ax","sens":"retour","reussis":6},{"spot":"a2","sens":"retour","reussis":7},{"spot":"c2","sens":"retour","reussis":8}],"lf":[13,12,14,13,12],"saisiPar":"binome"},{"date":"2026-09-23","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":9},{"spot":"a1","sens":"aller","reussis":4},{"spot":"ax","sens":"aller","reussis":9},{"spot":"a2","sens":"aller","reussis":5},{"spot":"c2","sens":"aller","reussis":6},{"spot":"c1","sens":"retour","reussis":12},{"spot":"a1","sens":"retour","reussis":12},{"spot":"ax","sens":"retour","reussis":3},{"spot":"a2","sens":"retour","reussis":11},{"spot":"c2","sens":"retour","reussis":10}],"lf":[12,10,10,15,13],"saisiPar":"binome"}]}},{"id":"pr13","nom":"Brahima Kouamé","equipe":"pro","poste":"Ailier","numero":21,"code":"3498","secret":"2VCC83JHVX","parcours":"ext","taille":193,"tir":{"sessions":[{"date":"2026-09-03","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":12},{"spot":"a1","sens":"aller","reussis":4},{"spot":"ax","sens":"aller","reussis":6},{"spot":"a2","sens":"aller","reussis":8},{"spot":"c2","sens":"aller","reussis":0},{"spot":"c1","sens":"retour","reussis":4},{"spot":"a1","sens":"retour","reussis":8},{"spot":"ax","sens":"retour","reussis":4},{"spot":"a2","sens":"retour","reussis":7},{"spot":"c2","sens":"retour","reussis":8}],"lf":[11,12,13,11,12],"saisiPar":"binome"},{"date":"2026-09-11","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":5},{"spot":"a1","sens":"aller","reussis":9},{"spot":"ax","sens":"aller","reussis":10},{"spot":"a2","sens":"aller","reussis":5},{"spot":"c2","sens":"aller","reussis":6},{"spot":"c1","sens":"retour","reussis":6},{"spot":"a1","sens":"retour","reussis":5},{"spot":"ax","sens":"retour","reussis":6},{"spot":"a2","sens":"retour","reussis":8},{"spot":"c2","sens":"retour","reussis":7}],"lf":[12,13,10,12,9],"saisiPar":"binome"},{"date":"2026-09-11","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":5},{"spot":"a1","sens":"aller","reussis":10},{"spot":"ax","sens":"aller","reussis":9},{"spot":"a2","sens":"aller","reussis":4},{"spot":"c2","sens":"aller","reussis":7},{"spot":"c1","sens":"retour","reussis":2},{"spot":"a1","sens":"retour","reussis":7},{"spot":"ax","sens":"retour","reussis":9},{"spot":"a2","sens":"retour","reussis":8},{"spot":"c2","sens":"retour","reussis":7}],"lf":[13,10,11,10,11],"saisiPar":"binome"},{"date":"2026-09-14","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":4},{"spot":"a1","sens":"aller","reussis":5},{"spot":"ax","sens":"aller","reussis":11},{"spot":"a2","sens":"aller","reussis":9},{"spot":"c2","sens":"aller","reussis":7},{"spot":"c1","sens":"retour","reussis":4},{"spot":"a1","sens":"retour","reussis":9},{"spot":"ax","sens":"retour","reussis":8},{"spot":"a2","sens":"retour","reussis":5},{"spot":"c2","sens":"retour","reussis":9}],"lf":[11,12,12,9,11],"saisiPar":"binome"},{"date":"2026-09-17","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":1},{"spot":"a1","sens":"aller","reussis":7},{"spot":"ax","sens":"aller","reussis":7},{"spot":"a2","sens":"aller","reussis":7},{"spot":"c2","sens":"aller","reussis":11},{"spot":"c1","sens":"retour","reussis":3},{"spot":"a1","sens":"retour","reussis":8},{"spot":"ax","sens":"retour","reussis":6},{"spot":"a2","sens":"retour","reussis":9},{"spot":"c2","sens":"retour","reussis":8}],"lf":[13,8,10,11,11],"saisiPar":"binome"},{"date":"2026-09-19","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":13},{"spot":"a1","sens":"aller","reussis":7},{"spot":"ax","sens":"aller","reussis":8},{"spot":"a2","sens":"aller","reussis":9},{"spot":"c2","sens":"aller","reussis":7},{"spot":"c1","sens":"retour","reussis":7},{"spot":"a1","sens":"retour","reussis":6},{"spot":"ax","sens":"retour","reussis":6},{"spot":"a2","sens":"retour","reussis":9},{"spot":"c2","sens":"retour","reussis":9}],"lf":[14,14,10,11,12],"saisiPar":"binome"},{"date":"2026-09-23","parcours":"ext","series":[{"spot":"c1","sens":"aller","reussis":3},{"spot":"a1","sens":"aller","reussis":7},{"spot":"ax","sens":"aller","reussis":9},{"spot":"a2","sens":"aller","reussis":6},{"spot":"c2","sens":"aller","reussis":6},{"spot":"c1","sens":"retour","reussis":7},{"spot":"a1","sens":"retour","reussis":10},{"spot":"ax","sens":"retour","reussis":5},{"spot":"a2","sens":"retour","reussis":5},{"spot":"c2","sens":"retour","reussis":11}],"lf":[11,13,11,12,11],"saisiPar":"binome"}]}},{"id":"pr14","nom":"Aboubacar Ouattara","equipe":"pro","poste":"Ailier fort","numero":23,"code":"6419","secret":"FX45XU897K","parcours":"int","taille":202,"tir":{"sessions":[{"date":"2026-09-03","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":18},{"spot":"pbg","sens":"aller","reussis":15},{"spot":"pbd","sens":"aller","reussis":12},{"spot":"scg","sens":"aller","reussis":12},{"spot":"scd","sens":"aller","reussis":10},{"spot":"cdg","sens":"aller","reussis":12},{"spot":"cdd","sens":"aller","reussis":10},{"spot":"crc","sens":"retour","reussis":18},{"spot":"pbg","sens":"retour","reussis":13},{"spot":"pbd","sens":"retour","reussis":9},{"spot":"scg","sens":"retour","reussis":11},{"spot":"scd","sens":"retour","reussis":9},{"spot":"cdg","sens":"retour","reussis":11},{"spot":"cdd","sens":"retour","reussis":9}],"lf":[17,14,8,9,11],"saisiPar":"binome"},{"date":"2026-09-05","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":18},{"spot":"pbg","sens":"aller","reussis":13},{"spot":"pbd","sens":"aller","reussis":7},{"spot":"scg","sens":"aller","reussis":11},{"spot":"scd","sens":"aller","reussis":9},{"spot":"cdg","sens":"aller","reussis":12},{"spot":"cdd","sens":"aller","reussis":10},{"spot":"crc","sens":"retour","reussis":15},{"spot":"pbg","sens":"retour","reussis":11},{"spot":"pbd","sens":"retour","reussis":15},{"spot":"scg","sens":"retour","reussis":13},{"spot":"scd","sens":"retour","reussis":9},{"spot":"cdg","sens":"retour","reussis":12},{"spot":"cdd","sens":"retour","reussis":13}],"lf":[12,13,14,13,8],"saisiPar":"binome"},{"date":"2026-09-15","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":13},{"spot":"pbg","sens":"aller","reussis":11},{"spot":"pbd","sens":"aller","reussis":14},{"spot":"scg","sens":"aller","reussis":14},{"spot":"scd","sens":"aller","reussis":12},{"spot":"cdg","sens":"aller","reussis":15},{"spot":"cdd","sens":"aller","reussis":13},{"spot":"crc","sens":"retour","reussis":16},{"spot":"pbg","sens":"retour","reussis":8},{"spot":"pbd","sens":"retour","reussis":13},{"spot":"scg","sens":"retour","reussis":10},{"spot":"scd","sens":"retour","reussis":13},{"spot":"cdg","sens":"retour","reussis":10},{"spot":"cdd","sens":"retour","reussis":12}],"lf":[15,10,11,14,12],"saisiPar":"binome"},{"date":"2026-09-15","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":12},{"spot":"pbg","sens":"aller","reussis":13},{"spot":"pbd","sens":"aller","reussis":11},{"spot":"scg","sens":"aller","reussis":11},{"spot":"scd","sens":"aller","reussis":13},{"spot":"cdg","sens":"aller","reussis":11},{"spot":"cdd","sens":"aller","reussis":13},{"spot":"crc","sens":"retour","reussis":13},{"spot":"pbg","sens":"retour","reussis":10},{"spot":"pbd","sens":"retour","reussis":9},{"spot":"scg","sens":"retour","reussis":10},{"spot":"scd","sens":"retour","reussis":11},{"spot":"cdg","sens":"retour","reussis":13},{"spot":"cdd","sens":"retour","reussis":12}],"lf":[9,14,13,11,15],"saisiPar":"binome"},{"date":"2026-09-17","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":10},{"spot":"pbg","sens":"aller","reussis":12},{"spot":"pbd","sens":"aller","reussis":8},{"spot":"scg","sens":"aller","reussis":11},{"spot":"scd","sens":"aller","reussis":11},{"spot":"cdg","sens":"aller","reussis":12},{"spot":"cdd","sens":"aller","reussis":15},{"spot":"crc","sens":"retour","reussis":17},{"spot":"pbg","sens":"retour","reussis":13},{"spot":"pbd","sens":"retour","reussis":17},{"spot":"scg","sens":"retour","reussis":11},{"spot":"scd","sens":"retour","reussis":15},{"spot":"cdg","sens":"retour","reussis":10},{"spot":"cdd","sens":"retour","reussis":7}],"lf":[13,13,11,16,12],"saisiPar":"binome"},{"date":"2026-09-20","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":16},{"spot":"pbg","sens":"aller","reussis":12},{"spot":"pbd","sens":"aller","reussis":11},{"spot":"scg","sens":"aller","reussis":11},{"spot":"scd","sens":"aller","reussis":12},{"spot":"cdg","sens":"aller","reussis":14},{"spot":"cdd","sens":"aller","reussis":11},{"spot":"crc","sens":"retour","reussis":17},{"spot":"pbg","sens":"retour","reussis":12},{"spot":"pbd","sens":"retour","reussis":13},{"spot":"scg","sens":"retour","reussis":14},{"spot":"scd","sens":"retour","reussis":14},{"spot":"cdg","sens":"retour","reussis":14},{"spot":"cdd","sens":"retour","reussis":16}],"lf":[15,13,13,16,10],"saisiPar":"binome"},{"date":"2026-09-23","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":15},{"spot":"pbg","sens":"aller","reussis":13},{"spot":"pbd","sens":"aller","reussis":15},{"spot":"scg","sens":"aller","reussis":15},{"spot":"scd","sens":"aller","reussis":10},{"spot":"cdg","sens":"aller","reussis":15},{"spot":"cdd","sens":"aller","reussis":16},{"spot":"crc","sens":"retour","reussis":16},{"spot":"pbg","sens":"retour","reussis":10},{"spot":"pbd","sens":"retour","reussis":10},{"spot":"scg","sens":"retour","reussis":11},{"spot":"scd","sens":"retour","reussis":5},{"spot":"cdg","sens":"retour","reussis":11},{"spot":"cdd","sens":"retour","reussis":10}],"lf":[10,11,11,13,12],"saisiPar":"binome"}]}},{"id":"pr15","nom":"Éric Koné","equipe":"pro","poste":"Pivot","numero":33,"code":"6431","secret":"W2YEMZ9B5H","parcours":"int","taille":208,"tir":{"sessions":[{"date":"2026-09-11","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":17},{"spot":"pbg","sens":"aller","reussis":13},{"spot":"pbd","sens":"aller","reussis":9},{"spot":"scg","sens":"aller","reussis":13},{"spot":"scd","sens":"aller","reussis":8},{"spot":"cdg","sens":"aller","reussis":9},{"spot":"cdd","sens":"aller","reussis":11},{"spot":"crc","sens":"retour","reussis":14},{"spot":"pbg","sens":"retour","reussis":11},{"spot":"pbd","sens":"retour","reussis":14},{"spot":"scg","sens":"retour","reussis":12},{"spot":"scd","sens":"retour","reussis":12},{"spot":"cdg","sens":"retour","reussis":8},{"spot":"cdd","sens":"retour","reussis":10}],"lf":[12,11,12,11,15],"saisiPar":"binome"},{"date":"2026-09-11","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":14},{"spot":"pbg","sens":"aller","reussis":12},{"spot":"pbd","sens":"aller","reussis":11},{"spot":"scg","sens":"aller","reussis":10},{"spot":"scd","sens":"aller","reussis":10},{"spot":"cdg","sens":"aller","reussis":10},{"spot":"cdd","sens":"aller","reussis":11},{"spot":"crc","sens":"retour","reussis":14},{"spot":"pbg","sens":"retour","reussis":12},{"spot":"pbd","sens":"retour","reussis":11},{"spot":"scg","sens":"retour","reussis":5},{"spot":"scd","sens":"retour","reussis":10},{"spot":"cdg","sens":"retour","reussis":13},{"spot":"cdd","sens":"retour","reussis":7}],"lf":[11,11,11,12,9],"saisiPar":"binome"},{"date":"2026-09-13","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":13},{"spot":"pbg","sens":"aller","reussis":8},{"spot":"pbd","sens":"aller","reussis":12},{"spot":"scg","sens":"aller","reussis":15},{"spot":"scd","sens":"aller","reussis":11},{"spot":"cdg","sens":"aller","reussis":11},{"spot":"cdd","sens":"aller","reussis":10},{"spot":"crc","sens":"retour","reussis":13},{"spot":"pbg","sens":"retour","reussis":13},{"spot":"pbd","sens":"retour","reussis":12},{"spot":"scg","sens":"retour","reussis":12},{"spot":"scd","sens":"retour","reussis":13},{"spot":"cdg","sens":"retour","reussis":10},{"spot":"cdd","sens":"retour","reussis":13}],"lf":[13,10,9,12,12],"saisiPar":"binome"},{"date":"2026-09-14","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":12},{"spot":"pbg","sens":"aller","reussis":13},{"spot":"pbd","sens":"aller","reussis":12},{"spot":"scg","sens":"aller","reussis":9},{"spot":"scd","sens":"aller","reussis":10},{"spot":"cdg","sens":"aller","reussis":10},{"spot":"cdd","sens":"aller","reussis":8},{"spot":"crc","sens":"retour","reussis":14},{"spot":"pbg","sens":"retour","reussis":15},{"spot":"pbd","sens":"retour","reussis":9},{"spot":"scg","sens":"retour","reussis":10},{"spot":"scd","sens":"retour","reussis":13},{"spot":"cdg","sens":"retour","reussis":14},{"spot":"cdd","sens":"retour","reussis":9}],"lf":[11,11,10,10,11],"saisiPar":"binome"},{"date":"2026-09-17","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":16},{"spot":"pbg","sens":"aller","reussis":11},{"spot":"pbd","sens":"aller","reussis":9},{"spot":"scg","sens":"aller","reussis":8},{"spot":"scd","sens":"aller","reussis":14},{"spot":"cdg","sens":"aller","reussis":11},{"spot":"cdd","sens":"aller","reussis":12},{"spot":"crc","sens":"retour","reussis":14},{"spot":"pbg","sens":"retour","reussis":17},{"spot":"pbd","sens":"retour","reussis":9},{"spot":"scg","sens":"retour","reussis":9},{"spot":"scd","sens":"retour","reussis":11},{"spot":"cdg","sens":"retour","reussis":9},{"spot":"cdd","sens":"retour","reussis":13}],"lf":[11,10,13,10,13],"saisiPar":"binome"},{"date":"2026-09-20","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":14},{"spot":"pbg","sens":"aller","reussis":10},{"spot":"pbd","sens":"aller","reussis":11},{"spot":"scg","sens":"aller","reussis":8},{"spot":"scd","sens":"aller","reussis":11},{"spot":"cdg","sens":"aller","reussis":8},{"spot":"cdd","sens":"aller","reussis":10},{"spot":"crc","sens":"retour","reussis":14},{"spot":"pbg","sens":"retour","reussis":11},{"spot":"pbd","sens":"retour","reussis":13},{"spot":"scg","sens":"retour","reussis":11},{"spot":"scd","sens":"retour","reussis":11},{"spot":"cdg","sens":"retour","reussis":13},{"spot":"cdd","sens":"retour","reussis":10}],"lf":[13,11,13,13,9],"saisiPar":"binome"},{"date":"2026-09-23","parcours":"int","series":[{"spot":"crc","sens":"aller","reussis":12},{"spot":"pbg","sens":"aller","reussis":10},{"spot":"pbd","sens":"aller","reussis":14},{"spot":"scg","sens":"aller","reussis":8},{"spot":"scd","sens":"aller","reussis":9},{"spot":"cdg","sens":"aller","reussis":11},{"spot":"cdd","sens":"aller","reussis":8},{"spot":"crc","sens":"retour","reussis":13},{"spot":"pbg","sens":"retour","reussis":13},{"spot":"pbd","sens":"retour","reussis":10},{"spot":"scg","sens":"retour","reussis":9},{"spot":"scd","sens":"retour","reussis":11},{"spot":"cdg","sens":"retour","reussis":10},{"spot":"cdd","sens":"retour","reussis":10}],"lf":[12,14,10,12,12],"saisiPar":"binome"}]}}],"dureeFenetre":30,"toleranceFenetres":2,"sessionsPointage":[{"id":"se-pro-0922","equipe":"pro","libelle":"Séance du 22/09 — jeu placé","date":"22/09/2026","heure":"18:00","limite":"18:10","ouverte":false,"pointages":[{"joueur":"pr01","heure":"17:56","retard":false},{"joueur":"pr02","heure":"17:53","retard":false},{"joueur":"pr03","heure":"18:06","retard":false},{"joueur":"pr04","heure":"17:53","retard":false},{"joueur":"pr05","heure":"18:02","retard":false},{"joueur":"pr06","heure":"17:59","retard":false},{"joueur":"pr07","heure":"17:51","retard":false},{"joueur":"pr08","heure":"17:50","retard":false},{"joueur":"pr09","heure":"17:55","retard":false},{"joueur":"pr10","heure":"18:05","retard":false},{"joueur":"pr11","heure":"18:06","retard":false},{"joueur":"pr12","heure":"17:50","retard":false},{"joueur":"pr13","heure":"18:07","retard":false},{"joueur":"pr14","heure":"18:08","retard":false},{"joueur":"pr15","heure":"17:52","retard":false}]},{"id":"se-esp-0923","equipe":"espoirs","libelle":"Séance du 23/09 — fondamentaux","date":"23/09/2026","heure":"16:30","limite":"16:40","ouverte":false,"pointages":[]}],"comptes":[{"id":"st01","code":"C868JD","role":"staff","nom":"Williams Zonzon","sous":"Directeur technique"},{"id":"st02","code":"AP5PRA","role":"staff","nom":"Séraphin Digbeu","sous":"Head coach"},{"id":"st03","code":"U6D2M7","role":"appel","nom":"Assistant administratif","sous":"Appel des joueurs"}],"planning":{"equipe":"pro","titre":"ASA Abidjan — Équipe 1 (ASA PRO / Division 1)","source":"ASA_Abidjan_Equipe1_Planning_Detaille.xlsx","semaines":[{"num":1,"lundi":"2026-09-21","dimanche":"2026-09-27","jours":[{"date":"2026-09-24","nom":"Jeudi","creneaux":[{"h":"10h00 – 11h00","lignes":[{"txt":"Musculation ppg","pour":""}],"c":"Dimitri / JMH","t":"","type":"physique"},{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : Euro-step, floater, pull-up à 1 et 2 dribbles","pour":"ext"},{"txt":"Intérieur : up and under, spin, face-up et drive","pour":"int"}],"c":"Coach ELIE / coach GUEDE","t":"Terrain 1","type":"terrain"},{"h":"13h00 – 14h00","lignes":[{"txt":"Repas","pour":""}],"c":"","t":"","type":"repas"},{"h":"14h00 – 15h00","lignes":[{"txt":"Récupération","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h30","lignes":[{"txt":"Grille de tir","pour":""}],"c":"Coach GUEDE / OUMAR","t":"Terrain 1","type":"tir"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Mise en place — défense homme à homme","pour":""}],"c":"Coach Sidibe / coach Kone","t":"Terrain 1","type":"terrain"}]},{"date":"2026-09-25","nom":"Vendredi","creneaux":[{"h":"10h00 – 11h00","lignes":[{"txt":"Musculation ppg","pour":""}],"c":"Dimitri / JMH","t":"","type":"physique"},{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : finition en course, passe et pull-up en transition","pour":"ext"},{"txt":"Intérieur : rim-run, prise de position, outlet","pour":"int"}],"c":"Coach ELIE / coach GUEDE","t":"Terrain 1","type":"terrain"},{"h":"13h00 – 14h00","lignes":[{"txt":"Repas","pour":""}],"c":"","t":"","type":"repas"},{"h":"14h00 – 15h00","lignes":[{"txt":"Récupération","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h30","lignes":[{"txt":"Grille de tir","pour":""}],"c":"Coach GUEDE / OUMAR","t":"Terrain 1","type":"tir"},{"h":"17h00 – 19h30","lignes":[{"txt":"Jeu réduit 4c4 + transition offensive — lecture du jeu, tir sous légère pression","pour":""}],"c":"Coach Sidibe / coach Kone","t":"Terrain 1","type":"tir"}]},{"date":"2026-09-27","nom":"Dimanche","creneaux":[{"h":"Heure libre","lignes":[{"txt":"Échauffement + 45 minutes de footing, vitesse modérée + 5 min d'étirement","pour":""}],"c":"","t":"","type":"libre"}]}]},{"num":2,"lundi":"2026-09-28","dimanche":"2026-10-04","jours":[{"date":"2026-09-28","nom":"Lundi","creneaux":[{"h":"10h00 – 11h00","lignes":[{"txt":"Musculation ppg","pour":""}],"c":"Dimitri / JMH","t":"","type":"physique"},{"h":"11h00 – 13h00","lignes":[{"txt":"Intérieur : défense au poste, aide au cercle, rebond défensif","pour":"int"}],"c":"","t":"Terrain 1","type":"terrain"},{"h":"13h00 – 14h00","lignes":[{"txt":"Repas","pour":""}],"c":"","t":"","type":"repas"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h30","lignes":[{"txt":"Grille de tir","pour":""}],"c":"Coach GUEDE / OUMAR","t":"Terrain 1","type":"tir"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Défense collective — zone et homme à homme · positionnement, communication, help side, rotations","pour":""}],"c":"Coach Sidibe / coach Kone","t":"Terrain 1","type":"terrain"}]},{"date":"2026-09-29","nom":"Mardi","creneaux":[{"h":"10h00 – 11h00","lignes":[{"txt":"Musculation ppg","pour":""}],"c":"Dimitri / JMH","t":"","type":"physique"},{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : lecture individuelle du système — coupes (backdoor, curl, flare)","pour":"ext"},{"txt":"Intérieur : lecture individuelle du système — angle et timing des écrans, roll ou pop","pour":"int"}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"terrain"},{"h":"13h00 – 14h00","lignes":[{"txt":"Repas","pour":""}],"c":"","t":"","type":"repas"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h30","lignes":[{"txt":"Grille de tir","pour":""}],"c":"Coach GUEDE / OUMAR","t":"Terrain 1","type":"tir"},{"h":"17h00 – 19h30","lignes":[{"txt":"Attaque collective — système offensif n°1 · 5v0 → 5v5 demi-terrain","pour":""}],"c":"Coach Sidibe / coach Kone","t":"Terrain 1","type":"terrain"}]},{"date":"2026-09-30","nom":"Mercredi","creneaux":[{"h":"14h00 – 17h00","lignes":[{"txt":"Piscine","pour":""}],"c":"","t":"","type":"libre"}]},{"date":"2026-10-01","nom":"Jeudi","creneaux":[{"h":"10h00 – 11h00","lignes":[{"txt":"Musculation ppg","pour":""}],"c":"Dimitri / JMH","t":"","type":"physique"},{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : 3 points en sortie d'écran et lectures du pick and roll (reject, snake)","pour":"ext"},{"txt":"Intérieur : pick and pop à 3 points pour les postes 4, finition sur roll — cible 32%","pour":"int"}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"terrain"},{"h":"13h00 – 14h00","lignes":[{"txt":"Repas","pour":""}],"c":"","t":"","type":"repas"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h30","lignes":[{"txt":"Grille de tir","pour":""}],"c":"Coach GUEDE / OUMAR","t":"Terrain 1","type":"tir"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Physique intensité + tir extérieur 3 points · 200 tirs par joueur, off-screen, pick and roll, cible 32%+","pour":""}],"c":"Coach Sidibe / coach Kone","t":"Terrain 1","type":"physique"}]},{"date":"2026-10-02","nom":"Vendredi","creneaux":[{"h":"10h00 – 11h00","lignes":[{"txt":"Musculation ppg","pour":""}],"c":"Dimitri / JMH","t":"","type":"physique"},{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieurs et intérieurs : shootaround de 45 min maximum, lancers et routine d'avant-match","pour":"ext"}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"match"},{"h":"13h00 – 14h00","lignes":[{"txt":"Repas","pour":""}],"c":"","t":"","type":"repas"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"MATCH AMICAL N°1 — adversaire externe · game plan, protocole de récupération","pour":""}],"c":"Coach Sidibe / coach Kone","t":"Terrain 1","type":"match"}]}]},{"num":3,"lundi":"2026-10-05","dimanche":"2026-10-11","jours":[{"date":"2026-10-05","nom":"Lundi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Récupération active, corrections vidéo individuelles, rôles de chacun en zone 2-3","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"libre"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Débriefing vidéo + défense zone 2-3 et transition défensive · alternance homme / zone","pour":""}],"c":"","t":"Terrain 1","type":"terrain"}]},{"date":"2026-10-06","nom":"Mardi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : attaque du close-out, drive and kick, jump-stop","pour":"ext"},{"txt":"Intérieur : dunker spot, seal, finition sur passe","pour":"int"}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"terrain"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"Attaque collective — système offensif n°2 · dribble drive, surnombre offensif, counter break","pour":""}],"c":"","t":"Terrain 1","type":"terrain"}]},{"date":"2026-10-07","nom":"Mercredi","creneaux":[{"h":"Journée","lignes":[{"txt":"Repos","pour":""}],"c":"","t":"","type":"repos"}]},{"date":"2026-10-08","nom":"Jeudi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : lancers sous fatigue avec conséquences, sécurité de balle contre la pression et sortie de trap","pour":"ext"},{"txt":"Intérieur : lancers sous fatigue avec conséquences, réception sous contact","pour":"int"}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"terrain"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"GESTION ET PRESSION — priorité · score serré, bonus, lancers francs, bruits simulés","pour":""}],"c":"","t":"Terrain 1","type":"terrain"}]},{"date":"2026-10-09","nom":"Vendredi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Shootaround","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"tir"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"MATCH AMICAL N°2 — adversaire externe · focus défense","pour":""}],"c":"","t":"Terrain 1","type":"match"}]}]},{"num":4,"lundi":"2026-10-12","dimanche":"2026-10-18","jours":[{"date":"2026-10-12","nom":"Lundi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : défense tout terrain sur le porteur, trap","pour":"ext"},{"txt":"Intérieur : protection du cercle derrière la press","pour":"int"}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"terrain"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Défense combinée zone + individuelle · situations spéciales de fin de match, full court press","pour":""}],"c":"","t":"Terrain 1","type":"match"}]},{"date":"2026-10-13","nom":"Mardi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : v-cut, réception sous pression, pivot et passe","pour":"ext"},{"txt":"Intérieur : écran sur remise en jeu, flash au milieu contre la press","pour":"int"}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"terrain"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"Attaque — systèmes et remises en jeu · out of bounds, press break, possession finale","pour":""}],"c":"","t":"Terrain 1","type":"terrain"}]},{"date":"2026-10-14","nom":"Mercredi","creneaux":[{"h":"Journée","lignes":[{"txt":"Repos","pour":""}],"c":"","t":"","type":"repos"}]},{"date":"2026-10-15","nom":"Jeudi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : iso de dernière possession, pivot et passe","pour":"ext"},{"txt":"Intérieur : rebond offensif et tip-in, faute intelligente récompensée (lancer franc 1+1)","pour":"int"}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"terrain"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Simulation quatrième quart-temps — pression maximale · situations à ±2, bruits du public, dernières secondes","pour":""}],"c":"","t":"Terrain 1","type":"terrain"}]},{"date":"2026-10-16","nom":"Vendredi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Shootaround","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"tir"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"MATCH AMICAL N°3 — adversaire externe · conditions officielles","pour":""}],"c":"","t":"Terrain 1","type":"match"}]}]},{"num":5,"lundi":"2026-10-19","dimanche":"2026-10-25","jours":[{"date":"2026-10-19","nom":"Lundi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Plan individuel — 2 lacunes par joueur, tirées des statistiques des 3 matchs amicaux","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"match"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Séance vidéo + défense consolidée · analyse du match amical n°3, 30 min de vidéo, correction des rotations","pour":""}],"c":"","t":"Terrain 1","type":"match"}]},{"date":"2026-10-20","nom":"Mardi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Tir sous pression, lancers en situation de bonus","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"tir"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"Attaque — correction des systèmes et lancers francs · situations spéciales, tir sous pression, bonus","pour":""}],"c":"","t":"Terrain 1","type":"tir"}]},{"date":"2026-10-21","nom":"Mercredi","creneaux":[{"h":"Journée","lignes":[{"txt":"Repos","pour":""}],"c":"","t":"","type":"repos"}]},{"date":"2026-10-22","nom":"Jeudi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Activation courte de 40 min — le scrimmage arrive le soir","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"match"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"SCRIMMAGE INTERNE 5c5 — arbitré · rapport individuel","pour":""}],"c":"","t":"Terrain 1","type":"match"}]},{"date":"2026-10-23","nom":"Vendredi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Shootaround","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"tir"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"MATCH AMICAL N°4 — adversaire externe · conditions officielles, rapport final","pour":""}],"c":"","t":"Terrain 1","type":"match"}]}]},{"num":6,"lundi":"2026-10-26","dimanche":"2026-11-01","jours":[{"date":"2026-10-26","nom":"Lundi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"45 min, sensation au tir, volume réduit","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"tir"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Charge réduite — activation légère (1h) · maintien des acquis, récupération, bien-être","pour":""}],"c":"","t":"Terrain 1","type":"libre"}]},{"date":"2026-10-27","nom":"Mardi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"60 min de révision des gestes clés par poste","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"terrain"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"Révision du game plan et des systèmes · rappel défense, systèmes offensifs, situations spéciales","pour":""}],"c":"","t":"Terrain 1","type":"terrain"}]},{"date":"2026-10-28","nom":"Mercredi","creneaux":[{"h":"Journée","lignes":[{"txt":"Repos","pour":""}],"c":"","t":"","type":"repos"}]},{"date":"2026-10-29","nom":"Jeudi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Répétition de la routine d'échauffement + shootaround","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"tir"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Simulation de match de championnat · protocole officiel, mental, échauffement officiel, préparation de la première journée","pour":""}],"c":"","t":"Terrain 1","type":"match"}]},{"date":"2026-10-30","nom":"Vendredi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"30 à 40 min de tir léger, lancers, travail mental","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"tir"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"Séance de mise en place","pour":""}],"c":"","t":"Terrain 1","type":"terrain"}]}]}]},"adresse":""};
+const D = {"app":"ASA Sniper","club":{"nom":"Association Sportive Adjamé","sigle":"ASA","ville":"Adjamé, Abidjan"},"saison":"2026-2027","aujourdhui":"2026-09-24","aujourdhuiFr":"24/09/2026","equipes":[],"spotsExt":[{"id":"c1","nom":"Corner gauche","court":"0° G","x":26.0,"y":10.0,"consigne":"Pieds dans le corner, tir en un temps sur réception."},{"id":"a1","nom":"Aile gauche","court":"45° G","x":127.0,"y":54.5,"consigne":"Sortie d'écran, mains prêtes avant la réception."},{"id":"ax","nom":"Axe","court":"Axe","x":166.5,"y":150.0,"consigne":"Face au cercle, équilibre avant tout."},{"id":"a2","nom":"Aile droite","court":"45° D","x":127.0,"y":245.5,"consigne":"Sortie d'écran, mains prêtes avant la réception."},{"id":"c2","nom":"Corner droit","court":"0° D","x":26.0,"y":290.0,"consigne":"Pieds dans le corner, tir en un temps sur réception."}],"spotsInt":[{"id":"crc","nom":"Cercle","court":"Cercle","x":48.0,"y":150.0,"consigne":"Finition alternée main droite / main gauche, appui pris avant le contact."},{"id":"pbg","nom":"Poste bas gauche","court":"PB G","x":54.0,"y":112.0,"consigne":"Crochet ou drop step. Le pied de pivot ne bouge pas."},{"id":"pbd","nom":"Poste bas droit","court":"PB D","x":54.0,"y":188.0,"consigne":"Crochet ou drop step. Le pied de pivot ne bouge pas."},{"id":"scg","nom":"Short corner gauche","court":"SC G","x":28.0,"y":74.0,"consigne":"Réception face au cercle, tir en un temps."},{"id":"scd","nom":"Short corner droit","court":"SC D","x":28.0,"y":226.0,"consigne":"Réception face au cercle, tir en un temps."},{"id":"cdg","nom":"Coude gauche","court":"Coude G","x":112.0,"y":114.0,"consigne":"Sortie de pick and pop, pieds déjà orientés."},{"id":"cdd","nom":"Coude droit","court":"Coude D","x":112.0,"y":186.0,"consigne":"Sortie de pick and pop, pieds déjà orientés."}],"lfPos":{"x":116.0,"y":150.0},"tirsParSerie":20,"parcours":{"ext":{"nom":"Extérieur","court":"EXT","spots":["c1","a1","ax","a2","c2"],"allerRetour":true,"seriesLf":5,"resume":"5 spots en aller-retour, 20 tirs par série, plus 100 lancers francs."},"int":{"nom":"Intérieur","court":"INT","spots":["crc","pbg","pbd","scg","scd","cdg","cdd"],"allerRetour":true,"seriesLf":5,"resume":"7 postes en aller-retour, 20 tirs par série, plus 100 lancers francs."},"complet":{"nom":"Complet","court":"CPL","spots":["c1","a1","ax","a2","c2","crc","pbg","pbd","scg","scd","cdg","cdd"],"allerRetour":true,"seriesLf":5,"resume":"Les 12 spots en aller-retour, 20 tirs par série, plus 100 lancers francs."}},"joueurs":[],"dureeFenetre":30,"toleranceFenetres":2,"sessionsPointage":[],"comptes":[],"planning":{"equipe":"pro","titre":"ASA Abidjan — Équipe 1 (ASA PRO / Division 1)","source":"ASA_Abidjan_Equipe1_Planning_Detaille.xlsx","semaines":[{"num":1,"lundi":"2026-09-21","dimanche":"2026-09-27","jours":[{"date":"2026-09-24","nom":"Jeudi","creneaux":[{"h":"10h00 – 11h00","lignes":[{"txt":"Musculation ppg","pour":""}],"c":"Dimitri / JMH","t":"","type":"physique"},{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : Euro-step, floater, pull-up à 1 et 2 dribbles","pour":"ext"},{"txt":"Intérieur : up and under, spin, face-up et drive","pour":"int"}],"c":"Coach ELIE / coach GUEDE","t":"Terrain 1","type":"terrain"},{"h":"13h00 – 14h00","lignes":[{"txt":"Repas","pour":""}],"c":"","t":"","type":"repas"},{"h":"14h00 – 15h00","lignes":[{"txt":"Récupération","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h30","lignes":[{"txt":"Grille de tir","pour":""}],"c":"Coach GUEDE / OUMAR","t":"Terrain 1","type":"tir"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Mise en place — défense homme à homme","pour":""}],"c":"Coach Sidibe / coach Kone","t":"Terrain 1","type":"terrain"}]},{"date":"2026-09-25","nom":"Vendredi","creneaux":[{"h":"10h00 – 11h00","lignes":[{"txt":"Musculation ppg","pour":""}],"c":"Dimitri / JMH","t":"","type":"physique"},{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : finition en course, passe et pull-up en transition","pour":"ext"},{"txt":"Intérieur : rim-run, prise de position, outlet","pour":"int"}],"c":"Coach ELIE / coach GUEDE","t":"Terrain 1","type":"terrain"},{"h":"13h00 – 14h00","lignes":[{"txt":"Repas","pour":""}],"c":"","t":"","type":"repas"},{"h":"14h00 – 15h00","lignes":[{"txt":"Récupération","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h30","lignes":[{"txt":"Grille de tir","pour":""}],"c":"Coach GUEDE / OUMAR","t":"Terrain 1","type":"tir"},{"h":"17h00 – 19h30","lignes":[{"txt":"Jeu réduit 4c4 + transition offensive — lecture du jeu, tir sous légère pression","pour":""}],"c":"Coach Sidibe / coach Kone","t":"Terrain 1","type":"tir"}]},{"date":"2026-09-27","nom":"Dimanche","creneaux":[{"h":"Heure libre","lignes":[{"txt":"Échauffement + 45 minutes de footing, vitesse modérée + 5 min d'étirement","pour":""}],"c":"","t":"","type":"libre"}]}]},{"num":2,"lundi":"2026-09-28","dimanche":"2026-10-04","jours":[{"date":"2026-09-28","nom":"Lundi","creneaux":[{"h":"10h00 – 11h00","lignes":[{"txt":"Musculation ppg","pour":""}],"c":"Dimitri / JMH","t":"","type":"physique"},{"h":"11h00 – 13h00","lignes":[{"txt":"Intérieur : défense au poste, aide au cercle, rebond défensif","pour":"int"}],"c":"","t":"Terrain 1","type":"terrain"},{"h":"13h00 – 14h00","lignes":[{"txt":"Repas","pour":""}],"c":"","t":"","type":"repas"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h30","lignes":[{"txt":"Grille de tir","pour":""}],"c":"Coach GUEDE / OUMAR","t":"Terrain 1","type":"tir"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Défense collective — zone et homme à homme · positionnement, communication, help side, rotations","pour":""}],"c":"Coach Sidibe / coach Kone","t":"Terrain 1","type":"terrain"}]},{"date":"2026-09-29","nom":"Mardi","creneaux":[{"h":"10h00 – 11h00","lignes":[{"txt":"Musculation ppg","pour":""}],"c":"Dimitri / JMH","t":"","type":"physique"},{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : lecture individuelle du système — coupes (backdoor, curl, flare)","pour":"ext"},{"txt":"Intérieur : lecture individuelle du système — angle et timing des écrans, roll ou pop","pour":"int"}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"terrain"},{"h":"13h00 – 14h00","lignes":[{"txt":"Repas","pour":""}],"c":"","t":"","type":"repas"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h30","lignes":[{"txt":"Grille de tir","pour":""}],"c":"Coach GUEDE / OUMAR","t":"Terrain 1","type":"tir"},{"h":"17h00 – 19h30","lignes":[{"txt":"Attaque collective — système offensif n°1 · 5v0 → 5v5 demi-terrain","pour":""}],"c":"Coach Sidibe / coach Kone","t":"Terrain 1","type":"terrain"}]},{"date":"2026-09-30","nom":"Mercredi","creneaux":[{"h":"14h00 – 17h00","lignes":[{"txt":"Piscine","pour":""}],"c":"","t":"","type":"libre"}]},{"date":"2026-10-01","nom":"Jeudi","creneaux":[{"h":"10h00 – 11h00","lignes":[{"txt":"Musculation ppg","pour":""}],"c":"Dimitri / JMH","t":"","type":"physique"},{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : 3 points en sortie d'écran et lectures du pick and roll (reject, snake)","pour":"ext"},{"txt":"Intérieur : pick and pop à 3 points pour les postes 4, finition sur roll — cible 32%","pour":"int"}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"terrain"},{"h":"13h00 – 14h00","lignes":[{"txt":"Repas","pour":""}],"c":"","t":"","type":"repas"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h30","lignes":[{"txt":"Grille de tir","pour":""}],"c":"Coach GUEDE / OUMAR","t":"Terrain 1","type":"tir"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Physique intensité + tir extérieur 3 points · 200 tirs par joueur, off-screen, pick and roll, cible 32%+","pour":""}],"c":"Coach Sidibe / coach Kone","t":"Terrain 1","type":"physique"}]},{"date":"2026-10-02","nom":"Vendredi","creneaux":[{"h":"10h00 – 11h00","lignes":[{"txt":"Musculation ppg","pour":""}],"c":"Dimitri / JMH","t":"","type":"physique"},{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieurs et intérieurs : shootaround de 45 min maximum, lancers et routine d'avant-match","pour":"ext"}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"match"},{"h":"13h00 – 14h00","lignes":[{"txt":"Repas","pour":""}],"c":"","t":"","type":"repas"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"MATCH AMICAL N°1 — adversaire externe · game plan, protocole de récupération","pour":""}],"c":"Coach Sidibe / coach Kone","t":"Terrain 1","type":"match"}]}]},{"num":3,"lundi":"2026-10-05","dimanche":"2026-10-11","jours":[{"date":"2026-10-05","nom":"Lundi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Récupération active, corrections vidéo individuelles, rôles de chacun en zone 2-3","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"libre"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Débriefing vidéo + défense zone 2-3 et transition défensive · alternance homme / zone","pour":""}],"c":"","t":"Terrain 1","type":"terrain"}]},{"date":"2026-10-06","nom":"Mardi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : attaque du close-out, drive and kick, jump-stop","pour":"ext"},{"txt":"Intérieur : dunker spot, seal, finition sur passe","pour":"int"}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"terrain"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"Attaque collective — système offensif n°2 · dribble drive, surnombre offensif, counter break","pour":""}],"c":"","t":"Terrain 1","type":"terrain"}]},{"date":"2026-10-07","nom":"Mercredi","creneaux":[{"h":"Journée","lignes":[{"txt":"Repos","pour":""}],"c":"","t":"","type":"repos"}]},{"date":"2026-10-08","nom":"Jeudi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : lancers sous fatigue avec conséquences, sécurité de balle contre la pression et sortie de trap","pour":"ext"},{"txt":"Intérieur : lancers sous fatigue avec conséquences, réception sous contact","pour":"int"}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"terrain"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"GESTION ET PRESSION — priorité · score serré, bonus, lancers francs, bruits simulés","pour":""}],"c":"","t":"Terrain 1","type":"terrain"}]},{"date":"2026-10-09","nom":"Vendredi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Shootaround","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"tir"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"MATCH AMICAL N°2 — adversaire externe · focus défense","pour":""}],"c":"","t":"Terrain 1","type":"match"}]}]},{"num":4,"lundi":"2026-10-12","dimanche":"2026-10-18","jours":[{"date":"2026-10-12","nom":"Lundi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : défense tout terrain sur le porteur, trap","pour":"ext"},{"txt":"Intérieur : protection du cercle derrière la press","pour":"int"}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"terrain"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Défense combinée zone + individuelle · situations spéciales de fin de match, full court press","pour":""}],"c":"","t":"Terrain 1","type":"match"}]},{"date":"2026-10-13","nom":"Mardi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : v-cut, réception sous pression, pivot et passe","pour":"ext"},{"txt":"Intérieur : écran sur remise en jeu, flash au milieu contre la press","pour":"int"}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"terrain"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"Attaque — systèmes et remises en jeu · out of bounds, press break, possession finale","pour":""}],"c":"","t":"Terrain 1","type":"terrain"}]},{"date":"2026-10-14","nom":"Mercredi","creneaux":[{"h":"Journée","lignes":[{"txt":"Repos","pour":""}],"c":"","t":"","type":"repos"}]},{"date":"2026-10-15","nom":"Jeudi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Extérieur : iso de dernière possession, pivot et passe","pour":"ext"},{"txt":"Intérieur : rebond offensif et tip-in, faute intelligente récompensée (lancer franc 1+1)","pour":"int"}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"terrain"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Simulation quatrième quart-temps — pression maximale · situations à ±2, bruits du public, dernières secondes","pour":""}],"c":"","t":"Terrain 1","type":"terrain"}]},{"date":"2026-10-16","nom":"Vendredi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Shootaround","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"tir"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"MATCH AMICAL N°3 — adversaire externe · conditions officielles","pour":""}],"c":"","t":"Terrain 1","type":"match"}]}]},{"num":5,"lundi":"2026-10-19","dimanche":"2026-10-25","jours":[{"date":"2026-10-19","nom":"Lundi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Plan individuel — 2 lacunes par joueur, tirées des statistiques des 3 matchs amicaux","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"match"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Séance vidéo + défense consolidée · analyse du match amical n°3, 30 min de vidéo, correction des rotations","pour":""}],"c":"","t":"Terrain 1","type":"match"}]},{"date":"2026-10-20","nom":"Mardi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Tir sous pression, lancers en situation de bonus","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"tir"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"Attaque — correction des systèmes et lancers francs · situations spéciales, tir sous pression, bonus","pour":""}],"c":"","t":"Terrain 1","type":"tir"}]},{"date":"2026-10-21","nom":"Mercredi","creneaux":[{"h":"Journée","lignes":[{"txt":"Repos","pour":""}],"c":"","t":"","type":"repos"}]},{"date":"2026-10-22","nom":"Jeudi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Activation courte de 40 min — le scrimmage arrive le soir","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"match"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"SCRIMMAGE INTERNE 5c5 — arbitré · rapport individuel","pour":""}],"c":"","t":"Terrain 1","type":"match"}]},{"date":"2026-10-23","nom":"Vendredi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Shootaround","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"tir"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"MATCH AMICAL N°4 — adversaire externe · conditions officielles, rapport final","pour":""}],"c":"","t":"Terrain 1","type":"match"}]}]},{"num":6,"lundi":"2026-10-26","dimanche":"2026-11-01","jours":[{"date":"2026-10-26","nom":"Lundi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"45 min, sensation au tir, volume réduit","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"tir"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Charge réduite — activation légère (1h) · maintien des acquis, récupération, bien-être","pour":""}],"c":"","t":"Terrain 1","type":"libre"}]},{"date":"2026-10-27","nom":"Mardi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"60 min de révision des gestes clés par poste","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"terrain"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"Révision du game plan et des systèmes · rappel défense, systèmes offensifs, situations spéciales","pour":""}],"c":"","t":"Terrain 1","type":"terrain"}]},{"date":"2026-10-28","nom":"Mercredi","creneaux":[{"h":"Journée","lignes":[{"txt":"Repos","pour":""}],"c":"","t":"","type":"repos"}]},{"date":"2026-10-29","nom":"Jeudi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"Répétition de la routine d'échauffement + shootaround","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"tir"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"15h00 – 16h00","lignes":[{"txt":"Médical (kiné)","pour":""}],"c":"Doc ALLA","t":"","type":"medical"},{"h":"17h00 – 19h30","lignes":[{"txt":"Simulation de match de championnat · protocole officiel, mental, échauffement officiel, préparation de la première journée","pour":""}],"c":"","t":"Terrain 1","type":"match"}]},{"date":"2026-10-30","nom":"Vendredi","creneaux":[{"h":"11h00 – 13h00","lignes":[{"txt":"30 à 40 min de tir léger, lancers, travail mental","pour":""}],"c":"ELIE / GUEDE","t":"Terrain 1","type":"tir"},{"h":"14h00 – 15h00","lignes":[{"txt":"Libre","pour":""}],"c":"","t":"","type":"libre"},{"h":"17h00 – 19h30","lignes":[{"txt":"Séance de mise en place","pour":""}],"c":"","t":"Terrain 1","type":"terrain"}]}]}]},"adresse":""};
 
 /* état de session. Remis à plat à chaque connexion / déconnexion. */
 let E = {
@@ -876,6 +896,15 @@ function razEtat(){
 /* ─────────────────────────────── utilitaires */
 const $  = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+
+/* Un identifiant destiné à un attribut onclick. h() n'y suffit PAS : le
+   navigateur redécode les entités AVANT de lire le JavaScript de l'attribut,
+   donc une apostrophe échappée en &#39; redevient une apostrophe et referme
+   la chaîne. Vérifié. Ici on n'échappe pas, on filtre : ce qui n'est pas un
+   caractère d'identifiant ne passe pas. */
+function cle(t){
+  return String(t == null ? '' : t).replace(/[^A-Za-z0-9_-]/g, '');
+}
 
 function h(t){
   return String(t == null ? '' : t)
@@ -949,8 +978,17 @@ function totalTirs(p){
   return seriesDe(p).length * D.tirsParSerie + c.seriesLf * 20;
 }
 
+/* Index des joueurs par identifiant. En mode local il est construit une fois
+   et ne bouge plus. En mode serveur l'effectif arrive APRÈS le chargement, et
+   change à chaque connexion : l'index doit se refaire, sinon joueur() ne
+   trouve personne et tout l'écran du joueur retombe sur « Qui es-tu ? ». */
 const JOUEURS = {};
-D.joueurs.forEach(j => { JOUEURS[j.id] = j; });
+function indexeJoueurs(){
+  Object.keys(JOUEURS).forEach(k => { delete JOUEURS[k]; });
+  (D.joueurs || []).forEach(j => { JOUEURS[j.id] = j; });
+  return Object.keys(JOUEURS).length;
+}
+indexeJoueurs();
 const joueur = id => JOUEURS[id] || null;
 const joueursDe = eq => D.joueurs.filter(j => !eq || j.equipe === eq)
                                  .sort((a, b) => a.numero - b.numero);
@@ -963,7 +1001,7 @@ function ongletsEquipes(actif, fonction){
   if (!plusieursEquipes()) return '';
   return '<div class="ong">' + D.equipes.map(e =>
     '<button class="ong-b' + (actif === e.id ? ' actif' : '') + '" onclick="' + fonction
-    + '(\'' + e.id + '\')">' + h(e.nom) + '</button>').join('') + '</div>';
+    + '(\'' + cle(e.id) + '\')">' + h(e.nom) + '</button>').join('') + '</div>';
 }
 
 /* ─────────────────────────────── bilans */
@@ -1105,7 +1143,7 @@ function terrainSpots(spots, valeur, onclic, actif){
     const c = (v && v.couleur) ? v.couleur : (sp.zone === 'int' ? 'var(--int)' : 'var(--ext)');
     const sel = actif === sp.id;
     const r = sel ? 15 : 13;
-    s += onclic ? '<g class="spot-b" onclick="' + onclic + '(\'' + sp.id + '\')">' : '<g>';
+    s += onclic ? '<g class="spot-b" onclick="' + cle(onclic) + '(\'' + cle(sp.id) + '\')">' : '<g>';
     s += '<circle cx="' + sp.x + '" cy="' + sp.y + '" r="' + r + '" fill="rgba(4,16,31,.82)" '
        + 'stroke="' + c + '" stroke-width="' + (sel ? 3 : 2) + '"/>';
     s += '<text x="' + sp.x + '" y="' + (sp.y + 4) + '" text-anchor="middle" '
@@ -1348,7 +1386,7 @@ function ecran_tir(){
   s += ongletsEquipes(v.eq, 'tirEquipe');
 
   s += '<div class="ong">' + PARCOURS_IDS.map(p =>
-        '<button class="ong-b' + (v.p === p ? ' actif' : '') + '" onclick="tirParcours(\'' + p + '\')">'
+        '<button class="ong-b' + (v.p === p ? ' actif' : '') + '" onclick="tirParcours(\'' + cle(p) + '\')">'
         + h(D.parcours[p].nom) + '</button>').join('') + '</div>';
 
   s += '<div class="carte"><div class="carte-tete">'
@@ -1369,7 +1407,7 @@ function ecran_tir(){
     s += vide('Aucune séance enregistrée sur ce parcours.');
   } else {
     s += '<div class="jl">' + cl.map((o, i) =>
-      '<button class="jl-item" onclick="ouvreFiche(\'' + o.j.id + '\')">'
+      '<button class="jl-item" onclick="ouvreFiche(\'' + cle(o.j.id) + '\')">'
       + '<span class="jl-rang">' + (i + 1) + '</span>'
       + '<span class="jl-num">' + o.j.numero + '</span>'
       + '<span class="jl-bloc"><span class="jl-nom">' + h(o.j.nom) + '</span>'
@@ -1396,7 +1434,7 @@ function ecran_joueurs(){
   s += ongletsEquipes(v.eq, 'tirEquipe');
   s += '<div class="jl">' + joueursDe(v.eq).map(j => {
     const p = parcoursDe(j), b = bilanTir(j, p, 3);
-    return '<button class="jl-item" onclick="ouvreFiche(\'' + j.id + '\')">'
+    return '<button class="jl-item" onclick="ouvreFiche(\'' + cle(j.id) + '\')">'
       + '<span class="jl-num">' + j.numero + '</span>'
       + '<span class="jl-bloc"><span class="jl-nom">' + h(j.nom) + '</span>'
       + '<span class="jl-meta">' + h(j.poste) + ' · ' + h(D.parcours[p].nom)
@@ -1543,7 +1581,7 @@ function vueSaisie(){
   if (!s.joueur) {
     o += '<div class="vue-sous">Choisir le joueur.</div>';
     o += '<div class="jl">' + D.joueurs.map(j =>
-      '<button class="jl-item" onclick="saisieJoueur(\'' + j.id + '\')">'
+      '<button class="jl-item" onclick="saisieJoueur(\'' + cle(j.id) + '\')">'
       + '<span class="jl-num">' + j.numero + '</span>'
       + '<span class="jl-bloc"><span class="jl-nom">' + h(j.nom) + '</span>'
       + '<span class="jl-meta">' + h(j.poste) + ' · ' + h(nomEquipe(j.equipe)) + '</span></span>'
@@ -1555,7 +1593,7 @@ function vueSaisie(){
   o += '<div class="vue-sous">' + h(j.nom) + ' · ' + h(j.poste) + ' · ' + h(D.aujourdhuiFr) + '</div>';
 
   o += '<div class="ong">' + PARCOURS_IDS.map(p =>
-        '<button class="ong-b' + (s.parcours === p ? ' actif' : '') + '" onclick="saisieParcours(\'' + p + '\')">'
+        '<button class="ong-b' + (s.parcours === p ? ' actif' : '') + '" onclick="saisieParcours(\'' + cle(p) + '\')">'
         + h(D.parcours[p].nom) + '</button>').join('') + '</div>';
 
   o += '<div class="carte"><div class="carte-tete">'
@@ -1782,7 +1820,7 @@ function ecran_presences(){
   closes.slice().reverse().forEach(x => {
     const tot = joueursDe(x.equipe).length;
     const ret = x.pointages.filter(p => p.retard).length;
-    o += '<button class="jl-item" onclick="ouvreBilanSeance(\'' + x.id + '\')" style="margin-bottom:7px">'
+    o += '<button class="jl-item" onclick="ouvreBilanSeance(\'' + cle(x.id) + '\')" style="margin-bottom:7px">'
        + '<span class="jl-bloc"><span class="jl-nom">' + h(x.libelle) + '</span>'
        + '<span class="jl-meta">' + h(x.date) + ' · ' + h(nomEquipe(x.equipe)) + ' · '
        + x.pointages.length + '/' + tot + ' présents · ' + ret + ' en retard</span></span>'
@@ -1802,7 +1840,7 @@ function vueOuvrirSeance(){
      + '<div style="margin-top:12px' + (plusieursEquipes() ? '' : ';display:none') + '">'
      + '<label class="label" for="se-eq">Équipe</label>'
      + '<select id="se-eq" class="champ">'
-     + D.equipes.map(e => '<option value="' + e.id + '">' + h(e.nom) + '</option>').join('')
+     + D.equipes.map(e => '<option value="' + h(e.id) + '">' + h(e.nom) + '</option>').join('')
      + '</select></div>'
      + '<div style="margin-top:10px"><label class="label" for="se-lib">Intitulé</label>'
      + '<input id="se-lib" class="champ" type="text" maxlength="60" '
@@ -1821,7 +1859,7 @@ function vueOuvrirSeance(){
     anciennes.slice().reverse().forEach(x => {
       const tot = joueursDe(x.equipe).length;
       const ret = x.pointages.filter(p => p.retard).length;
-      s += '<button class="jl-item" onclick="ouvreBilanSeance(\'' + x.id + '\')" style="margin-bottom:7px">'
+      s += '<button class="jl-item" onclick="ouvreBilanSeance(\'' + cle(x.id) + '\')" style="margin-bottom:7px">'
          + '<span class="jl-bloc"><span class="jl-nom">' + h(x.libelle) + '</span>'
          + '<span class="jl-meta">' + h(x.date) + ' · ' + x.pointages.length + '/' + tot
          + ' présents · ' + ret + ' en retard</span></span>'
@@ -1888,7 +1926,7 @@ function ligneEffectif(j, p, avecBouton){
     + '<span class="jl-num" style="width:28px;height:28px;flex:0 0 28px;font-size:14px">' + j.numero + '</span>'
     + '<span class="pt-nom">' + h(j.nom) + '</span>'
     + '<span class="pt-h ' + cl + '">' + h(tx) + '</span>'
-    + ((avecBouton && !p) ? '<button class="ent-sortie" onclick="pointageManuel(\'' + j.id + '\')">Pointer</button>' : '')
+    + ((avecBouton && !p) ? '<button class="ent-sortie" onclick="pointageManuel(\'' + cle(j.id) + '\')">Pointer</button>' : '')
     + '</div>';
 }
 
@@ -1940,28 +1978,36 @@ function traiteCode(txt){
 
   const j = r.joueur;
   if (j.equipe !== s.equipe)
-    return banniereScan('ko', h(j.nom), 'Il est en ' + h(nomEquipe(j.equipe))
+    return banniereScan('ko', j.nom, 'Il est en ' + nomEquipe(j.equipe)
       + ', pas dans cette séance.');
 
   const deja = s.pointages.find(p => p.joueur === j.id);
   if (deja)
-    return banniereScan('neutre', h(j.nom), 'Déjà pointé à ' + h(deja.heure) + '.');
+    return banniereScan('neutre', j.nom, 'Déjà pointé à ' + deja.heure + '.');
 
   const res = inscrisPointage(s, j.id, r.voie);
-  if (!res.ok) return banniereScan('ko', h(j.nom), res.message);
+  if (!res.ok) return banniereScan('ko', j.nom, res.message);
 
   majCompteurScanner();
   if (navigator.vibrate) { try { navigator.vibrate(res.pointage.retard ? [90, 60, 90] : 60); } catch (e) {} }
-  banniereScan(res.pointage.retard ? 'retard' : 'ok', h(j.nom),
+  banniereScan(res.pointage.retard ? 'retard' : 'ok', j.nom,
     '#' + j.numero + ' · ' + res.pointage.heure
     + (res.pointage.retard ? ' · en retard' : ' · présent')
     + (r.voie === 'badge' ? ' · badge' : ''));
 }
 
+/* La bannière reçoit du TEXTE et l'échappe elle-même. Elle recevait du HTML
+   déjà échappé par l'appelant : ça marchait tant que les cinq appels y
+   pensaient, et le jour où l'un d'eux oublie, le nom d'un joueur devient du
+   code exécuté sur l'appareil qui scanne. Échapper ici ferme la question. */
+const GENRES_BAN = ['ok', 'ko', 'retard', 'neutre'];
+
 function banniereScan(genre, titre, detail){
   const e = $('#sc-message');
   if (!e) return;
-  e.innerHTML = '<div class="sc-ban ' + genre + '"><b>' + titre + '</b><br>' + detail + '</div>';
+  const g = GENRES_BAN.indexOf(genre) >= 0 ? genre : 'neutre';
+  e.innerHTML = '<div class="sc-ban ' + g + '"><b>' + h(titre) + '</b><br>'
+              + h(detail) + '</div>';
 }
 
 function pointageManuel(idJoueur){
@@ -2095,16 +2141,67 @@ function vueIdentification(){
       + 'Le code ne sert qu\'une fois, pour ouvrir ton espace sur ce téléphone.</p>';
   }
 
+  /* Mode serveur : il n'y a pas de liste de noms à afficher, et c'est voulu.
+     Une liste de noms dans la page publique, c'est l'effectif publié. Le
+     joueur saisit le numéro qu'il porte sur le dos, et son code. */
+  if (enLigneSupa()) return vueIdentificationNumero(p);
+
   let o = '<div class="vue-titre titre">Qui es-tu ?</div>'
     + '<div class="vue-sous">Une seule fois : ensuite ton espace s\'ouvre directement.</div>';
   o += ongletsEquipes(p.equipe, 'joueurEquipe');
   o += '<div class="choix">' + joueursDe(p.equipe).map(j =>
-      '<button class="choix-b" onclick="choisitJoueur(\'' + j.id + '\')">'
+      '<button class="choix-b" onclick="choisitJoueur(\'' + cle(j.id) + '\')">'
       + '<span class="jl-num">' + j.numero + '</span>'
       + '<span class="jl-bloc"><span class="jl-nom">' + h(j.nom) + '</span>'
       + '<span class="jl-meta">' + h(j.poste) + '</span></span>'
       + '<span class="jl-fleche">›</span></button>').join('') + '</div>';
   return o;
+}
+
+function vueIdentificationNumero(p){
+  return '<div class="vue-titre titre">Qui es-tu ?</div>'
+    + '<div class="vue-sous">Une seule fois, avec du réseau. Ensuite ton espace '
+    + 's\'ouvre tout seul, même sans connexion.</div>'
+    + '<div class="carte">'
+    + '<label class="label" for="pt-num">Ton numéro de maillot</label>'
+    + '<input id="pt-num" class="champ code" type="text" inputmode="numeric" '
+    + 'autocomplete="off" maxlength="3" placeholder="—" '
+    + 'oninput="this.value=this.value.replace(/[^0-9]/g,\'\')">'
+    + '<div style="margin-top:12px"></div>'
+    + '<label class="label" for="pt-code">Ton code personnel</label>'
+    + '<input id="pt-code" class="champ code" type="text" inputmode="numeric" '
+    + 'autocomplete="off" maxlength="4" placeholder="••••" '
+    + 'oninput="this.value=this.value.replace(/[^0-9]/g,\'\')">'
+    + '<div class="cx-erreur' + (p.erreur ? ' on' : '') + '">' + h(p.erreur) + '</div>'
+    + '<button id="pt-valider" class="bouton plein" onclick="valideMonNumero()">'
+    + 'C\'est moi</button></div>'
+    + '<p class="carte-note centre" style="margin-top:14px">'
+    + 'Numéro et code sont sur le badge que le club t\'a remis.</p>';
+}
+
+async function valideMonNumero(){
+  const p = E.pointage;
+  const num  = (($('#pt-num')  || {}).value || '').trim();
+  const code = (($('#pt-code') || {}).value || '').trim();
+  if (!num){ p.erreur = 'Il manque ton numéro.'; rendJoueur(); return; }
+  if (code.length !== 4){ p.erreur = 'Le code fait 4 chiffres.'; rendJoueur(); return; }
+
+  const b = $('#pt-valider');
+  if (b){ b.disabled = true; b.textContent = 'Vérification…'; }
+  const r = await serveurConnexion({numero: num, code: code});
+  if (b){ b.disabled = false; b.textContent = 'C\'est moi'; }
+
+  if (!r.ok){
+    p.erreur = (ERREURS_CX && ERREURS_CX[r.raison]) || 'Numéro ou code incorrect.';
+    rendJoueur();
+    return;
+  }
+  await ouvreSession(r);
+  enregistreMoi(r.id);
+  p.joueur = r.id;
+  p.etape = 'espace';
+  E.onglet = 0;
+  rendJoueur();
 }
 
 function joueurEquipe(id){ E.pointage.equipe = id; rendJoueur(); }
@@ -2382,6 +2479,226 @@ function ecran_mespresences(){
 
 
 /* ══════════════════════════════════════════════════════════════════════════
+   ASA SNIPER — couche serveur : connexion, effectif, cache hors ligne.
+
+   Deux modes, et le même fichier sert les deux :
+
+   · SUPA vide   → mode local. L'effectif est dans le fichier construit, les
+                   codes sont comparés dans le navigateur. C'est le mode de
+                   développement et celui de la démonstration. Rien de ce qui
+                   suit ne s'exécute.
+
+   · SUPA rempli → mode serveur. Le fichier publié ne contient NI effectif NI
+                   comptes : seulement le terrain, les parcours et le planning.
+                   Le code est vérifié par le serveur, qui renvoie une session
+                   et exactement ce que le rôle a le droit de voir.
+
+   Le gymnase n'a pas de réseau fiable. Toute la difficulté est là : il faut
+   une vraie authentification, et une application qui fonctionne quand même
+   quand le réseau n'est pas là. La réponse tient en une phrase — on se
+   connecte AVANT, et l'appareil garde ce qu'il a reçu.
+
+   Ce que cela garantit, et ce que cela ne garantit pas. Hors ligne, la
+   garantie n'est pas « cette personne est authentifiée maintenant » mais
+   « cet appareil l'a été ». Celui qui tient le téléphone déverrouillé de
+   l'assistant a ce que l'assistant avait. C'est le prix du hors-ligne, il
+   est assumé, et il vaut infiniment mieux qu'un effectif publié sur le web.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Rempli par build_sniper.py en mode serveur. Laissé vide, tout reste local. */
+const SUPA = {url: "https://ptkefnqrhlsfbnktnvec.supabase.co", cle: "sb_publishable_mQyPb28euafQQ8p05U3XAg_zPvMeVAW"};
+const enLigneSupa = () => !!(SUPA.url && SUPA.cle);
+
+const CLEF_SESSION = 'sniper.session';
+const AGE_MAX = 30 * 24 * 3600 * 1000;   // au-delà, on redemande le code
+
+let SESSION = null;
+
+/* ─────────────────────────────── le cache */
+function sessionLue(){
+  try {
+    const s = JSON.parse(localStorage.getItem(CLEF_SESSION) || 'null');
+    if (!s || !s.ts || Date.now() - s.ts > AGE_MAX) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function sessionEcrite(s){
+  try { localStorage.setItem(CLEF_SESSION, JSON.stringify(s)); } catch (e) {}
+}
+function sessionEffacee(){
+  try { localStorage.removeItem(CLEF_SESSION); } catch (e) {}
+}
+
+/* Le jeton de session s'il est là, la clé publique sinon. La clé publique
+   seule n'ouvre rien : le schéma n'accorde aucun droit au rôle anonyme. */
+function entetesSupa(){
+  const jeton = (SESSION && SESSION.jeton) || SUPA.cle;
+  return {
+    'apikey': SUPA.cle,
+    'Authorization': 'Bearer ' + jeton,
+    'Content-Type': 'application/json'
+  };
+}
+
+/* ─────────────────────────────── appels */
+async function serveurConnexion(champs){
+  try {
+    const r = await fetch(SUPA.url + '/functions/v1/asa-connexion', {
+      method: 'POST',
+      headers: {'apikey': SUPA.cle, 'Content-Type': 'application/json'},
+      body: JSON.stringify(champs)
+    });
+    const d = await r.json().catch(() => null);
+    if (!d || !d.ok) return {ok: false, raison: (d && d.raison) || 'code'};
+    return d;
+  } catch (e) {
+    return {ok: false, raison: 'reseau'};
+  }
+}
+
+async function serveurEffectif(){
+  try {
+    const r = await fetch(SUPA.url + '/rest/v1/rpc/asa_effectif', {
+      method: 'POST', headers: entetesSupa(), body: '{}'
+    });
+    if (!r.ok) return null;
+    const l = await r.json();
+    return Array.isArray(l) ? l : null;
+  } catch (e) { return null; }
+}
+
+async function serveurMonRang(){
+  try {
+    const r = await fetch(SUPA.url + '/rest/v1/rpc/asa_mon_rang', {
+      method: 'POST', headers: entetesSupa(), body: '{}'
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d && d.ok ? d : null;
+  } catch (e) { return null; }
+}
+
+/* ─────────────────────────────── mise en place de D
+   Le serveur renvoie des lignes découpées selon le rôle : le staff reçoit
+   les codes et pas les secrets, l'assistant l'inverse, le joueur sa seule
+   ligne. On range ce qui arrive sans rien inventer de ce qui manque. */
+function poseEffectif(lignes){
+  const joueurs = [];
+  const comptes = [];
+  (lignes || []).forEach(l => {
+    if (l.genre === 'joueur'){
+      joueurs.push({
+        id: l.id, nom: l.nom, numero: l.numero || 0, poste: l.poste || 'Ailier',
+        taille: l.taille || 0, equipe: l.equipe || 'pro',
+        parcours: l.parcours || '', code: l.code || '', secret: l.secret || '',
+        tir: {sessions: []}
+      });
+    } else {
+      comptes.push({id: l.id, role: l.genre, nom: l.nom, sous: l.fonction || ''});
+    }
+  });
+  if (joueurs.length) D.joueurs = joueurs;
+  if (comptes.length) D.comptes = comptes;
+  D.equipes = equipesDe(D.joueurs);
+  indexeJoueurs();
+  return joueurs.length;
+}
+
+/* Les équipes se déduisent de l'effectif reçu, comme elles se déduisaient du
+   classeur : un sélecteur à une seule option n'est pas un choix. */
+function equipesDe(joueurs){
+  const NOMS = {pro: 'Équipe Pro', espoirs: 'Équipe Espoirs'};
+  const vues = [];
+  (joueurs || []).forEach(j => { if (vues.indexOf(j.equipe) < 0) vues.push(j.equipe); });
+  return ['pro', 'espoirs'].filter(e => vues.indexOf(e) >= 0)
+    .concat(vues.filter(e => e !== 'pro' && e !== 'espoirs').sort())
+    .map(e => ({id: e, nom: NOMS[e] || (e.charAt(0).toUpperCase() + e.slice(1))}));
+}
+
+/* ─────────────────────────────── ouverture d'une session */
+async function ouvreSession(reponse){
+  SESSION = {
+    jeton: reponse.session && reponse.session.access_token,
+    rafraichissement: reponse.session && reponse.session.refresh_token,
+    expire: reponse.session && reponse.session.expires_at,
+    role: reponse.role, id: reponse.id, nom: reponse.nom,
+    fonction: reponse.fonction || '', secret: reponse.secret || '',
+    ts: Date.now()
+  };
+
+  const lignes = await serveurEffectif();
+  if (lignes) poseEffectif(lignes);
+
+  /* Le joueur ne reçoit que lui : on complète avec ce que la connexion a
+     déjà renvoyé, pour que son écran soit complet même si l'appel a échoué. */
+  if (reponse.role === 'joueur' && !D.joueurs.some(j => j.id === reponse.id)){
+    D.joueurs = [{
+      id: reponse.id, nom: reponse.nom, numero: reponse.numero || 0,
+      poste: reponse.poste || 'Ailier', taille: 0,
+      equipe: reponse.equipe || 'pro', parcours: reponse.parcours || '',
+      code: '', secret: reponse.secret || '', tir: {sessions: []}
+    }];
+    D.equipes = equipesDe(D.joueurs);
+    indexeJoueurs();
+  }
+
+  SESSION.joueurs = D.joueurs;
+  SESSION.comptes = D.comptes;
+  sessionEcrite(SESSION);
+  return SESSION;
+}
+
+/* Réouverture sans réseau : on remet ce que l'appareil avait reçu la
+   dernière fois qu'il a pu parler au serveur. */
+function reprendSession(){
+  const s = sessionLue();
+  if (!s) return null;
+  SESSION = s;
+  if (s.joueurs && s.joueurs.length) D.joueurs = s.joueurs;
+  if (s.comptes && s.comptes.length) D.comptes = s.comptes;
+  D.equipes = equipesDe(D.joueurs);
+  indexeJoueurs();
+  return s;
+}
+
+function fermeSession(){
+  SESSION = null;
+  sessionEffacee();
+  if (enLigneSupa()){
+    D.joueurs = [];
+    D.comptes = [];
+    D.equipes = [];
+    indexeJoueurs();
+  }
+}
+
+/* Rafraîchissement silencieux. Un jeton Supabase dure une heure ; hors ligne
+   il expire sans qu'on puisse rien y faire, et ce n'est pas grave : les
+   écritures attendent dans la file. Au retour du réseau, on reprend la main. */
+async function rafraichitSession(){
+  if (!enLigneSupa() || !SESSION || !SESSION.rafraichissement) return false;
+  if (!navigator.onLine) return false;
+  const marge = 120;                                  // secondes
+  if (SESSION.expire && SESSION.expire - marge > Math.floor(Date.now() / 1000)) return true;
+  try {
+    const r = await fetch(SUPA.url + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: {'apikey': SUPA.cle, 'Content-Type': 'application/json'},
+      body: JSON.stringify({refresh_token: SESSION.rafraichissement})
+    });
+    if (!r.ok) return false;
+    const d = await r.json();
+    if (!d || !d.access_token) return false;
+    SESSION.jeton = d.access_token;
+    SESSION.rafraichissement = d.refresh_token || SESSION.rafraichissement;
+    SESSION.expire = d.expires_at || SESSION.expire;
+    sessionEcrite(SESSION);
+    return true;
+  } catch (e) { return false; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
    ASA SNIPER — couche données, file d'attente durable et démarrage.
 
    Deux modes, sans changer une ligne d'écran :
@@ -2391,8 +2708,7 @@ function ecran_mespresences(){
                    elle reste en file et repart toute seule au retour.
    ══════════════════════════════════════════════════════════════════════════ */
 
-const SUPA = {url: '', cle: ''};   // ← à remplir pour activer la synchronisation
-const enLigneSupa = () => !!(SUPA.url && SUPA.cle);
+/* SUPA, enLigneSupa() et la session vivent dans s3f_serveur.js. */
 
 const TABLES = {seance: 'sniper_seances', pointage: 'sniper_pointages', tir: 'sniper_tir'};
 
@@ -2468,14 +2784,10 @@ async function envoie(o){
   if (!enLigneSupa()) return false;        // mode local : rien à envoyer
   const table = TABLES[o.type];
   if (!table) return true;                 // type inconnu : ne bloque pas la file
+  await rafraichitSession();
   const r = await fetch(SUPA.url + '/rest/v1/' + table, {
     method: 'POST',
-    headers: {
-      'apikey': SUPA.cle,
-      'Authorization': 'Bearer ' + SUPA.cle,
-      'Content-Type': 'application/json',
-      'Prefer': 'resolution=merge-duplicates'
-    },
+    headers: Object.assign(entetesSupa(), {'Prefer': 'resolution=merge-duplicates'}),
     body: JSON.stringify(o.charge)
   });
   return r.ok;
@@ -2548,12 +2860,27 @@ function sourceMajSeance(s){ sourceOuvreSeance(s); }
 async function sourceListePointages(idSession){
   if (!enLigneSupa() || !navigator.onLine) return null;
   try {
+    await rafraichitSession();
     const r = await fetch(SUPA.url + '/rest/v1/' + TABLES.pointage
                 + '?session=eq.' + encodeURIComponent(idSession) + '&select=*',
-      {headers: {'apikey': SUPA.cle, 'Authorization': 'Bearer ' + SUPA.cle}});
+      {headers: entetesSupa()});
     if (!r.ok) return null;
     return await r.json();
   } catch (e) { return null; }
+}
+
+/* L'effectif a pu changer pendant qu'on était hors ligne : un joueur ajouté,
+   un autre parti. On le reprend dès qu'on peut, sans rien demander. */
+async function rechargeEffectif(){
+  if (!enLigneSupa() || !SESSION || !navigator.onLine) return false;
+  const l = await serveurEffectif();
+  if (!l) return false;
+  poseEffectif(l);
+  SESSION.joueurs = D.joueurs;
+  SESSION.comptes = D.comptes;
+  sessionEcrite(SESSION);
+  if (E.compte) { dessineNav(); dessine(); }
+  return true;
 }
 
 let TIMER_SYNC = null;
@@ -2577,26 +2904,60 @@ function demarreSync(){
   }, 8000);
 }
 
-/* ─────────────────────────────── connexion staff */
-function connexion(code){
-  const c = D.comptes.find(x => x.code.toUpperCase() === String(code || '').trim().toUpperCase());
-  if (!c){
-    const e = $('#cx-erreur');
-    e.textContent = 'Code inconnu.';
-    e.classList.add('on');
-    return false;
-  }
+/* ─────────────────────────────── connexion staff et assistant
+
+   Mode serveur : le code part au serveur, qui le vérifie contre un haché et
+   renvoie une session. Le navigateur ne compare plus rien — c'est tout
+   l'objet de la bascule. Mode local : comparaison sur place, comme avant.  */
+
+const ERREURS_CX = {
+  code:    'Code inconnu.',
+  bloque:  'Trop d\'essais. Réessaie dans un quart d\'heure.',
+  inconnu: 'Code inconnu.',
+  numero:  'Numéro inconnu dans cette équipe.',
+  reseau:  'Pas de réseau. La première connexion a besoin d\'Internet.',
+  serveur: 'Le serveur n\'a pas répondu. Réessaie dans un instant.'
+};
+
+function erreurCx(raison){
+  const e = $('#cx-erreur');
+  if (!e) return false;
+  e.textContent = ERREURS_CX[raison] || ERREURS_CX.code;
+  e.classList.add('on');
+  return false;
+}
+
+function entreDansApp(compte){
   razEtat();
   arreteQR();
-  E.compte = c;
+  E.compte = compte;
   $('#connexion').style.display = 'none';
   $('#app').classList.add('on');
-  $('#ent-nom').textContent  = c.nom;
-  $('#ent-role').textContent = c.sous;
+  $('#ent-nom').textContent  = compte.nom;
+  $('#ent-role').textContent = compte.sous || '';
   $('#ent-sortie').style.display = '';
   dessineNav(); dessine(); majBandeau();
   window.scrollTo(0, 0);
   return true;
+}
+
+async function connexion(code){
+  const saisi = String(code || '').trim().toUpperCase();
+
+  if (enLigneSupa()){
+    const btn = $('#cx-valider');
+    if (btn) { btn.disabled = true; btn.textContent = 'Vérification…'; }
+    const r = await serveurConnexion({code: saisi});
+    if (btn) { btn.disabled = false; btn.textContent = 'Entrer'; }
+    if (!r.ok) return erreurCx(r.raison);
+    if (r.role === 'joueur') return erreurCx('code');   // un joueur passe par son numéro
+    await ouvreSession(r);
+    return entreDansApp({id: r.id, role: r.role, nom: r.nom, sous: r.fonction || ''});
+  }
+
+  const c = (D.comptes || []).find(x => x.code.toUpperCase() === saisi);
+  if (!c) return erreurCx('code');
+  return entreDansApp(c);
 }
 
 function deconnexion(){
@@ -2604,6 +2965,7 @@ function deconnexion(){
   LECTEUR.arrete();
   razEtat();
   E.compte = null;
+  fermeSession();
   $('#app').classList.remove('on');
   $('#scanner').classList.remove('on');
   $('#connexion').style.display = '';
@@ -2613,8 +2975,10 @@ function deconnexion(){
 
 /* ─────────────────────────────── démarrage */
 function demarre(){
-  $('#cx-valider').onclick = () => connexion($('#cx-code').value);
-  $('#cx-code').addEventListener('keydown', e => { if (e.key === 'Enter') connexion($('#cx-code').value); });
+  $('#cx-valider').onclick = () => { connexion($('#cx-code').value); };
+  $('#cx-code').addEventListener('keydown', e => {
+    if (e.key === 'Enter') connexion($('#cx-code').value);
+  });
   $('#cx-code').addEventListener('input', e => {
     e.target.value = e.target.value.toUpperCase();
     $('#cx-erreur').classList.remove('on');
@@ -2628,9 +2992,22 @@ function demarre(){
   window.addEventListener('online',  () => { majBandeau(); videFile(); });
   window.addEventListener('offline', majBandeau);
 
-  /* Un téléphone qui a déjà installé son QR va droit à l'écran du joueur :
-     le joueur ouvre l'application et montre son écran, rien d'autre. */
-  if (moiEnregistre()) modeJoueur();
+  /* Mode serveur : un appareil déjà connecté reprend sa session sans réseau.
+     C'est ce qui permet à l'assistant d'ouvrir l'appel dans un gymnase sans
+     couverture — il s'est connecté avant, l'effectif est sur l'appareil. */
+  if (enLigneSupa()){
+    const s = reprendSession();
+    if (s && s.role === 'joueur'){
+      modeJoueur();
+    } else if (s){
+      entreDansApp({id: s.id, role: s.role, nom: s.nom, sous: s.fonction || ''});
+      rafraichitSession().then(ok => { if (ok) rechargeEffectif(); });
+    }
+  } else if (moiEnregistre()){
+    /* Un téléphone qui a déjà installé son QR va droit à l'écran du joueur :
+       le joueur ouvre l'application et montre son écran, rien d'autre. */
+    modeJoueur();
+  }
 
   majBandeau();
   videFile();
