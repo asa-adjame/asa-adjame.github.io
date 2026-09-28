@@ -10,12 +10,12 @@
    Ce fichier corrige ça, et c'est son seul rôle : garder une copie de la
    page pour pouvoir la servir sans réseau.
 
-   e07df78c5f38 est remplacé à la construction par l'empreinte du fichier
+   f381f3019039 est remplacé à la construction par l'empreinte du fichier
    produit. Un nouveau dépôt change l'empreinte, donc le nom du cache, donc
    l'ancienne copie est effacée : une mise à jour ne reste jamais coincée.
    ══════════════════════════════════════════════════════════════════════════ */
 
-const CACHE = 'asa-sniper-e07df78c5f38';
+const CACHE = 'asa-sniper-f381f3019039';
 const PAGES = ['./', './index.html', './asa-sniper.html'];
 
 self.addEventListener('install', e => {
