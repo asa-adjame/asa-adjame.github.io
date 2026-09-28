@@ -350,14 +350,18 @@ table.tab td.num{font-family:var(--mono)}
 </style>
 </head>
 <body>
-<!-- ═══════════════ écran de connexion (staff) ═══════════════ -->
+<!-- ═══════════════ écran de connexion ═══════════════
+     Une seule porte. Joueurs, coachs et assistant saisissent le même genre de
+     code, et c'est le code qui décide de ce qui s'ouvre : son QR pour un
+     joueur, son tableau pour le staff. Rien à déclarer avant d'être reconnu,
+     et aucune liste de noms dans la page. -->
 <div id="connexion">
   <div class="cx-marque">ASA SNIPER</div>
   <div class="cx-club">ASSOCIATION SPORTIVE ADJAMÉ</div>
   <p class="cx-sous">Grille de tir et pointage des séances. Application autonome.</p>
 
   <div class="cx-form">
-    <label class="label" for="cx-code">Code d'accès staff</label>
+    <label class="label" for="cx-code">Ton code d'accès</label>
     <input id="cx-code" class="champ code" type="text" inputmode="text"
            autocomplete="off" autocapitalize="characters" spellcheck="false"
            maxlength="6" placeholder="——————">
@@ -365,14 +369,10 @@ table.tab td.num{font-family:var(--mono)}
     <button id="cx-valider" class="bouton plein">Entrer</button>
   </div>
 
-  <div class="cx-sep"><span>ou</span></div>
-
-  <button id="cx-joueur" class="bouton fant plein" style="max-width:380px">
-    Je suis un joueur — afficher mon QR
-  </button>
-
   <p class="cx-note">
-    Le joueur montre son QR au coach en arrivant. Rien d'autre à faire.
+    Six caractères, sur le badge que le club t'a remis. Joueur, coach ou
+    assistant : c'est le même champ pour tout le monde.<br>
+    Le joueur tombe sur son QR et le montre au coach en arrivant.
   </p>
 </div>
 
@@ -917,6 +917,33 @@ function h(t){
 const pct    = (a, b) => b ? Math.round(a * 100 / b) : 0;
 const pctTxt = (a, b) => b ? pct(a, b) + '%' : '—';
 
+/* ─────────────────────────────── le numéro de maillot, quand il n'existe pas
+
+   Le club peut s'entraîner des semaines avant que les maillots soient
+   attribués. Le numéro est donc une information facultative, et l'application
+   doit rester lisible sans lui — pas un « #0 » dans chaque liste.
+
+   Il n'entre plus dans la connexion : chacun a son code. Le jour où les
+   numéros arrivent, il suffit de remplir la colonne du classeur ; ils
+   réapparaissent partout et rien d'autre ne change. */
+const aNumero = j => !!(j && j.numero);
+const diese   = j => aNumero(j) ? '#' + j.numero : '';
+
+/* La pastille ronde des listes : le numéro s'il existe, les initiales sinon.
+   On filtre au lieu d'échapper — cette valeur part dans du HTML construit à
+   la main, et une initiale n'a aucune raison d'être un chevron. */
+function pastille(j){
+  if (aNumero(j)) return String(j.numero);
+  const mots = String((j && j.nom) || '').trim().split(/\s+/);
+  const ini = (mots[0] || '?').charAt(0)
+            + (mots.length > 1 ? mots[mots.length - 1].charAt(0) : '');
+  return ini.toUpperCase().replace(/[^A-ZÀ-Þ0-9]/g, '') || '?';
+}
+
+/* « #7 · Meneur · Équipe Pro », ou « Meneur · Équipe Pro » sans numéro : le
+   séparateur ne doit pas rester orphelin en tête de ligne. */
+const meta = (...parts) => parts.filter(x => x !== '' && x != null).join(' · ');
+
 /* 2026-09-13 → 13/09/2026 ; laisse passer ce qui est déjà en clair */
 function dateFr(iso){
   if (!iso) return '';
@@ -992,8 +1019,14 @@ function indexeJoueurs(){
 }
 indexeJoueurs();
 const joueur = id => JOUEURS[id] || null;
+/* Trié par numéro tant qu'il y en a — c'est l'ordre que le staff a en tête.
+   Sans numéro, l'ordre alphabétique : une liste dans un ordre arbitraire est
+   une liste qu'on relit trois fois pour y trouver un nom. */
 const joueursDe = eq => D.joueurs.filter(j => !eq || j.equipe === eq)
-                                 .sort((a, b) => a.numero - b.numero);
+  .slice()
+  .sort((a, b) => (aNumero(a) || aNumero(b))
+    ? (a.numero || 9999) - (b.numero || 9999)
+    : String(a.nom).localeCompare(String(b.nom), 'fr'));
 const nomEquipe = id => (D.equipes.find(e => e.id === id) || {}).nom || id;
 const equipeParDefaut = () => (D.equipes[0] || {}).id || 'pro';
 /* Une seule équipe : pas de sélecteur. Il réapparaît le jour où une deuxième
@@ -1411,7 +1444,7 @@ function ecran_tir(){
     s += '<div class="jl">' + cl.map((o, i) =>
       '<button class="jl-item" onclick="ouvreFiche(\'' + cle(o.j.id) + '\')">'
       + '<span class="jl-rang">' + (i + 1) + '</span>'
-      + '<span class="jl-num">' + o.j.numero + '</span>'
+      + '<span class="jl-num">' + h(pastille(o.j)) + '</span>'
       + '<span class="jl-bloc"><span class="jl-nom">' + h(o.j.nom) + '</span>'
       + '<span class="jl-meta">' + h(o.j.poste) + ' · ' + o.b.nb + ' séance(s) · LF '
       + pctTxt(o.b.lfReussis, o.b.lfTirs) + '</span></span>'
@@ -1437,7 +1470,7 @@ function ecran_joueurs(){
   s += '<div class="jl">' + joueursDe(v.eq).map(j => {
     const p = parcoursDe(j), b = bilanTir(j, p, 3);
     return '<button class="jl-item" onclick="ouvreFiche(\'' + cle(j.id) + '\')">'
-      + '<span class="jl-num">' + j.numero + '</span>'
+      + '<span class="jl-num">' + h(pastille(j)) + '</span>'
       + '<span class="jl-bloc"><span class="jl-nom">' + h(j.nom) + '</span>'
       + '<span class="jl-meta">' + h(j.poste) + ' · ' + h(D.parcours[p].nom)
       + ' · ' + j.taille + ' cm</span></span>'
@@ -1473,8 +1506,9 @@ function vueFiche(j){
 
   let s = '<button class="bouton fant" onclick="fermeFiche()" style="margin-bottom:12px">‹ Retour</button>';
   s += '<div class="vue-titre titre">' + h(j.nom) + '</div>'
-     + '<div class="vue-sous">#' + j.numero + ' · ' + h(j.poste) + ' · ' + h(nomEquipe(j.equipe))
-     + ' · ' + j.taille + ' cm · parcours ' + h(D.parcours[p].nom) + '</div>';
+     + '<div class="vue-sous">'
+     + h(meta(diese(j), j.poste, nomEquipe(j.equipe), j.taille + ' cm',
+              'parcours ' + D.parcours[p].nom)) + '</div>';
 
   if (!b.nb) return s + vide('Aucune séance de tir enregistrée pour ce joueur.');
 
@@ -1584,7 +1618,7 @@ function vueSaisie(){
     o += '<div class="vue-sous">Choisir le joueur.</div>';
     o += '<div class="jl">' + D.joueurs.map(j =>
       '<button class="jl-item" onclick="saisieJoueur(\'' + cle(j.id) + '\')">'
-      + '<span class="jl-num">' + j.numero + '</span>'
+      + '<span class="jl-num">' + h(pastille(j)) + '</span>'
       + '<span class="jl-bloc"><span class="jl-nom">' + h(j.nom) + '</span>'
       + '<span class="jl-meta">' + h(j.poste) + ' · ' + h(nomEquipe(j.equipe)) + '</span></span>'
       + '<span class="jl-fleche">›</span></button>').join('') + '</div>';
@@ -1678,7 +1712,7 @@ function ecran_codes(){
     s += '<div class="tab-enrob"><table class="tab">'
        + '<tr><th class="num">N°</th><th>Joueur</th><th>Poste</th><th>Parcours</th><th class="num">Code</th></tr>';
     joueursDe(e.id).forEach(j => {
-      s += '<tr><td class="num">' + j.numero + '</td>'
+      s += '<tr><td class="num">' + h(pastille(j)) + '</td>'
          + '<td class="tab-nom">' + h(j.nom) + '</td>'
          + '<td>' + h(j.poste) + '</td>'
          + '<td>' + h(D.parcours[parcoursDe(j)].nom) + '</td>'
@@ -1699,7 +1733,7 @@ function ouvreImpression(){
     joueursDe(e.id).forEach(j => {
       s += '<div class="code-c">'
          + '<div class="cc-qr">' + QR.svg(texteBadge(j), {marge: 2, encre: '#16150F'}) + '</div>'
-         + '<div class="cc-num">#' + j.numero + '</div>'
+         + '<div class="cc-num">' + h(diese(j) || pastille(j)) + '</div>'
          + '<div class="cc-nom">' + h(j.nom) + '</div>'
          + '<div class="cc-code">' + h(j.code) + '</div>'
          + '<div class="cc-pied">Badge et code personnels — ne pas partager</div></div>';
@@ -1925,7 +1959,7 @@ function ligneEffectif(j, p, avecBouton){
   const tx = p ? (p.heure + (p.retard ? ' · retard' : '') + (p.voie === 'manuel' ? ' · manuel' : ''))
                : 'non pointé';
   return '<div class="pt-l">'
-    + '<span class="jl-num" style="width:28px;height:28px;flex:0 0 28px;font-size:14px">' + j.numero + '</span>'
+    + '<span class="jl-num" style="width:28px;height:28px;flex:0 0 28px;font-size:14px">' + h(pastille(j)) + '</span>'
     + '<span class="pt-nom">' + h(j.nom) + '</span>'
     + '<span class="pt-h ' + cl + '">' + h(tx) + '</span>'
     + ((avecBouton && !p) ? '<button class="ent-sortie" onclick="pointageManuel(\'' + cle(j.id) + '\')">Pointer</button>' : '')
@@ -1993,7 +2027,7 @@ function traiteCode(txt){
   majCompteurScanner();
   if (navigator.vibrate) { try { navigator.vibrate(res.pointage.retard ? [90, 60, 90] : 60); } catch (e) {} }
   banniereScan(res.pointage.retard ? 'retard' : 'ok', j.nom,
-    '#' + j.numero + ' · ' + res.pointage.heure
+    meta(diese(j), res.pointage.heure)
     + (res.pointage.retard ? ' · en retard' : ' · présent')
     + (r.voie === 'badge' ? ' · badge' : ''));
 }
@@ -2072,7 +2106,11 @@ function inscrisPointage(s, idJoueur, voie){
    Il ne voit que lui. Le seul chiffre comparatif est son rang, sans le nom
    des autres : un joueur doit savoir où il en est, pas qui il dépasse.
 
-   L'identification ne se fait qu'une fois, sur son téléphone.
+   Il n'y a plus d'écran d'identification ici. Le joueur entre par la même
+   porte que le staff, avec son code à 6 caractères, et arrive directement sur
+   son QR. Deux choses ont disparu au passage : la liste des noms de
+   l'effectif, qui n'avait rien à faire dans une page publique, et le numéro
+   de maillot, que le club n'a pas toujours attribué quand la saison commence.
    ══════════════════════════════════════════════════════════════════════════ */
 
 const CLEF_MOI = 'sniper.moi';
@@ -2083,148 +2121,48 @@ function moiEnregistre(){
 }
 function enregistreMoi(id){ try { localStorage.setItem(CLEF_MOI, id); } catch (e) {} }
 function oublieMoi(){
+  /* « Ce n'est pas moi » : on oublie l'appareil et on ressort complètement.
+     Il n'y a plus de liste où revenir — la sortie, c'est la porte d'entrée. */
   try { localStorage.removeItem(CLEF_MOI); } catch (e) {}
-  E.pointage = {etape: 'liste', equipe: equipeParDefaut(), joueur: null, erreur: ''};
-  rendJoueur();
+  deconnexion();
 }
 const moi = () => joueur(E.pointage && E.pointage.joueur);
 
-/* ─────────────────────────────── entrée dans l'espace */
-function modeJoueur(){
-  const m = moiEnregistre();
-  E.compte = {role: 'joueur', nom: '', sous: ''};
-  E.onglet = 0;
-  E.pointage = m ? {etape: 'espace', joueur: m.id}
-                 : {etape: 'liste', equipe: equipeParDefaut(), joueur: null, erreur: ''};
+/* ─────────────────────────────── entrée dans l'espace
+
+   Appelée avec un identifiant après une connexion par code, ou sans rien au
+   démarrage quand l'appareil se souvient déjà de son joueur. Sans joueur
+   trouvable, retour à l'écran de connexion : mieux vaut redemander le code
+   qu'ouvrir un espace vide. */
+function modeJoueur(id){
+  const j = joueur(id) || moiEnregistre();
+  if (!j) { deconnexion(); return false; }
+
+  enregistreMoi(j.id);
+  razEtat();
+  arreteQR();
+  E.compte = {id: j.id, role: 'joueur', nom: j.nom, sous: ''};
+  E.onglet = 0;                        // son QR : le premier écran, toujours
+  E.pointage = {etape: 'espace', joueur: j.id};
   E.semaine = null;
 
   $('#connexion').style.display = 'none';
   $('#app').classList.add('on');
   $('#ent-sortie').style.display = '';
-  $('#hors-ligne').hidden = true;
   rendJoueur();
+  majBandeau();
+  return true;
 }
 
 function rendJoueur(){
   arreteQR();
-  if (E.pointage.etape === 'espace'){
-    const j = moi();
-    if (!j) { oublieMoi(); return; }
-    $('#ent-nom').textContent  = j.nom;
-    $('#ent-role').textContent = '#' + j.numero + ' · ' + j.poste + ' · ' + nomEquipe(j.equipe);
-    dessineNav();
-    dessine();
-  } else {
-    $('#nav').innerHTML = '';
-    $('#ent-nom').textContent  = 'Mon espace';
-    $('#ent-role').textContent = D.club.sigle + ' · ' + D.saison;
-    $('#vue').innerHTML = vueIdentification();
-  }
+  const j = moi();
+  if (!j) { oublieMoi(); return; }
+  $('#ent-nom').textContent  = j.nom;
+  $('#ent-role').textContent = meta(diese(j), j.poste, nomEquipe(j.equipe));
+  dessineNav();
+  dessine();
   window.scrollTo(0, 0);
-}
-
-/* ─────────────────────────────── identification, une seule fois */
-function vueIdentification(){
-  const p = E.pointage;
-
-  if (p.etape === 'code'){
-    const j = joueur(p.joueur);
-    return '<div class="vue-titre titre">' + h(j.nom) + '</div>'
-      + '<div class="vue-sous">#' + j.numero + ' · ' + h(j.poste) + '</div>'
-      + '<div class="carte"><label class="label" for="pt-code">Ton code personnel</label>'
-      + '<input id="pt-code" class="champ code" type="text" inputmode="numeric" '
-      + 'autocomplete="off" maxlength="4" placeholder="••••" '
-      + 'oninput="this.value=this.value.replace(/[^0-9]/g,\'\')">'
-      + '<div class="cx-erreur' + (p.erreur ? ' on' : '') + '">' + h(p.erreur) + '</div>'
-      + '<button class="bouton plein" onclick="valideMonCode()">C\'est moi</button>'
-      + '<button class="bouton fant plein" style="margin-top:8px" onclick="retourListe()">'
-      + 'Retour</button></div>'
-      + '<p class="carte-note centre" style="margin-top:14px">'
-      + 'Le code ne sert qu\'une fois, pour ouvrir ton espace sur ce téléphone.</p>';
-  }
-
-  /* Mode serveur : il n'y a pas de liste de noms à afficher, et c'est voulu.
-     Une liste de noms dans la page publique, c'est l'effectif publié. Le
-     joueur saisit le numéro qu'il porte sur le dos, et son code. */
-  if (enLigneSupa()) return vueIdentificationNumero(p);
-
-  let o = '<div class="vue-titre titre">Qui es-tu ?</div>'
-    + '<div class="vue-sous">Une seule fois : ensuite ton espace s\'ouvre directement.</div>';
-  o += ongletsEquipes(p.equipe, 'joueurEquipe');
-  o += '<div class="choix">' + joueursDe(p.equipe).map(j =>
-      '<button class="choix-b" onclick="choisitJoueur(\'' + cle(j.id) + '\')">'
-      + '<span class="jl-num">' + j.numero + '</span>'
-      + '<span class="jl-bloc"><span class="jl-nom">' + h(j.nom) + '</span>'
-      + '<span class="jl-meta">' + h(j.poste) + '</span></span>'
-      + '<span class="jl-fleche">›</span></button>').join('') + '</div>';
-  return o;
-}
-
-function vueIdentificationNumero(p){
-  return '<div class="vue-titre titre">Qui es-tu ?</div>'
-    + '<div class="vue-sous">Une seule fois, avec du réseau. Ensuite ton espace '
-    + 's\'ouvre tout seul, même sans connexion.</div>'
-    + '<div class="carte">'
-    + '<label class="label" for="pt-num">Ton numéro de maillot</label>'
-    + '<input id="pt-num" class="champ code" type="text" inputmode="numeric" '
-    + 'autocomplete="off" maxlength="3" placeholder="—" '
-    + 'oninput="this.value=this.value.replace(/[^0-9]/g,\'\')">'
-    + '<div style="margin-top:12px"></div>'
-    + '<label class="label" for="pt-code">Ton code personnel</label>'
-    + '<input id="pt-code" class="champ code" type="text" inputmode="numeric" '
-    + 'autocomplete="off" maxlength="4" placeholder="••••" '
-    + 'oninput="this.value=this.value.replace(/[^0-9]/g,\'\')">'
-    + '<div class="cx-erreur' + (p.erreur ? ' on' : '') + '">' + h(p.erreur) + '</div>'
-    + '<button id="pt-valider" class="bouton plein" onclick="valideMonNumero()">'
-    + 'C\'est moi</button></div>'
-    + '<p class="carte-note centre" style="margin-top:14px">'
-    + 'Numéro et code sont sur le badge que le club t\'a remis.</p>';
-}
-
-async function valideMonNumero(){
-  const p = E.pointage;
-  const num  = (($('#pt-num')  || {}).value || '').trim();
-  const code = (($('#pt-code') || {}).value || '').trim();
-  if (!num){ p.erreur = 'Il manque ton numéro.'; rendJoueur(); return; }
-  if (code.length !== 4){ p.erreur = 'Le code fait 4 chiffres.'; rendJoueur(); return; }
-
-  const b = $('#pt-valider');
-  if (b){ b.disabled = true; b.textContent = 'Vérification…'; }
-  const r = await serveurConnexion({numero: num, code: code});
-  if (b){ b.disabled = false; b.textContent = 'C\'est moi'; }
-
-  if (!r.ok){
-    p.erreur = (ERREURS_CX && ERREURS_CX[r.raison]) || 'Numéro ou code incorrect.';
-    rendJoueur();
-    return;
-  }
-  await ouvreSession(r);
-  enregistreMoi(r.id);
-  p.joueur = r.id;
-  p.etape = 'espace';
-  E.onglet = 0;
-  rendJoueur();
-}
-
-function joueurEquipe(id){ E.pointage.equipe = id; rendJoueur(); }
-function choisitJoueur(id){
-  E.pointage.joueur = id; E.pointage.etape = 'code'; E.pointage.erreur = '';
-  rendJoueur();
-  const c = $('#pt-code'); if (c) c.focus();
-}
-function retourListe(){
-  E.pointage.joueur = null; E.pointage.etape = 'liste'; E.pointage.erreur = '';
-  rendJoueur();
-}
-function valideMonCode(){
-  const p = E.pointage, j = joueur(p.joueur);
-  const code = (($('#pt-code') || {}).value || '').trim();
-  if (code.length !== 4){ p.erreur = 'Le code fait 4 chiffres.'; rendJoueur(); return; }
-  if (code !== j.code){ p.erreur = 'Code incorrect.'; rendJoueur(); return; }
-  enregistreMoi(j.id);
-  p.etape = 'espace';
-  E.onglet = 0;
-  rendJoueur();
 }
 
 /* ─────────────────────────────── onglet « Mon QR » */
@@ -2235,8 +2173,8 @@ function ecran_monqr(){
   return '<div class="qr-scene"><div id="qr-image" class="qr"></div></div>'
     + '<div class="centre" style="margin-top:14px">'
     + '<div class="moi-nom titre">' + h(j.nom) + '</div>'
-    + '<div class="carte-note" style="margin-top:4px">#' + j.numero + ' · ' + h(j.poste)
-    + ' · ' + h(nomEquipe(j.equipe)) + '</div></div>'
+    + '<div class="carte-note" style="margin-top:4px">'
+    + h(meta(diese(j), j.poste, nomEquipe(j.equipe))) + '</div></div>'
     + '<p class="carte-note centre" style="margin-top:18px">'
     + 'Montre cet écran au coach en arrivant. Le code se renouvelle tout seul, '
     + 'il n\'y a rien à faire.</p>'
@@ -2906,17 +2844,20 @@ function demarreSync(){
   }, 8000);
 }
 
-/* ─────────────────────────────── connexion staff et assistant
+/* ─────────────────────────────── connexion : une seule porte pour tous
+
+   Joueurs, coachs, assistant : un code à 6 caractères, le même champ, et
+   c'est le code qui dit qui entre. Le joueur arrive sur son QR, le staff sur
+   son tableau. Personne n'a à déclarer qui il est avant d'être reconnu.
 
    Mode serveur : le code part au serveur, qui le vérifie contre un haché et
    renvoie une session. Le navigateur ne compare plus rien — c'est tout
-   l'objet de la bascule. Mode local : comparaison sur place, comme avant.  */
+   l'objet de la bascule. Mode local : comparaison sur place, même principe. */
 
 const ERREURS_CX = {
   code:    'Code inconnu.',
   bloque:  'Trop d\'essais. Réessaie dans un quart d\'heure.',
   inconnu: 'Code inconnu.',
-  numero:  'Numéro inconnu dans cette équipe.',
   reseau:  'Pas de réseau. La première connexion a besoin d\'Internet.',
   serveur: 'Le serveur n\'a pas répondu. Réessaie dans un instant.'
 };
@@ -2946,20 +2887,28 @@ function entreDansApp(compte){
 async function connexion(code){
   const saisi = String(code || '').trim().toUpperCase();
 
+  /* Un champ vide n'est pas un code. Sans ce garde-fou, il vaudrait le code
+     d'un joueur dont l'effectif reçu du serveur ne porte pas le code — le
+     staff en reçoit un, le joueur non, et la comparaison locale serait vraie. */
+  if (!saisi) return erreurCx('code');
+
   if (enLigneSupa()){
     const btn = $('#cx-valider');
     if (btn) { btn.disabled = true; btn.textContent = 'Vérification…'; }
     const r = await serveurConnexion({code: saisi});
     if (btn) { btn.disabled = false; btn.textContent = 'Entrer'; }
     if (!r.ok) return erreurCx(r.raison);
-    if (r.role === 'joueur') return erreurCx('code');   // un joueur passe par son numéro
     await ouvreSession(r);
+    /* Même porte, deux destinations : son QR, ou le tableau du staff. */
+    if (r.role === 'joueur') return modeJoueur(r.id);
     return entreDansApp({id: r.id, role: r.role, nom: r.nom, sous: r.fonction || ''});
   }
 
-  const c = (D.comptes || []).find(x => x.code.toUpperCase() === saisi);
-  if (!c) return erreurCx('code');
-  return entreDansApp(c);
+  const c = (D.comptes || []).find(x => (x.code || '').toUpperCase() === saisi);
+  if (c) return entreDansApp(c);
+  const j = (D.joueurs || []).find(x => (x.code || '').toUpperCase() === saisi);
+  if (j) return modeJoueur(j.id);
+  return erreurCx('code');
 }
 
 function deconnexion(){
@@ -2989,8 +2938,6 @@ function demarre(){
   $('#imp-fermer').onclick = fermeImpression;
   $('#imp-lancer').onclick = () => window.print();
 
-  $('#cx-joueur').onclick = modeJoueur;
-
   window.addEventListener('online',  () => { majBandeau(); videFile(); });
   window.addEventListener('offline', majBandeau);
 
@@ -3007,7 +2954,7 @@ function demarre(){
   if (enLigneSupa()){
     const s = reprendSession();
     if (s && s.role === 'joueur'){
-      modeJoueur();
+      modeJoueur(s.id);
     } else if (s){
       entreDansApp({id: s.id, role: s.role, nom: s.nom, sous: s.fonction || ''});
       rafraichitSession().then(ok => { if (ok) rechargeEffectif(); });
