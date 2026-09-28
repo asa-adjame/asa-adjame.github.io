@@ -23,8 +23,16 @@ self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE).then(c =>
-      /* addAll échoue en bloc si un seul fichier manque ; on tolère. */
-      Promise.all(PAGES.map(p => c.add(p).catch(() => null)))
+      /* addAll échoue en bloc si un seul fichier manque ; on tolère.
+
+         cache: 'reload' n'est PAS un détail. Sans lui, c.add() se sert dans
+         le cache HTTP du navigateur, où GitHub Pages laisse la page pendant
+         dix minutes. Un appareil qui ouvre l'application juste après un dépôt
+         mémorise alors l'ANCIENNE page dans un cache tout neuf — et comme le
+         nom du cache vient de changer, l'ancienne copie a été effacée : la
+         version périmée devient la seule. Vu en vrai le 28/09/2026. */
+      Promise.all(PAGES.map(p =>
+        c.add(new Request(p, {cache: 'reload'})).catch(() => null)))
     )
   );
 });
@@ -51,8 +59,15 @@ self.addEventListener('fetch', e => {
 
   e.respondWith(
     caches.match(r).then(enCache => {
-      /* Le réseau met la copie à jour en arrière-plan, sans faire attendre. */
-      const frais = fetch(r).then(rep => {
+      /* Le réseau met la copie à jour en arrière-plan, sans faire attendre.
+
+         Ici aussi on court-circuite le cache HTTP : 'no-cache' force une
+         requête conditionnelle au serveur. Sans cela, la revalidation se
+         contenterait de relire la copie périmée que le navigateur garde, et
+         n'aurait jamais rien à revalider. On repart de r.url plutôt que de r
+         parce qu'une requête de navigation ne se reconstruit pas telle quelle. */
+      const frais = fetch(r.url, {cache: 'no-cache', credentials: 'same-origin'})
+        .then(rep => {
         if (rep && rep.ok){
           const copie = rep.clone();
           caches.open(CACHE).then(c => c.put(r, copie)).catch(() => {});
