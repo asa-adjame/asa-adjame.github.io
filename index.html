@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<title>ASA Plateforme</title>
+<!-- Page d'accueil du site, à la RACINE du dépôt.
+
+     Le nom de l'ensemble est ASA Plateforme. La grille de tir et le pointage —
+     ce qu'on appelait ASA Sniper — en sont une partie, et gardent leur
+     adresse : c'est celle que le club connaît et celle qui sert au gymnase.
+     Rien de ce qui fonctionne aujourd'hui ne change de place.
+
+     La plateforme vit dans son propre sous-dossier, /plateforme/, et PAS ici.
+     Le service worker de la grille de tir occupe la portée de la racine, et
+     deux enregistrements sur la même portée se remplacent l'un l'autre — la
+     grille perdrait son hors-ligne, et ça ne se verrait qu'à la prochaine
+     coupure, au gymnase. -->
+<style>
+  html,body{margin:0;height:100%}
+  body{background:#04101F;color:#EDF3FA;display:flex;align-items:center;
+       justify-content:center;text-align:center;
+       font:400 16px/1.6 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+  .boite{padding:24px 16px;max-width:340px}
+  h1{font:700 36px/1 Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif;
+     letter-spacing:.04em;color:#FFB246;margin:0 0 6px}
+  .club{font-size:12px;letter-spacing:.22em;color:#93AAC6;margin-bottom:28px}
+  a{display:block;margin:10px auto;padding:13px 22px;width:100%;max-width:260px;
+    box-sizing:border-box;border-radius:14px;text-decoration:none;font-weight:600}
+  .p{background:#FFB246;color:#04101F}
+  .s{border:1px solid #27578A;color:#EDF3FA}
+  .n{margin-top:22px;font-size:12.5px;color:#93AAC6}
+</style>
+</head>
+<body>
+  <div class="boite">
+    <h1>ASA PLATEFORME</h1>
+    <div class="club">ASSOCIATION SPORTIVE ADJAMÉ</div>
+    <a class="p" href="./plateforme/">Entrer</a>
+    <a class="s" href="./asa-sniper.html">Grille de tir et pointage</a>
+    <div class="n">Le même code d'accès ouvre les deux.</div>
+  </div>
+</body>
+</html>
