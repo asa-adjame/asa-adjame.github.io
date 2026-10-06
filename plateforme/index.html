@@ -1569,6 +1569,10 @@ function vueAccueil(){
      coachs. Six onglets est un plafond tenu par un harnais, pas une préférence :
      au-delà, les libellés deviennent illisibles sur un téléphone. */
   if (E.sous === 'presences')  return vuePresences();
+  /* Les badges, pour la même raison : le directeur technique et l'assistant
+     ont déjà six onglets, et six est un plafond tenu par un harnais.
+     L'impression se fait donc depuis l'accueil, comme l'appel. */
+  if (E.sous === 'badges')     return vueBadges();
 
   const C = DB.championnat;
   const nous = C.classement.find(l => l.nous) || {};
@@ -1677,7 +1681,8 @@ function blocAccueilRole(){
         <span class="etiq pousse" style="color:var(--or)">${esc(DB.rapport.periode)}</span></div>
       <p class="msg-txt">${esc(DB.rapport.synthese.slice(0, 150))}…</p>
       <button class="bouton fant plein" style="margin-top:11px" onclick="vaVers(4)">Ouvrir le rapport</button>
-    </div>`;
+    </div>
+    ${carteBadges()}`;
   }
 
   if (E.role === 'jr'){
@@ -1708,7 +1713,8 @@ function blocAccueilRole(){
     <div class="tuile bleu"><div class="tuile-val">${moy(js.map(note1)).toFixed(1)}</div><div class="tuile-lib">Niveau<br>moyen</div></div>
     <div class="tuile ${indispo?'rouge':'vert'}"><div class="tuile-val">${indispo}</div><div class="tuile-lib">Indispo-<br>nibles</div></div>
   </div>
-  ${EST_COACH(E.role) ? carteRelances() : ''}`;
+  ${EST_COACH(E.role) ? carteRelances() : ''}
+  ${carteBadges()}`;
 }
 
 /* ═══════════════════════════════════ RELANCES ═══════════════════════════════════
@@ -6835,6 +6841,34 @@ async function enrichitDepuisPlateforme(){
       return false;
     }
     SOURCE.donnees = 'complete';
+
+    /* CE QUI N'EST PAS DANS LE SCHÉMA DE LA PLATEFORME DOIT SURVIVRE.
+
+       `DB = complet` vient de remplacer l'effectif par celui construit sur la
+       table `joueurs`. Or deux champs ne viennent pas de là : ils viennent de
+       l'identité, et `joueurs` ne les porte pas.
+
+         secret   — la graine du QR. Perdue, l'écran « Mon badge » du joueur
+                    annonce « badge pas encore activé » à quelqu'un dont la
+                    base a pourtant la graine. Mesuré le 06/10/2026.
+         parcours — ext / int / complet. Perdu, parcoursDe() se rabat sur
+                    'ext' pour tout le monde, en silence : le joueur voit un
+                    challenge qui n'est pas le sien, et la saisie d'Oumar
+                    propose le mauvais parcours par défaut.
+
+       Les deux disparaissaient au moment précis où la plateforme répond, donc
+       jamais pendant une vérification hors ligne. C'est la même forme que les
+       quatre défauts précédents : l'aller fonctionne, le retour manque, et
+       rien ne le dit. */
+    const identite = {};
+    (effectif || []).forEach(j => { identite[j.id] = j; });
+    (DB.joueurs || []).forEach(j => {
+      const o = identite[j.id];
+      if (!o) return;
+      if (!j.secret   && o.secret)   j.secret   = o.secret;
+      if (!j.parcours && o.parcours) j.parcours = o.parcours;
+    });
+
     /* LE POINT IMPORTANT. E.moi, E.joueur et E.equipes pointaient sur l'ancien
        DB ; sans ce rattachement, l'écran du joueur lit un joueur sans séances
        et tout le staff se retrouve avec zéro équipe. Voir le commentaire de
@@ -7335,8 +7369,18 @@ function qrLisCode(txt){
 
 let QR_TIMER = null;
 
+/* Le joueur connecté, c'est E.joueur — le raccourci que relieSession() recale
+   sur l'effectif après chaque chargement.
+
+   Ce que cette ligne remplace, et pourquoi c'est noté : elle appelait `moi()`,
+   une fonction qui N'EXISTE PAS dans la plateforme. Le garde
+   `typeof moi === 'function'` passait donc toujours à côté, et TOUS les joueurs
+   voyaient « Joueur introuvable » à la place de leur badge — depuis toujours.
+   Mesuré le 06/10/2026 dans le navigateur : `typeof moi` vaut 'undefined'.
+   Un garde-fou qui avale l'absence au lieu de la signaler est pire que pas de
+   garde-fou : il transforme une erreur bruyante en écran vide. */
 function vueMonQR(){
-  const j = (typeof moi === 'function') ? moi() : null;
+  const j = E.joueur || null;
   if (!j) return '<div class="carte centre">Joueur introuvable.</div>';
   if (!j.secret){
     /* Pas de graine : on le DIT, au lieu d'afficher un carré qui ne sera
@@ -7351,9 +7395,14 @@ function vueMonQR(){
   setTimeout(demarreMonQR, 0);
   return '<div class="qr-scene"><div id="qr-image" class="qr"></div></div>'
        + '<div class="centre" style="margin-top:14px">'
-       + '<div class="titre">' + h(j.nom) + '</div>'
+       /* esc(), pas h() : h n'est défini nulle part dans la plateforme — elle
+          vient de Sniper, où c'est le nom de l'échappement. Deuxième défaut du
+          même écran, et il aurait suffi qu'un joueur arrive jusqu'ici pour
+          qu'il lève une ReferenceError. Vérifié le 06/10/2026 : appeler h()
+          dans la page publiée rend « h is not defined ». */
+       + '<div class="titre">' + esc(j.nom) + '</div>'
        + '<div class="carte-note" style="margin-top:4px">'
-       + h([j.numero ? '#' + j.numero : '', j.poste || '', j.equipe || '']
+       + esc([j.numero ? '#' + j.numero : '', j.poste || '', j.equipe || '']
             .filter(Boolean).join(' · ')) + '</div></div>'
        + '<p class="carte-note centre" style="margin-top:18px">'
        + 'Montre cet écran au coach en arrivant. Le code se renouvelle tout '
@@ -7367,7 +7416,7 @@ function demarreMonQR(){
   let derniere = -1;
   const tic = () => {
     const img = document.getElementById('qr-image');
-    const j = (typeof moi === 'function') ? moi() : null;
+    const j = E.joueur || null;
     if (!img || !j || !j.secret){ arreteMonQR(); return; }
     const w = qrFenetreCourante();
     if (w !== derniere){
@@ -7381,6 +7430,233 @@ function demarreMonQR(){
 
 function arreteMonQR(){
   if (QR_TIMER){ clearInterval(QR_TIMER); QR_TIMER = null; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   IMPRIMER LES BADGES — écran du directeur technique et de l'assistant.
+
+   ── Pourquoi cet écran n'existait pas ──────────────────────────────────────
+
+   Un badge porte DEUX secrets : la graine, qui fabrique le QR scanné à la
+   porte, et le code, que le joueur tape pour se connecter. Jusqu'au 06/10/2026
+   la base ne donnait jamais les deux à la même personne — le staff recevait
+   les codes avec la graine à NULL, le compte d'appel la graine sans les codes.
+   Volontaire, et sain : qui tient les codes ne peut pas forger un QR.
+
+   Conséquence qu'on n'avait pas vue : l'écran « Badges » de Sniper est réservé
+   au staff et construit le QR sur une graine vide. Il dessinait un carré
+   d'apparence normale que la porte refuse. Aucun garde-fou, aucun message.
+
+   Fathy a tranché le 06/10 : le directeur technique ET l'assistant peuvent
+   imprimer. Une seule fonction en base, asa_badges(), rend les deux moitiés et
+   nomme ces deux rôles ; elle lève une erreur pour tout autre, au lieu de
+   rendre une liste vide qui passerait pour un effectif absent.
+
+   ── Trois règles tenues ici ────────────────────────────────────────────────
+
+   1. On charge À LA DEMANDE. Les codes et les graines de douze joueurs n'ont
+      rien à faire en mémoire d'une session qui n'imprimera jamais.
+   2. On n'écrit RIEN sur l'appareil. Pas de cache, pas de stockage local : ces
+      lignes vivent le temps de l'écran et disparaissent avec lui.
+   3. Un joueur à qui il manque une moitié n'est PAS imprimé. Il est nommé, à
+      part, avec ce qui lui manque. Imprimer un badge sans graine, c'est
+      fabriquer un refus à la porte que personne ne saura expliquer.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Vit le temps de l'écran. Jamais sérialisé, jamais mis en cache. */
+let BADGES = null;
+
+const peutImprimerBadges = () => E.role === 'dt' || E.role === 'as';
+
+/* La carte sur l'accueil. Rend une chaîne vide pour les autres rôles : la
+   fonction est appelée sans condition par les deux branches de
+   blocAccueilRole, et c'est elle qui sait à qui elle s'adresse — une porte qui
+   se garde elle-même ne s'oublie pas au prochain écran ajouté. */
+function carteBadges(){
+  if (!peutImprimerBadges()) return '';
+  return `<div class="carte" style="margin-top:10px">
+    <div class="carte-tete"><div class="carte-titre">Badges</div>
+      <span class="etiq pousse" style="color:var(--gris)">QR + code</span></div>
+    <p class="msg-txt">Réimprimer le badge d'un joueur, ou toute une équipe.
+      Les codes ne sont chargés qu'au moment où tu ouvres l'écran.</p>
+    <button class="bouton fant plein" style="margin-top:11px"
+      onclick="ouvreSous('badges')">Imprimer les badges</button>
+  </div>`;
+}
+
+async function chargeBadges(){
+  BADGES = {etat: 'charge_en_cours'};
+  rendVue();
+
+  /* enLigne(), pas une comparaison écrite à la main : le mode vaut 'supabase',
+     pas 'serveur'. J'avais écrit la mauvaise chaîne, et l'écran répondait
+     « c'est la démonstration » sur la vraie plateforme — le harnais l'a
+     attrapé du premier coup. Une constante a un seul lecteur légitime. */
+  if (!enLigne()){
+    BADGES = {etat: 'erreur', message:
+      'Cette version est la démonstration : elle ne contient ni code ni graine. '
+      + 'Les badges s\'impriment depuis la plateforme branchée sur la base.'};
+    rendVue(); return;
+  }
+
+  try {
+    const r = await fetchBorne(SOURCE.url + '/rest/v1/rpc/asa_badges', {
+      method: 'POST', headers: entetesASA(), body: '{}'
+    });
+    if (r.status === 401 || r.status === 403){
+      BADGES = {etat: 'erreur', message:
+        'La base refuse : seuls le directeur technique et l\'assistant peuvent '
+        + 'imprimer les badges.'};
+    } else if (!r.ok){
+      /* On montre le code HTTP. Un « ça n'a pas marché » sans numéro ne se
+         diagnostique pas à distance, et c'est à distance qu'on diagnostique. */
+      BADGES = {etat: 'erreur', message: 'La base a répondu ' + r.status + '.'};
+    } else {
+      const l = await r.json();
+      BADGES = Array.isArray(l)
+        ? {etat: 'charge', liste: l}
+        : {etat: 'erreur', message: 'Réponse inattendue de la base.'};
+    }
+  } catch (e){
+    BADGES = {etat: 'erreur', message:
+      'Pas de réseau. Les badges ont besoin de la base : ils ne sont pas gardés '
+      + 'sur l\'appareil, exprès.'};
+  }
+  rendVue();
+}
+
+function oublieBadges(){ BADGES = null; rendVue(); }
+
+/* Complet = les deux moitiés. Le reste est listé, pas imprimé. */
+const badgeComplet = b => !!(b && b.graine && b.code);
+
+function vueBadges(){
+  if (!peutImprimerBadges()){
+    return '<div class="carte centre"><div class="titre">Réservé</div>'
+         + '<p class="carte-note">Les badges portent le code personnel de chaque '
+         + 'joueur. Seuls le directeur technique et l\'assistant administratif '
+         + 'peuvent les imprimer.</p></div>';
+  }
+
+  const tete = '<h1 class="vue-titre">Badges</h1>'
+    + '<p class="vue-sous">Un badge par joueur : son QR imprimé, et son code en '
+    + 'dessous. À remettre en main propre, jamais dans un groupe.</p>';
+
+  if (!BADGES){
+    return tete
+      + '<div class="carte">'
+      + '<p class="msg-txt">Les codes et les graines ne sont pas chargés avec le '
+      + 'reste : ils arrivent seulement quand tu le demandes, et repartent quand '
+      + 'tu quittes l\'écran. Rien n\'est gardé sur cet appareil.</p>'
+      + '<button class="bouton plein" style="margin-top:11px" onclick="chargeBadges()">'
+      + 'Charger les badges</button></div>';
+  }
+
+  if (BADGES.etat === 'charge_en_cours'){
+    return tete + '<div class="carte centre"><p class="msg-txt">Chargement…</p></div>';
+  }
+
+  if (BADGES.etat === 'erreur'){
+    return tete + '<div class="carte centre">'
+      + '<div class="titre">Impossible de charger</div>'
+      + '<p class="carte-note">' + esc(BADGES.message) + '</p>'
+      + '<button class="bouton fant plein" style="margin-top:11px" onclick="chargeBadges()">'
+      + 'Réessayer</button></div>';
+  }
+
+  const liste    = BADGES.liste || [];
+  const complets = liste.filter(badgeComplet);
+  const boiteux  = liste.filter(b => !badgeComplet(b));
+
+  let s = tete;
+
+  s += '<div class="carte" style="margin-bottom:10px">'
+     + '<div class="carte-tete"><div class="carte-titre">'
+     + complets.length + ' badge' + (complets.length > 1 ? 's' : '') + ' prêt'
+     + (complets.length > 1 ? 's' : '') + '</div></div>'
+     + (complets.length
+        ? '<button class="bouton plein" style="margin-top:11px" onclick="imprimeBadges()">'
+          + 'Préparer la feuille à imprimer</button>'
+        : '<p class="msg-txt">Aucun badge complet : rien à imprimer.</p>')
+     + '<button class="bouton fant plein" style="margin-top:8px" onclick="oublieBadges()">'
+     + 'Fermer et oublier</button></div>';
+
+  /* Ce qui manque, en premier et nommément. Un écran qui n'affiche que ce qui
+     va bien laisse l'autre moitié se découvrir à la porte du gymnase. */
+  if (boiteux.length){
+    s += '<div class="section-titre">Pas imprimables</div>'
+       + '<div class="carte" style="margin-bottom:10px">'
+       + '<p class="msg-txt">Ces joueurs ne reçoivent pas de badge : il leur '
+       + 'manque une moitié. Un badge imprimé sans graine est refusé à '
+       + 'l\'entrée, sans explication possible.</p>'
+       + '<div class="tab-enrob" style="margin-top:10px"><table class="tab">'
+       + '<tr><th>Joueur</th><th>Ce qui manque</th></tr>'
+       + boiteux.map(b => '<tr><td class="tab-nom">' + esc(b.nom) + '</td><td>'
+           + esc(!b.graine && !b.code ? 'la graine et le code'
+                 : !b.graine ? 'la graine du QR' : 'le code')
+           + '</td></tr>').join('')
+       + '</table></div></div>';
+  }
+
+  (DB.equipes || []).forEach(e => {
+    const dedans = complets.filter(b => b.equipe === e.id);
+    if (!dedans.length) return;
+    s += '<div class="section-titre">' + esc(e.nom) + '</div>'
+       + '<div class="tab-enrob"><table class="tab">'
+       + '<tr><th class="num">N°</th><th>Joueur</th><th>Poste</th><th class="num">Code</th></tr>'
+       + dedans.map(b => '<tr><td class="num">' + esc(b.numero || '—') + '</td>'
+           + '<td class="tab-nom">' + esc(b.nom) + '</td>'
+           + '<td>' + esc(b.poste || '') + '</td>'
+           + '<td class="num mono" style="letter-spacing:2px">' + esc(b.code) + '</td></tr>').join('')
+       + '</table></div>';
+  });
+
+  return s;
+}
+
+/* La feuille. Douze cartes par page : trois colonnes, quatre rangées — la
+   taille d'un badge qu'on glisse dans une pochette, et le QR reste lisible
+   sous un objectif de téléphone à trente centimètres. */
+function imprimeBadges(){
+  if (!BADGES || BADGES.etat !== 'charge') return;
+  const complets = (BADGES.liste || []).filter(badgeComplet);
+  if (!complets.length) return;
+
+  const jour = new Date().toLocaleDateString('fr-FR',
+                 {day: '2-digit', month: 'long', year: 'numeric'});
+  const club = (DB.club && DB.club.nom) || 'ASA — Association Sportive Adjamé';
+
+  let feuilles = '';
+  (DB.equipes || []).forEach(e => {
+    const dedans = complets.filter(b => b.equipe === e.id);
+    if (!dedans.length) return;
+
+    feuilles += '<div class="a4">'
+      + '<h1>Badges de pointage</h1>'
+      + '<p class="a4-aide" style="margin-bottom:4mm">' + esc(club) + ' · '
+      + esc(e.nom) + ' · édité le ' + esc(jour) + '</p>'
+      + '<div style="display:grid;grid-template-columns:repeat(3,1fr);'
+      + 'gap:4mm;align-content:start">'
+      + dedans.map(b =>
+          '<div style="border:1px solid #BDB69F;border-radius:3mm;padding:3mm;'
+          + 'text-align:center;break-inside:avoid">'
+          + '<div style="width:32mm;height:32mm;margin:0 auto">'
+          + QR.svg(qrTexteBadge({id: b.id, secret: b.graine}), {marge: 2, encre: '#111'})
+          + '</div>'
+          + '<div style="font-size:16pt;font-weight:700;margin-top:2mm">'
+          + esc(b.numero || '') + '</div>'
+          + '<div style="font-size:10pt;font-weight:600">' + esc(b.nom) + '</div>'
+          + '<div style="font-family:ui-monospace,monospace;font-size:13pt;'
+          + 'letter-spacing:2px;margin-top:1mm">' + esc(b.code) + '</div>'
+          + '<div style="font-size:7pt;color:#555;margin-top:1.5mm">'
+          + 'Badge et code personnels — ne pas partager</div>'
+          + '</div>').join('')
+      + '</div></div>';
+  });
+
+  ouvreImpression('Badges — ' + complets.length + ' joueurs', feuilles,
+    'Découpe une carte par joueur et remets-la en main propre. Le code sert à '
+    + 'installer le QR sur son téléphone ; le QR imprimé sert quand il ne l\'a pas.');
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
