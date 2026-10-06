@@ -1251,9 +1251,13 @@ const PLAN = {
        ['gens','Présences',vuePresences],
        ['gens','Effectif',vueJoueurs],['message','Chat',vueChat]],
   /* L'assistant : l'appel est son premier onglet après l'accueil, parce que
-     c'est l'écran qu'il ouvre debout, à l'entrée du gymnase. */
+     c'est l'écran qu'il ouvre debout, à l'entrée du gymnase. Le tir vient
+     juste après — décision du 06/10 : c'est lui qui tient désormais les
+     grilles de tir de tous les joueurs, et ses deux écrans de terrain sont
+     donc côte à côte. Six onglets, le plafond est atteint : un septième
+     rendrait la barre du bas illisible sur un téléphone. */
   as: [['maison','Accueil',vueAccueil],['qr','Appel',vueAppel],
-       ['bord','Équipe',vueEquipe],
+       ['cible','Tir',vueTirAnalyste],['bord','Équipe',vueEquipe],
        ['coeur','Médical',vueMedical],['message','Chat',vueChat]],
   pp: [['maison','Accueil',vueAccueil],['gens','Présences',vuePresences],
        ['coeur','Médical',vueMedical],['message','Chat',vueChat]],
@@ -2905,7 +2909,9 @@ function vueTirAnalyste(){
   const parcoursVus = {};
   parEq(E.equipe).forEach(j => { parcoursVus[parcoursDe(j)] = true; });
   return `<h1 class="vue-titre">Challenge de tir</h1>
-  <p class="vue-sous">Saisie de secours : normalement, c'est le binôme qui reporte depuis son écran.</p>
+  <p class="vue-sous">${E.role === 'as'
+    ? 'C\'est toi qui tiens les grilles. Une séance par joueur : le binôme compte, tu reportes.'
+    : 'Saisie de secours : les grilles sont tenues par l\'assistant.'}</p>
   ${selEquipe()}
   <div class="carte" style="margin-bottom:12px">
     <div class="carte-tete"><div class="carte-titre">Protocole</div></div>
