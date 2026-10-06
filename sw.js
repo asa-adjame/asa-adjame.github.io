@@ -18,6 +18,28 @@
 const CACHE = 'asa-sniper-f381f3019039';
 const PAGES = ['./', './index.html', './asa-sniper.html'];
 
+/* ── CE WORKER TIENT LA RACINE, DONC IL VOIT TOUT ───────────────────────────
+
+   Sa portée est `/`. Il reçoit donc les requêtes de TOUT le domaine, y compris
+   celles de `/plateforme/`, qui ne le regardent pas. Jusqu'au 06/10/2026 il
+   rangeait dans son cache tout ce qu'il servait, et l'autre worker lisait avec
+   `caches.match(r)` — sans nom de cache, ce qui parcourt TOUS les caches de
+   l'origine, le plus ancien d'abord, donc celui-ci.
+
+   Conséquence vue en vrai : `/plateforme/index.html` figé ici le 05/10, et
+   servi encore le 06/10 alors que le réseau ET le cache de la plateforme
+   avaient tous deux la bonne page. Une portée sépare qui intercepte quoi ;
+   elle ne sépare PAS les caches, qui appartiennent à l'origine.
+
+   D'où la liste ci-dessous, qui n'est pas une optimisation mais une frontière :
+   ce worker n'intercepte, ne range et ne relit QUE ses trois pages. */
+const MIENNES = ['/', '/index.html', '/asa-sniper.html'];
+
+function aMoi(url){
+  try { return MIENNES.indexOf(new URL(url).pathname) !== -1; }
+  catch (err) { return false; }
+}
+
 self.addEventListener('install', e => {
   /* On prend la main tout de suite : le gymnase peut être le prochain écran. */
   self.skipWaiting();
@@ -43,6 +65,16 @@ self.addEventListener('activate', e => {
       .then(noms => Promise.all(
         noms.filter(n => n.indexOf('asa-sniper-') === 0 && n !== CACHE)
             .map(n => caches.delete(n))))
+      /* Ménage unique, et c'est lui qui répare les appareils déjà touchés.
+         Le nom du cache ne change pas avec cette correction : sans ce passage,
+         les entrées étrangères rangées avant le 06/10 — `/plateforme/…`, et
+         les copies à rallonge de requête (`?v=…`, `?t=…`) laissées par les
+         vérifications — survivraient à la mise à jour, et la panne avec. */
+      .then(() => caches.open(CACHE).then(c =>
+        c.keys().then(reqs => Promise.all(
+          reqs.filter(q => !aMoi(q.url) || new URL(q.url).search !== '')
+              .map(q => c.delete(q))))))
+      .catch(() => null)
       .then(() => self.clients.claim())
   );
 });
@@ -57,8 +89,14 @@ self.addEventListener('fetch', e => {
   if (r.method !== 'GET') return;
   if (new URL(r.url).origin !== self.location.origin) return;
 
+  /* Et on ne touche qu'à SES pages. `/plateforme/…` a son propre worker et son
+     propre cache : ne pas appeler respondWith laisse la requête suivre son
+     chemin normal. C'est la correction du 06/10. */
+  if (!aMoi(r.url)) return;
+
   e.respondWith(
-    caches.match(r).then(enCache => {
+    /* Lire dans SON cache, pas dans tous les caches du domaine. */
+    caches.open(CACHE).then(c => c.match(r).then(enCache => {
       /* Le réseau met la copie à jour en arrière-plan, sans faire attendre.
 
          Ici aussi on court-circuite le cache HTTP : 'no-cache' force une
@@ -68,12 +106,13 @@ self.addEventListener('fetch', e => {
          parce qu'une requête de navigation ne se reconstruit pas telle quelle. */
       const frais = fetch(r.url, {cache: 'no-cache', credentials: 'same-origin'})
         .then(rep => {
-        if (rep && rep.ok){
-          const copie = rep.clone();
-          caches.open(CACHE).then(c => c.put(r, copie)).catch(() => {});
-        }
-        return rep;
-      }).catch(() => null);
+          /* Adresses propres seulement : une requête à rallonge est une clé de
+             cache distincte qui pèse le poids de la page entière. */
+          if (rep && rep.ok && new URL(r.url).search === ''){
+            c.put(r, rep.clone()).catch(() => {});
+          }
+          return rep;
+        }).catch(() => null);
 
       /* Le cache d'abord : c'est la seule façon d'ouvrir sans réseau. */
       return enCache || frais.then(rep => rep || new Response(
@@ -86,6 +125,6 @@ self.addEventListener('fetch', e => {
         + '<p style="color:#93AAC6;font-size:14px">Ouvre-la une fois avec du '
         + 'réseau : ensuite elle s\'ouvrira partout, même sans connexion.</p>',
         {headers: {'Content-Type': 'text/html; charset=utf-8'}, status: 503}));
-    })
+    }))
   );
 });
