@@ -1260,8 +1260,13 @@ function navPlan(){
     {cle: 'accueil',   nom: 'Accueil',   icone: 'accueil'},
     {cle: 'tir',       nom: 'Tir',       icone: 'tir'},
     {cle: 'joueurs',   nom: 'Joueurs',   icone: 'joueurs'},
-    {cle: 'presences', nom: 'Présences', icone: 'presence'},
-    {cle: 'codes',     nom: 'Badges',    icone: 'codes'}
+    {cle: 'presences', nom: 'Présences', icone: 'presence'}
+    /* Plus de « Badges » ici. Cet écran construisait le QR avec
+       hachage(j.secret + …) alors qu'asa_effectif() ne donne PAS la graine au
+       staff : il dessinait un carré d'apparence normale que la porte refuse,
+       sans aucun message. L'impression vit dans ASA Plateforme depuis le
+       06/10/2026, sur l'accueil du directeur technique et de l'assistant —
+       eux seuls reçoivent les deux moitiés, par asa_badges(). */
   ];
   return [];
 }
@@ -1352,8 +1357,10 @@ function ecran_accueil(){
   s += '<div class="section-titre">Raccourcis</div>'
      + '<div class="g2">'
      + '<button class="bouton fant" onclick="nouvelleSaisie()">Saisir une séance de tir</button>'
-     + '<button class="bouton fant" onclick=\"vaVers(\'codes\')\">Imprimer les badges</button>'
-     + '</div>';
+     + '</div>'
+     + '<p class="carte-note" style="margin-top:8px">Les badges s’impriment '
+     + 'depuis ASA Plateforme : accueil du directeur technique ou de '
+     + 'l’assistant.</p>';
   return s;
 }
 
