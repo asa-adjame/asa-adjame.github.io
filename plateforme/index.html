@@ -5506,19 +5506,78 @@ function pbFleche(x1, y1, x2, y2, coul, double){
   return double ? tete(0) + tete(4.5) : tete(0);
 }
 
-/* trait ondulé du dribble : une suite de quarts d'onde perpendiculaires */
-function pbOndule(x1, y1, x2, y2){
-  const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy);
-  if (L < 6) return `M${x1},${y1} L${x2},${y2}`;
-  const px = -dy / L, py = dx / L;
+/* ─────────────────────────────── traits courbes (13/10/2026)
+   Fathy : « un moyen de faire des lignes incurvées ». Une course réelle
+   contourne un écran, une passe lobée passe au-dessus d'un défenseur : la
+   ligne droite mentait sur le trajet.
+
+   Un trait garde ses deux bouts et gagne, s'il est courbé, UN point de
+   contrôle (cx, cy) : une courbe de Bézier quadratique. Sans cx/cy, le point
+   de contrôle est le milieu du segment — et une Bézier dont le contrôle est
+   au milieu EST la ligne droite. Les systèmes déjà enregistrés se dessinent
+   donc exactement comme avant, sans conversion.
+
+   Pas d'outil de plus : avec « Déplacer », on attrape le milieu d'un trait
+   et on le tire. La courbe passe sous le doigt. Le ramener sur la ligne
+   droite la redresse. */
+const pbCourbe = e => e.cx != null && e.cy != null;
+const pbCtrl = e => pbCourbe(e) ? {x: e.cx, y: e.cy} : {x: (e.x1 + e.x2) / 2, y: (e.y1 + e.y2) / 2};
+function pbBez(e, t){
+  const c = pbCtrl(e), u = 1 - t;
+  return {x: u * u * e.x1 + 2 * u * t * c.x + t * t * e.x2,
+          y: u * u * e.y1 + 2 * u * t * c.y + t * t * e.y2};
+}
+function pbTan(e, t){                     // direction (unitaire) de la courbe en t
+  const c = pbCtrl(e);
+  let x = 2 * (1 - t) * (c.x - e.x1) + 2 * t * (e.x2 - c.x);
+  let y = 2 * (1 - t) * (c.y - e.y1) + 2 * t * (e.y2 - c.y);
+  const L = Math.hypot(x, y) || 1;
+  return {x: x / L, y: y / L};
+}
+/* le chemin SVG du trait : droit (L) ou courbe (Q) */
+const pbChemin = e => pbCourbe(e)
+  ? `M${e.x1},${e.y1} Q${e.cx},${e.cy} ${e.x2},${e.y2}`
+  : `M${e.x1},${e.y1} L${e.x2},${e.y2}`;
+/* la pointe suit la tangente d'arrivée : on lui donne un point « d'où elle
+   vient » pris juste avant le bout, dans l'axe de la courbe */
+function pbFlecheTrait(e, coul, double){
+  const d = pbTan(e, 1);
+  return pbFleche(e.x2 - d.x * 10, e.y2 - d.y * 10, e.x2, e.y2, coul, double);
+}
+
+/* trait ondulé du dribble : une suite de quarts d'onde perpendiculaires,
+   posés le long de la courbe (ou du segment, qui en est le cas droit) */
+function pbOndule(e){
+  const L = Math.hypot(e.x2 - e.x1, e.y2 - e.y1);
+  if (L < 6) return pbChemin(e);
   const n = Math.max(2, Math.round(L / PB_T.pasOnde));
-  let d = `M${x1},${y1}`;
+  let d = `M${e.x1},${e.y1}`;
   for (let i = 1; i <= n; i++){
-    const t = i / n, s = (i % 2 ? 1 : -1) * PB_T.onde;
-    const cx = x1 + dx * (t - 0.5 / n) + px * s, cy = y1 + dy * (t - 0.5 / n) + py * s;
-    d += ` Q${cx.toFixed(1)},${cy.toFixed(1)} ${(x1 + dx * t).toFixed(1)},${(y1 + dy * t).toFixed(1)}`;
+    const t = i / n, m = t - 0.5 / n, s = (i % 2 ? 1 : -1) * PB_T.onde;
+    const pm = pbBez(e, m), tg = pbTan(e, m), pt = pbBez(e, t);
+    d += ` Q${(pm.x - tg.y * s).toFixed(1)},${(pm.y + tg.x * s).toFixed(1)} ${pt.x.toFixed(1)},${pt.y.toFixed(1)}`;
   }
   return d;
+}
+
+/* Courber un trait sous le doigt : le point de la courbe à mi-parcours vaut
+   (P1 + 2C + P2) / 4, donc pour qu'il tombe sur le doigt, C = 2·doigt − (P1+P2)/2.
+   Revenu à moins de 4 unités de la droite, le trait est redressé. */
+function pbCourbeVers(e, p){
+  const mx = (e.x1 + e.x2) / 2, my = (e.y1 + e.y2) / 2;
+  if (Math.hypot(p.x - mx, p.y - my) < 4){ delete e.cx; delete e.cy; return; }
+  e.cx = +(2 * p.x - mx).toFixed(1);
+  e.cy = +(2 * p.y - my).toFixed(1);
+}
+/* le trait dont le MILIEU (sur la courbe) est le plus proche du doigt */
+function pbTraitProche(p, max){
+  let pris = null, min = max || 20;
+  pbEtape().elements.forEach(e => {
+    if (!estTrait(e.t)) return;
+    const m = pbBez(e, 0.5), d = Math.hypot(m.x - p.x, m.y - p.y);
+    if (d < min){ min = d; pris = e; }
+  });
+  return pris;
 }
 
 function pbElement(e, clair){
@@ -5558,37 +5617,37 @@ function pbElement(e, clair){
   const C = c(e.t) || '#EDF3FA';
   const L = Math.hypot(e.x2 - e.x1, e.y2 - e.y1);
   if (L < 3) return '';
-  const px = -(e.y2 - e.y1) / L, py = (e.x2 - e.x1) / L;   // unité perpendiculaire
 
   if (e.t === 'ecran'){
-    const b = T.barre;
+    // la barre est perpendiculaire au trait À SON ARRIVÉE (tangente de la courbe)
+    const b = T.barre, d = pbTan(e, 1), px = -d.y, py = d.x;
     return `<g stroke="${C}" stroke-width="${T.trait + 0.3}" fill="none" stroke-linecap="round">
-      <line x1="${e.x1}" y1="${e.y1}" x2="${e.x2}" y2="${e.y2}"/>
+      <path d="${pbChemin(e)}"/>
       <line x1="${(e.x2 + px * b).toFixed(1)}" y1="${(e.y2 + py * b).toFixed(1)}"
             x2="${(e.x2 - px * b).toFixed(1)}" y2="${(e.y2 - py * b).toFixed(1)}"/></g>`;
   }
   if (e.t === 'dribble')
-    return `<g><path d="${pbOndule(e.x1, e.y1, e.x2, e.y2)}" stroke="${C}" stroke-width="${T.trait}"
-      fill="none" stroke-linecap="round"/>${pbFleche(e.x1, e.y1, e.x2, e.y2, C)}</g>`;
+    return `<g><path d="${pbOndule(e)}" stroke="${C}" stroke-width="${T.trait}"
+      fill="none" stroke-linecap="round"/>${pbFlecheTrait(e, C)}</g>`;
 
   /* MAIN À MAIN — le seul signe ajouté à la notation du tableau.
      Trait plein du porteur vers le receveur, coupé en son milieu par deux
      barres parallèles : le « # » du main à main. Il se lit comme une passe
-     qu'on ne lance pas, et reste reconnaissable en noir et blanc. */
+     qu'on ne lance pas, et reste reconnaissable en noir et blanc. Sur un
+     trait courbe, les barres se posent au milieu DE LA COURBE. */
   if (e.t === 'main'){
-    const mx = (e.x1 + e.x2) / 2, my = (e.y1 + e.y2) / 2;
-    const ux = (e.x2 - e.x1) / L, uy = (e.y2 - e.y1) / L, b = 5, ecart = 2.4;
-    const barre = s => `<line x1="${(mx + ux * s + px * b).toFixed(1)}" y1="${(my + uy * s + py * b).toFixed(1)}"
-      x2="${(mx + ux * s - px * b).toFixed(1)}" y2="${(my + uy * s - py * b).toFixed(1)}"/>`;
+    const m = pbBez(e, 0.5), u = pbTan(e, 0.5), px = -u.y, py = u.x, b = 5, ecart = 2.4;
+    const barre = s => `<line x1="${(m.x + u.x * s + px * b).toFixed(1)}" y1="${(m.y + u.y * s + py * b).toFixed(1)}"
+      x2="${(m.x + u.x * s - px * b).toFixed(1)}" y2="${(m.y + u.y * s - py * b).toFixed(1)}"/>`;
     return `<g><g stroke="${C}" stroke-width="${T.trait}" fill="none" stroke-linecap="round">
-      <line x1="${e.x1}" y1="${e.y1}" x2="${e.x2}" y2="${e.y2}"/>${barre(-ecart)}${barre(ecart)}</g>
-      ${pbFleche(e.x1, e.y1, e.x2, e.y2, C)}</g>`;
+      <path d="${pbChemin(e)}"/>${barre(-ecart)}${barre(ecart)}</g>
+      ${pbFlecheTrait(e, C)}</g>`;
   }
 
   const tirets = e.t === 'passe' ? ' stroke-dasharray="5,3.5"' : '';
-  return `<g><line x1="${e.x1}" y1="${e.y1}" x2="${e.x2}" y2="${e.y2}" stroke="${C}"
+  return `<g><path d="${pbChemin(e)}" stroke="${C}" fill="none"
     stroke-width="${T.trait}" stroke-linecap="round"${tirets}/>
-    ${pbFleche(e.x1, e.y1, e.x2, e.y2, C, e.t === 'tir')}</g>`;
+    ${pbFlecheTrait(e, C, e.t === 'tir')}</g>`;
 }
 
 const pbDessin = (els, clair) => (els || []).map(e => pbElement(e, clair)).join('');
@@ -5708,6 +5767,9 @@ function vueEditeurPb(){
       <span class="pb-sym">${pbVignette(o.id)}</span>
       <span>${esc(o.lib)}</span></button>`).join('')}
   </div>
+  ${PB.outil === 'deplacer' ? `<p class="carte-note centre" style="margin-top:6px">
+    Tire un joueur, le ballon ou un plot pour le déplacer —
+    ou <b>le milieu d'un trait pour le courber</b> (ramène-le sur la ligne pour le redresser).</p>` : ''}
 
   <div class="g3" style="margin-top:10px">
     <button class="bouton fant" onclick="pbAnnule()">↩ Annuler</button>
@@ -5748,7 +5810,7 @@ function pbVignette(t, clair){
                          return petite(`<g stroke="${C}" stroke-width="1.8" stroke-linecap="round"><line x1="5" y1="10" x2="24" y2="10"/><line x1="13" y1="5" x2="13" y2="15"/><line x1="17" y1="5" x2="17" y2="15"/></g>${pbFleche(5,10,27,10,C)}`); }
   if (t === 'gomme')   return petite(`<path d="M8,14 L18,4 L26,12 L20,18 L10,18 Z" fill="none" stroke="${G}" stroke-width="2"/>`);
   const C = PB_COUL[t][clair ? 'clair' : 'nuit'];
-  if (t === 'dribble') return petite(`<path d="${pbOndule(5,10,25,10).replace(/,10/g,',10')}" stroke="${C}" stroke-width="2" fill="none"/>${pbFleche(5,10,27,10,C)}`);
+  if (t === 'dribble') return petite(`<path d="${pbOndule({x1: 5, y1: 10, x2: 25, y2: 10})}" stroke="${C}" stroke-width="2" fill="none"/>${pbFleche(5,10,27,10,C)}`);
   if (t === 'ecran')   return petite(`<line x1="5" y1="10" x2="25" y2="10" stroke="${C}" stroke-width="2.4"/><line x1="25" y1="4" x2="25" y2="16" stroke="${C}" stroke-width="2.4"/>`);
   const d = t === 'passe' ? ' stroke-dasharray="5,4"' : '';
   return petite(`<line x1="5" y1="10" x2="24" y2="10" stroke="${C}" stroke-width="2.4"${d}/>${pbFleche(5,10,27,10,C,t === 'tir')}`);
@@ -5862,11 +5924,26 @@ const pbLisse = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 function pbImage(k, t){
   const A = PB.etapes[k].elements, B = (PB.etapes[k + 1] || PB.etapes[k]).elements;
   const ia = pbIndex(A), ib = pbIndex(B), u = pbLisse(Math.min(1, Math.max(0, t)));
+  /* Un joueur (ou le ballon) dont le trajet a été dessiné COURBE suit la
+     courbe, pas la corde. On reconnaît son trait à ses deux bouts : il part
+     près de sa place au temps N et arrive près de sa place au temps N+1. Le
+     ballon part de la main du porteur, pas de son centre : d'où la marge. */
+  const courbes = A.filter(e => estTrait(e.t) && pbCourbe(e));
+  const trajet = (a, b) => courbes
+    .filter(e => Math.hypot(a.x - e.x1, a.y - e.y1) < 26 && Math.hypot(b.x - e.x2, b.y - e.y2) < 26)
+    .sort((p, q) => Math.hypot(a.x - p.x1, a.y - p.y1) - Math.hypot(a.x - q.x1, a.y - q.y1))[0];
+  const sur = (a, b) => {
+    const tr = trajet(a, b);
+    if (!tr) return {x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u};
+    // même courbe, recalée sur les vraies places de départ et d'arrivée
+    const c = {x: tr.cx + ((a.x - tr.x1) + (b.x - tr.x2)) / 2,
+               y: tr.cy + ((a.y - tr.y1) + (b.y - tr.y2)) / 2};
+    return pbBez({x1: a.x, y1: a.y, x2: b.x, y2: b.y, cx: c.x, cy: c.y}, u);
+  };
   const sortie = [];
   ia.forEach((a, cle) => {
     const b = ib.get(cle);
-    if (b) sortie.push(Object.assign({}, a, {x: +(a.x + (b.x - a.x) * u).toFixed(1),
-                                               y: +(a.y + (b.y - a.y) * u).toFixed(1)}));
+    if (b){ const p = sur(a, b); sortie.push(Object.assign({}, a, {x: +p.x.toFixed(1), y: +p.y.toFixed(1)})); }
     else if (u < .5) sortie.push(a);                 // il quitte le dessin à mi-chemin
   });
   ib.forEach((b, cle) => { if (!ia.has(cle) && u >= .5) sortie.push(b); });   // il y entre
@@ -6126,6 +6203,7 @@ function branchePlaybook(){
   enrob._pb = true;
   let depart = null;
   let saisi = null;            // le symbole qu'on fait glisser avec l'outil Déplacer
+  let courbe = null;           // ou le trait qu'on courbe en tirant son milieu
 
   const svg = () => document.getElementById('pbSvg');
 
@@ -6133,8 +6211,11 @@ function branchePlaybook(){
     const s = svg(); if (!s || !PB || PB_ANIM) return;
     const p = pbPoint(ev, s);
     if (PB.outil === 'deplacer'){
+      /* un symbole d'abord : un joueur posé sur le milieu d'une course doit
+         rester attrapable ; sinon, le milieu d'un trait, qu'on courbe */
       saisi = pbSymboleProche(p, 20);
-      if (!saisi){ toast('Vise un joueur, un plot ou le ballon'); return; }
+      if (!saisi) courbe = pbTraitProche(p, 20);
+      if (!saisi && !courbe){ toast('Vise un joueur, le ballon, un plot — ou le milieu d\'un trait pour le courber'); return; }
       enrob.setPointerCapture(ev.pointerId);
       return;
     }
@@ -6147,10 +6228,11 @@ function branchePlaybook(){
   });
 
   enrob.addEventListener('pointermove', ev => {
-    if (saisi && PB){
+    if ((saisi || courbe) && PB){
       const s = svg(); if (!s) return;
       const p = pbPoint(ev, s);
-      saisi.x = p.x; saisi.y = p.y;
+      if (saisi){ saisi.x = p.x; saisi.y = p.y; }
+      else pbCourbeVers(courbe, p);
       majDessinPb();
       return;
     }
@@ -6162,7 +6244,7 @@ function branchePlaybook(){
   });
 
   enrob.addEventListener('pointerup', ev => {
-    if (saisi){ saisi = null; rendVue(); return; }
+    if (saisi || courbe){ saisi = null; courbe = null; rendVue(); return; }
     if (!depart || !PB) return;
     const s = svg();
     const p = s ? pbPoint(ev, s) : null;
@@ -6172,7 +6254,7 @@ function branchePlaybook(){
     }
     rendVue();
   });
-  enrob.addEventListener('pointercancel', () => { depart = null; saisi = null; if (PB) PB.provisoire = null; rendVue(); });
+  enrob.addEventListener('pointercancel', () => { depart = null; saisi = null; courbe = null; if (PB) PB.provisoire = null; rendVue(); });
 }
 
 function poseSymbole(p){
