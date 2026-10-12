@@ -5315,10 +5315,14 @@ function enregistreAdaptation(){
                objectif: A.objectif.trim(), deroule};
     DB.variantes = DB.variantes || [];
     DB.variantes.unshift(v);
+    /* auteur_id = l'identifiant d'effectif (« st02 »), PAS le rôle : la règle
+       d'accès de la table exige auteur_id = mon_staff(). Avec le rôle, chaque
+       adaptation d'un coach était refusée par la base (vérifié en production
+       le 12/10/2026). */
     enregistrer('exercices_variantes', {id: v.id, exercice_id: A.base, titre: v.titre, note: v.note,
                                         duree: v.duree, joueurs: v.joueurs, materiel: v.materiel,
                                         objectif: v.objectif, deroule: v.deroule,
-                                        auteur_id: (E.moi || {}).id || null});
+                                        auteur_id: (E.moi || {}).staffId || (E.moi || {}).id || null});
     toast('Ta version est enregistrée');
   }
   BIB.adapte = null;
@@ -6674,9 +6678,22 @@ async function videFile(){
            tout en file : la reprise périodique repasse par le rafraîchissement
            ci-dessus, et si le jeton est bel et bien mort, la personne se
            reconnecte et sa saisie repart. */
-        if (e.statut === 401 || e.statut === 403){
+        /* SAUF le refus d'une règle d'accès (code Postgres 42501, rendu en
+           403 par PostgREST avec un jeton valide). Là, c'est bien la LIGNE
+           qui est refusée, et la session est saine. La traiter comme une
+           session expirée gardait la ligne en tête de file pour toujours —
+           et bloquait derrière elle tout ce que l'appareil écrivait ensuite :
+           messages, systèmes, présences. Vu le 12/10/2026 sur les adaptations
+           d'exercices des coachs. Elle sort de la file et elle est signalée. */
+        const refusRegle = e.statut === 403 && /42501|row-level security/i.test(e.message || '');
+        if ((e.statut === 401 || e.statut === 403) && !refusRegle){
           FA_ETAT = 'attente';
           break;
+        }
+        if (refusRegle){
+          await FA.oter(it.id);
+          FA_REFUS.push({table: it.table, quand: it.quand, motif: 'refusé par les règles d\'accès'});
+          continue;
         }
         // Les autres 4xx : la base refuse la ligne elle-même. La réessayer
         // indéfiniment bloquerait tout ce qui suit — on la sort et on signale.
@@ -7409,7 +7426,11 @@ async function chargerSupabase(){
       etapes: Array.isArray(s.etapes) && s.etapes.length ? s.etapes : [{elements: [], note: ''}]
     })) : (DB.systemes || []),
     variantes: (variantes && variantes.length) ? variantes.map(v => ({
-      id: v.id, exercice: v.exercice_id, auteur: v.auteur_id || '', date: fr(v.cree_le),
+      /* auteur_id est l'identifiant d'effectif (« st02 ») — la règle d'accès
+         l'exige ; les écrans désignent le staff par son rôle (« hc »). */
+      id: v.id, exercice: v.exercice_id,
+      auteur: ((staff || []).find(s => s.id === v.auteur_id) || {}).role || v.auteur_id || '',
+      date: fr(v.cree_le),
       titre: v.titre, note: v.note || '—', duree: v.duree, joueurs: v.joueurs || '',
       materiel: v.materiel || '', objectif: v.objectif || '', deroule: v.deroule || []
     })) : (DB.variantes || []),
