@@ -1514,29 +1514,16 @@ function nonLusChat(){
   return apres.filter(c => c.auteur !== moi).length;
 }
 
-function compteBadge(i){
-  const o = (PLAN[E.role] || [])[i];
-  if (!o) return 0;
-  const lib = o[1];
-  if (lib === 'Chat') return nonLusChat();
-  if (E.role === 'jr'){
-    const j = E.joueur;
-    if (lib === 'Quiz')
-      return (DB.quiz || []).filter(q => q.joueurs.includes(j.id) && !(j.quizFaits || {})[q.id]).length;
-    if (lib === 'Ma fiche')
-      return j.directives.filter(d => !d.lu).length +
-             clipsJoueur(j.id).filter(c => !c.vu).length;
-  }
-  if (lib === 'Accueil' && EST_COACH(E.role)) return relances().total;
-  return 0;
-}
-
+/* PASTILLES DE NAVIGATION RETIRÉES (12/10/2026, demande de Fathy).
+   Les bulles « 9+ » sur Accueil et Chat restaient allumées en permanence et
+   n'apportaient plus d'information. Le repère de lecture du chat (chatLu,
+   marqueChatLu, nonLusChat) est conservé : il ne coûte rien et permettra de
+   remettre une pastille plus tard si on en veut une. Ce qui attend reste
+   visible dans les écrans eux-mêmes (carte « À relancer » de l'accueil). */
 function rendNav(){
-  $('#nav').innerHTML = PLAN[E.role].map((o,i) => {
-    const n = compteBadge(i);
-    return `<button class="nav-item ${i===E.onglet?'actif':''}" onclick="vaVers(${i})">${ico(o[0])}<span>${esc(o[1])}</span>` +
-      (n ? `<i class="nav-bulle" aria-label="${n} à traiter">${n > 9 ? '9+' : n}</i>` : '') + `</button>`;
-  }).join('');
+  $('#nav').innerHTML = PLAN[E.role].map((o,i) =>
+    `<button class="nav-item ${i===E.onglet?'actif':''}" onclick="vaVers(${i})">${ico(o[0])}<span>${esc(o[1])}</span></button>`
+  ).join('');
 }
 function vaVers(i){
   E.onglet = i; E.fiche = null; E.quiz = null; E.sous = null;
