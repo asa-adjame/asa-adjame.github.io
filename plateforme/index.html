@@ -778,17 +778,28 @@ table.tab tr.nous{background:rgba(255,178,70,.12)}
   .nav-item:hover{color:var(--texte);background:var(--surface)}
   .nav-item.actif{background:var(--or);color:#0A0E17}
 }
+/* Ordinateur (13/10, demande de Fathy) : la barre du haut et le menu restent
+   à l'écran pendant le défilement. position:fixed plutôt que sticky : sticky
+   dépend de ses parents (grille, débordement) et lâchait au défilement. La
+   page défile toujours dans la fenêtre, donc les window.scrollTo(0,0) du code
+   continuent de marcher. */
+@media screen and (min-width:780px){
+  .entete{position:fixed;top:0;left:0;right:0;height:56px;padding-top:0;padding-bottom:0;background:#070B14}
+  #app.on{padding-top:56px}
+  .hf{position:sticky;top:56px}
+  .nav{position:fixed;top:56px;left:0;right:0;bottom:auto;max-width:none;margin:0;z-index:58;
+    justify-content:center;background:rgba(7,11,20,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+  .vue{padding-top:76px}
+}
 /* Grand écran : le menu passe en colonne à gauche, comme la maquette web. */
 @media screen and (min-width:1100px){
-  #app.on{display:grid;grid-template-columns:248px minmax(0,1fr);grid-template-rows:auto auto 1fr;align-items:start}
-  #app.on>.entete{grid-column:1/-1}
-  #app.on>.hf{grid-column:1/-1}
-  #app.on>.nav{grid-column:1;grid-row:3;position:sticky;top:64px;max-width:none;margin:0;
-    flex-direction:column;gap:4px;padding:22px 14px;border:0;border-right:1px solid #1B2740;
-    background:#0A1020;min-height:calc(100vh - 64px);align-self:stretch}
+  #app.on>.nav{top:56px;bottom:0;right:auto;width:248px;
+    flex-direction:column;justify-content:flex-start;gap:4px;padding:22px 14px;overflow-y:auto;
+    border:0;border-right:1px solid #1B2740;background:#0A1020;backdrop-filter:none}
   #app.on>.nav .nav-item{flex:0 0 auto;justify-content:flex-start;width:100%;font-size:14px;padding:11px 15px;gap:12px}
   #app.on>.nav .nav-item svg{width:18px;height:18px}
-  #app.on>.vue{grid-column:2;grid-row:3;padding:28px 36px 48px}
+  #app.on>.hf{margin-left:248px}
+  #app.on>.vue{margin-left:248px;width:auto;max-width:none;padding:28px 36px 48px}
 }
 </style>
 </head>
@@ -5549,14 +5560,31 @@ const PB_PANIER = {x: 150, y: 31.5};
 const PB_HORS = 30;
 
 function terrainPlaybook(id, contenu, clair){
-  const fond   = clair ? '#FFFFFF' : '#0A2748';
-  const trait  = clair ? '#8A8578' : 'rgba(237,243,250,.5)';
+  /* Parquet (13/10, demande de Fathy) : lames verticales qui filent vers le
+     panier, comme dans une salle. Un bois teinté plutôt sombre, pour que les
+     courses blanches, les dribbles dorés et les passes vertes restent lisibles.
+     Le hors-terrain est peint en marine, la couleur du club. L'impression
+     (clair) garde son fond blanc : on n'imprime pas un parquet. */
+  const pq     = `${id}-parquet`;
+  const fond   = clair ? '#FFFFFF' : `url(#${pq})`;
+  const trait  = clair ? '#8A8578' : 'rgba(255,255,255,.82)';
   const cercle = clair ? '#B5462B' : 'var(--or)';
-  const dehors = clair ? '#EFEBE2' : '#061A33';
+  const dehors = clair ? '#EFEBE2' : '#14213D';
   const m = PB_HORS;
+  const lames = clair ? '' : `<defs><pattern id="${pq}" width="30" height="150" patternUnits="userSpaceOnUse">
+    <rect width="30" height="150" fill="#7A4D2A"/>
+    <rect x="0" width="7.5" height="150" fill="#81532E"/>
+    <rect x="7.5" width="7.5" height="150" fill="#744827"/>
+    <rect x="15" width="7.5" height="150" fill="#7E512D"/>
+    <rect x="22.5" width="7.5" height="150" fill="#704525"/>
+    <path d="M7.5 0V150M15 0V150M22.5 0V150M30 0V150M0 46H7.5M7.5 118H15M15 22H22.5M22.5 87H30"
+      stroke="#5C381C" stroke-width=".45" fill="none"/>
+  </pattern></defs>`;
   return `<svg class="pb-svg" id="${id}" viewBox="${-m} ${-m} ${PB_L + 2 * m} ${PB_H + m}" xmlns="http://www.w3.org/2000/svg">
+  ${lames}
   <rect x="${-m}" y="${-m}" width="${PB_L + 2 * m}" height="${PB_H + m}" fill="${dehors}"/>
   <rect width="${PB_L}" height="${PB_H}" fill="${fond}"/>
+  ${clair ? '' : '<rect x="101" y="0" width="98" height="116" fill="rgba(20,33,61,.55)"/>'}
   <g stroke="${trait}" stroke-width="1.6" fill="none" stroke-linecap="round">
     <rect x="0.8" y="0.8" width="${PB_L - 1.6}" height="${PB_H - 1.6}" stroke-width="2"/>
     <line x1="132" y1="0" x2="168" y2="0" stroke-width="4" stroke="${cercle}"/>
