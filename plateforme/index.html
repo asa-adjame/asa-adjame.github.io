@@ -1745,7 +1745,7 @@ function vueAccueil(){
     <div class="ban-titre">${esc(C.nom)}</div>
     <p class="ban-txt">${esc(C.format)}</p>
     <div class="ban-rang">
-      <div><div class="ban-chiffre">${rang}<sup style="font-size:14px">e</sup></div><div class="ban-lib">au classement</div></div>
+      <div><div class="ban-chiffre">${rang}<sup style="font-size:14px">${rang == 1 ? 'er' : 'e'}</sup></div><div class="ban-lib">au classement</div></div>
       <div><div class="ban-chiffre">${nous.v||0}–${nous.d||0}</div><div class="ban-lib">bilan</div></div>
       <div><div class="ban-chiffre">${C.journee}<span style="font-size:15px;color:var(--gris)">/${C.journees}</span></div><div class="ban-lib">journées</div></div>
       <div><div class="ban-chiffre" style="color:${(nous.pp-nous.pc)>=0?'var(--physique)':'var(--danger)'}">${(nous.pp-nous.pc)>=0?'+':''}${(nous.pp||0)-(nous.pc||0)}</div><div class="ban-lib">différentiel</div></div>
@@ -2068,12 +2068,7 @@ function vueClassement(){
       <td class="num">${l.pp}</td><td class="num">${l.pc}</td>
       <td class="num" style="color:${(l.pp-l.pc)>=0?'var(--physique)':'var(--danger)'}">${(l.pp-l.pc)>=0?'+':''}${l.pp-l.pc}</td>
     </tr>`).join('')}</tbody>
-  </table></div>
-  <div class="carte" style="margin-top:12px;border-style:dashed">
-    <p class="msg-txt" style="color:var(--gris);font-size:12.5px">${esc(C.aVerifier)}
-    Le classement se saisit à la main après chaque journée : aucune source publique ne le publie
-    dans un format exploitable automatiquement.</p>
-  </div>`;
+  </table></div>`;
 }
 
 function vueSponsors(){
@@ -2669,14 +2664,7 @@ function vueStaff(){
         : '<p class="carte-note">Pas d\'objectif du mois renseigné.</p>'}
     </div>`;
   }).join('')}
-  ${E.role === 'dt' ? blocEvaluations() : `
-  <div class="carte" style="border-style:dashed">
-    <div class="carte-titre" style="color:var(--gris)">Évaluation du staff</div>
-    <p class="msg-txt" style="margin-top:7px;color:var(--gris)">
-      Les grilles d'évaluation des coachs ne sont pas accessibles depuis ce compte, et ne figurent
-      pas dans le classeur partagé avec le club.
-    </p>
-  </div>`}`;
+  ${E.role === 'dt' ? blocEvaluations() : ''}`;
 }
 
 /* Les grilles d'évaluation — écran du directeur technique, et de lui seul.
@@ -3004,7 +2992,7 @@ function vueTirJoueur(){
   <div class="banniere" style="padding:16px">
     <div class="ban-sur">Classement ${esc(nomEq(j.equipe))} · parcours ${esc(nomParcours(p).toLowerCase())}</div>
     <div class="ban-rang" style="margin-top:8px">
-      <div><div class="ban-chiffre">${rang || '—'}${rang ? '<sup style="font-size:13px">e</sup>' : ''}</div><div class="ban-lib">sur ${cl.length}</div></div>
+      <div><div class="ban-chiffre">${rang || '—'}${rang ? '<sup style="font-size:13px">' + (rang == 1 ? 'er' : 'e') + '</sup>' : ''}</div><div class="ban-lib">sur ${cl.length}</div></div>
       <div><div class="ban-chiffre" style="color:${couleurPct(b.pct)}">${b.pct}%</div><div class="ban-lib">réussite terrain</div></div>
       <div><div class="ban-chiffre">${b.nb}</div><div class="ban-lib">séance${b.nb>1?'s':''}</div></div>
     </div>
@@ -3151,13 +3139,6 @@ function vueEntrainement(){
     <input class="champ" id="entVideo" placeholder="https://drive.google.com/…">
     <button class="bouton plein" style="margin-top:12px" onclick="enregistreSeance()">
       Enregistrer la séance</button>
-  </div>
-
-  <div class="carte" style="border-style:dashed">
-    <p class="msg-txt" style="color:var(--gris);font-size:12.5px">
-      Ton rôle : filmer les séances et relever les statistiques d'entraînement. Les fiches des joueurs,
-      leurs notes et leurs axes de progression ne sont pas accessibles depuis ce compte.
-    </p>
   </div>`;
 }
 
@@ -3716,12 +3697,7 @@ function vueMedical(){
     <textarea class="champ" id="medNote" placeholder="Ce que les coachs et le préparateur doivent respecter."></textarea>
     <button class="bouton plein" style="margin-top:11px" onclick="ajouteMedical()">
       Publier — tout le staff est notifié</button>
-  </div>` : `
-  <div class="carte" style="border-style:dashed">
-    <p class="msg-txt" style="color:var(--gris);font-size:12.5px">
-      Seuls le kiné et le Directeur technique écrivent dans ce secteur. Tu le consultes :
-      c'est la référence commune, elle ne se discute pas par message.</p>
-  </div>`}
+  </div>` : ''}
 
   ${clos.length ? `<div class="section-titre">Clos récemment</div>
   ${clos.map(m => blocMedical(m, false)).join('')}` : ''}`;
@@ -4115,13 +4091,6 @@ function vueClasseur(){
         ${l.ou === 'classeur' ? 'au classeur' : 'dans la plateforme'}</span></td>
       <td style="white-space:normal">${esc(l.qui)}</td></tr>`).join('')}</tbody>
   </table></div>
-  <div class="carte" style="margin-top:10px;border-style:dashed">
-    <p class="msg-txt" style="color:var(--gris);font-size:12.5px">
-      Une donnée ne se modifie jamais des deux côtés. C'est ce qui évite qu'une note corrigée au
-      classeur soit écrasée le lendemain par la plateforme, ou l'inverse. Le challenge de tir est la
-      seule exception à « les chiffres au classeur » : il se relève ballon en main, sur le terrain.
-    </p>
-  </div>
 
   <div class="section-titre">Fiches à imprimer</div>
   <div class="carte">
@@ -4772,14 +4741,8 @@ function vueProchainMatch(){
     <button class="bouton fant" onclick="ouvreClasseur('club')">Ouvrir le classeur ↗</button>
     <button class="bouton" onclick="imprimeFicheMatch('${m.id}')">Fiche A4</button>
   </div>
-  <p class="carte-note" style="margin-top:9px;text-align:center">
-    Tout ce qui est au-dessus vient des onglets 4_SCOUTING et 5_PREPA_MATCH du classeur.
-    Ça ne se modifie pas ici.</p>`
-  : `<div class="carte" style="margin-top:14px;border-style:dashed">
-    <p class="msg-txt" style="color:var(--gris);font-size:12.5px">
-      Le reste du plan de match — scouting détaillé, consignes défensives, rotations — se donne
-      en réunion et au vestiaire. Il n'est pas affiché ici.</p>
-  </div>`}`;
+`
+  : ''}`;
 }
 
 /* ═══════════════════════════════════ RAPPORT AU PRÉSIDENT ═══════════════════════════════════
