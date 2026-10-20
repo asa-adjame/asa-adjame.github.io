@@ -831,7 +831,7 @@ table.tab tr.nous{background:rgba(255,178,70,.12)}
 
   <div class="cx-panneau">
     <h1 class="cx-bienvenue">Bienvenue sur la plateforme du club</h1>
-    <p class="cx-sous">Suivi des joueurs, des séances et des rencontres — équipes pro et espoirs de l'ASA.</p>
+    <p class="cx-sous">Suivi des joueurs, des séances et des rencontres — équipe pro de l'ASA.</p>
 
     <form class="cx-form" id="cxForm" onsubmit="tenteCode(event)">
       <label class="label" for="cxCode">Code d'accès personnel</label>
@@ -929,6 +929,37 @@ const $$ = (s,r) => Array.from((r||document).querySelectorAll(s));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
   c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const parEq = e => DB.joueurs.filter(j => j.equipe === e);
+
+/* ─────────────────────────────────────────── les équipes ouvertes
+
+   20/10/2026 : la plateforme se concentre sur l'équipe Pro. Les Espoirs ne
+   sont PAS supprimés — ni dans la base, ni dans le classeur, ni dans le code :
+   ils sont seulement écartés à l'affichage, ici et nulle part ailleurs.
+   Pour les rouvrir : EQUIPES_ACTIVES = ['pro', 'espoirs'], et c'est tout.
+
+   Le filtre s'applique à chaque fois que DB est posé ou remplacé (connexion,
+   rechargement des données du club). Il ne touche que la copie en mémoire :
+   aucune écriture ne part d'ici, rien n'est effacé côté serveur. */
+const EQUIPES_ACTIVES = ['pro'];
+const equipeOuverte = e => !e || e === '*' || EQUIPES_ACTIVES.includes(e);
+function focusEquipes(){
+  if (typeof DB === 'undefined' || !DB) return;
+  const garde = x => equipeOuverte(x && x.equipe);
+  DB.equipes = (DB.equipes || []).filter(e => EQUIPES_ACTIVES.includes(e.id));
+  if (!DB.equipes.length) DB.equipes = [{id: 'pro', nom: 'Équipe Pro'}];
+  ['joueurs', 'quiz', 'seances', 'oppositions', 'prepaMatch', 'systemes',
+   'planning', 'comptesDemo'].forEach(k => {
+    if (Array.isArray(DB[k])) DB[k] = DB[k].filter(garde);
+  });
+  (DB.staff || []).forEach(m => {
+    if (Array.isArray(m.equipes)) m.equipes = m.equipes.filter(e => EQUIPES_ACTIVES.includes(e));
+  });
+  if (typeof E !== 'undefined' && E){
+    E.equipes = (E.equipes || []).filter(e => EQUIPES_ACTIVES.includes(e));
+    if (!E.equipes.length) E.equipes = DB.equipes.map(e => e.id);
+    if (!E.equipes.includes(E.equipe)) E.equipe = E.equipes[0];
+  }
+}
 const parId = id => DB.joueurs.find(j => j.id === id);
 const membre = id => DB.staff.find(s => s.id === id) || {};
 const nomEq = e => (DB.equipes.find(x => x.id === e) || {}).nom || e;
@@ -1437,6 +1468,7 @@ const PLAN = {
    construit en vidant les données, et ceux-ci partent avec. Les laisser en
    dur ici les aurait publiés, inertes mais lisibles. */
 function comptes(){
+  focusEquipes();
   const demo = c => {
     const j = parEq(c.equipe)[c.rang];
     return j ? [{code: c.code, role: 'jr', id: 'j-' + c.equipe, joueur: j.id,
@@ -1521,6 +1553,7 @@ async function tenteCode(ev){
       code:    'Ce code ne correspond à aucun compte.',
       bloque:  'Trop d\'essais depuis cet appareil. Patiente quelques minutes.',
       reseau:  'Plateforme injoignable. Réessaie dans un instant.',
+      equipe:  'La plateforme est réservée à l\'équipe pro pour le moment.',
       role:    'Ton compte existe mais aucun rôle ne lui est attribué. ' +
                'Le directeur technique doit corriger la ligne dans le classeur.',
       serveur: 'Le serveur a rencontré un problème. Ton code n\'est pas en cause — '
@@ -1567,6 +1600,7 @@ async function tenteCode(ev){
    le chemin pour y arriver n'existe pas. */
 function relieSession(){
   if (!E.role) return false;
+  focusEquipes();
   if (E.role === 'jr'){
     const j = parId((E.joueur || E.moi || {}).id);
     if (!j) return false;
@@ -1604,6 +1638,7 @@ function relieSession(){
 }
 
 function connexion(role, id, joueurId){
+  focusEquipes();
   E.role = role;
   E.moi = role === 'jr' ? parId(joueurId) : membre(id);
   E.joueur = role === 'jr' ? parId(joueurId) : null;
@@ -1877,7 +1912,9 @@ function blocAccueilRole(){
     <div class="g4">
       <div class="tuile blanc"><div class="tuile-val">${DB.joueurs.length}</div><div class="tuile-lib">Joueurs<br>suivis</div></div>
       <div class="tuile"><div class="tuile-val">${moyTirGroupe(pro).pct}<small style="font-size:14px">%</small></div><div class="tuile-lib">Tir<br>pro</div></div>
-      <div class="tuile bleu"><div class="tuile-val">${moyTirGroupe(esp).pct}<small style="font-size:14px">%</small></div><div class="tuile-lib">Tir<br>espoirs</div></div>
+      ${equipeOuverte('espoirs')
+        ? `<div class="tuile bleu"><div class="tuile-val">${moyTirGroupe(esp).pct}<small style="font-size:14px">%</small></div><div class="tuile-lib">Tir<br>espoirs</div></div>`
+        : `<div class="tuile bleu"><div class="tuile-val">${adapte}</div><div class="tuile-lib">Reprise<br>adaptée</div></div>`}
       <div class="tuile ${indispo?'rouge':'vert'}"><div class="tuile-val">${indispo}</div><div class="tuile-lib">Indispo-<br>nibles</div></div>
     </div>
     ${carteRelances()}
@@ -2730,8 +2767,8 @@ function blocEvaluations(){
       <div style="min-width:0"><div class="carte-titre">Pour toi seul</div>
         <div class="carte-note">${esc(derniere || '')}</div></div>
     </div>
-    <p class="msg-txt">Huit critères par rôle, pondérés selon le groupe : chez les espoirs, le
-    développement individuel pèse plus que le résultat. La fiche se remet en entretien.</p>
+    <p class="msg-txt">Huit critères par rôle${equipeOuverte('espoirs') ? `, pondérés selon le groupe : chez les espoirs, le
+    développement individuel pèse plus que le résultat` : ''}. La fiche se remet en entretien.</p>
     <p class="carte-note" style="margin-top:9px">Aucun coach n'y accède. Rien de ce qui est ici
     ne part dans le rapport au président ni dans le fil du staff.</p>
     <div style="display:grid;gap:8px;margin-top:12px">
@@ -5372,7 +5409,7 @@ function vueAdaptation(){
           oninput="BIB.adapte.duree=Math.max(1,Math.min(60,parseInt(this.value,10)||0))"></div>
       <div><label class="label" for="adNiveau">Groupe</label>
         <select class="champ" id="adNiveau" onchange="BIB.adapte.niveau=this.value">
-          ${['Tous','Pro','Espoirs'].map(n => `<option ${A.niveau === n ? 'selected' : ''}>${n}</option>`).join('')}
+          ${['Tous','Pro','Espoirs'].filter(n => n === 'Tous' || equipeOuverte(n.toLowerCase())).map(n => `<option ${A.niveau === n ? 'selected' : ''}>${n}</option>`).join('')}
         </select></div>
     </div>
 
@@ -7172,6 +7209,7 @@ function poseEffectifASA(lignes){
   const tous = DB.equipes.map(e => e.id);
   DB.staff.forEach(m => { if (!m.equipes.length) m.equipes = tous.slice(); });
 
+  focusEquipes();
   return joueurs.length;
 }
 
@@ -7190,6 +7228,9 @@ async function identifieParCode(code){
      valide et n'ouvre rien : c'est voulu, et c'est à corriger dans le
      classeur, pas à rattraper par un rôle par défaut. */
   if (!role || !PLAN[role]) return {ok: false, raison: 'role'};
+  /* Équipe fermée pour le moment (voir EQUIPES_ACTIVES) : on le dit, plutôt
+     que d'ouvrir un écran sans joueur. Rien n'est fait côté serveur. */
+  if (role === 'jr' && r.equipe && !equipeOuverte(r.equipe)) return {ok: false, raison: 'equipe'};
 
   SOURCE.jeton  = (r.session && r.session.access_token) || null;
   /* club_id reste vide à cet instant : la fonction Edge rend le rôle et le
@@ -7198,6 +7239,14 @@ async function identifieParCode(code){
   SOURCE.membre = {id: r.id, role: role, nom: r.nom, club_id: SOURCE.clubId || null};
 
   const lignes = await serveurEffectif();
+  /* La fonction de connexion ne dit pas toujours l'équipe ; la ligne du joueur
+     dans l'effectif, si. Sans ce second contrôle, un joueur d'une équipe fermée
+     filtré hors de l'effectif était recréé plus bas en fiche vide « pro ». */
+  const sienne = role === 'jr' && (lignes || []).find(l => l.id === r.id);
+  if (sienne && !equipeOuverte(sienne.equipe)){
+    SOURCE.jeton = null; SOURCE.membre = null;
+    return {ok: false, raison: 'equipe'};
+  }
   if (lignes) poseEffectifASA(lignes);
 
   /* Le joueur ne reçoit que lui : on complète avec ce que la connexion a déjà
