@@ -945,9 +945,25 @@ const moisCourt = i => (DB.mois[i] || {}).court || ('M' + (i + 1));
 const moisNom = i => (DB.mois[i] || {}).nom || '';
 
 /* Date de référence — une seule source, pour que « aujourd'hui » veuille dire
-   la même chose dans la saisie de tir, les relances et le fil du staff. */
-const AUJ    = () => DB.aujourdhui   || '2026-12-16';
-const AUJ_FR = () => DB.aujourdhuiFr || '16/12/2026';
+   la même chose dans la saisie de tir, les relances et le fil du staff.
+
+   En ligne, c'est la date du téléphone. La date figée du 16/12/2026 n'existe
+   que pour la démonstration, dont les données sont écrites autour d'elle.
+   Avant le 20/10/2026 elle servait AUSSI en production : le planning s'ouvrait
+   en décembre et les séances, oppositions et signalements étaient datés du
+   16/12. La garde try/catch couvre l'appel avant que la source soit posée. */
+const dateDuJour = () => {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+const AUJ = () => {
+  try { if (enLigne()) return dateDuJour(); } catch (e){}
+  return DB.aujourdhui || '2026-12-16';
+};
+const AUJ_FR = () => {
+  try { if (enLigne()) { const [a, m, j] = dateDuJour().split('-'); return `${j}/${m}/${a}`; } } catch (e){}
+  return DB.aujourdhuiFr || '16/12/2026';
+};
 const jourFr = d => { const [a,m,j] = String(d).split('-'); return (j && m) ? `${j}/${m}/${a}` : d; };
 const jourIso = d => { const [j,m,a] = String(d).split('/'); return (a && m) ? `${a}-${m}-${j}` : d; };
 const ecartJours = iso => Math.round((Date.parse(AUJ()) - Date.parse(iso)) / 86400000);
