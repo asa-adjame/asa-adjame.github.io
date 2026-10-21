@@ -7694,6 +7694,10 @@ async function chargerSupabase(){
       return {
         id: p.id, adversaire: p.adversaire, date: (p.date_match || '').split('-').reverse().join('/'),
         equipe: p.equipe_code, lieu: c.lieu || '', coach: c.coach || '',
+        /* 21/10/2026 : l'heure, la salle et la convocation viennent des trois
+           colonnes ajoutées à 4_PREPA_MATCH. Les écrans savaient déjà les
+           afficher ; personne ne les recopiait. */
+        heure: c.heure || '', salle: c.salle || '', convocation: c.convocation || '',
         statut: p.statut || '', cles: c.cles || [], cinq: sc.cinq || [],
         forces: sc.forces || '', faiblesses: sc.faiblesses || '',
         neutraliser: sc.neutraliser || '', systemes: sc.systemes || '',
