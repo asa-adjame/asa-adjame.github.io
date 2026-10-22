@@ -6739,7 +6739,7 @@ let FA_MINUTERIE = null;
 
 const LIB_TABLE = {
   sessions_tir:'Session de tir', tirs_opposition:'Tir en opposition', oppositions:'Opposition',
-  seances:'Séance', medical:'Signalement médical', messages:'Message au staff',
+  seances:'Séance', departs:'Départ anticipé', medical:'Signalement médical', messages:'Message au staff',
   quiz:'Quiz', quiz_reponses:'Réponse au quiz', directives:'Consigne',
   mots_coach:'Mot du coach', preferences_joueur:'Questionnaire joueur',
   observations:'Observation', sponsors:'Partenaire', clips:'Clip vidéo',
@@ -6755,7 +6755,7 @@ const libTable = t => LIB_TABLE[t] || t;
 /* « quiz_reponses » s'y ajoute le 12/10/2026 : sa clé est (quiz_id, joueur_id)
    et elle n'a jamais eu de club_id. Chaque réponse d'un joueur partait avec
    un club_id ajouté ici, revenait en 400 et sortait de la file. */
-const SANS_CLUB = ['presences', 'quiz_reponses'];
+const SANS_CLUB = ['presences', 'quiz_reponses', 'departs'];
 
 /* Un identifiant définitif, fabriqué dans la page au moment de la saisie.
 
@@ -7418,7 +7418,7 @@ async function chargerSupabase(){
   // échouer l'ouverture de la plateforme si la table est vide ou refusée.
   const sansEchec = p => p.catch(() => []);
   const [clips, prepas, scouts, exos, systemes, variantes, sessionsTir,
-         championnatBase] = await Promise.all([
+         championnatBase, departs] = await Promise.all([
     sansEchec(api('clips?select=*&club_id=eq.' + club.id + '&order=cree_le.desc')),
     sansEchec(api('prepa_match?select=*&club_id=eq.' + club.id + '&order=date_match.desc')),
     sansEchec(api('scouting?select=*&club_id=eq.' + club.id)),
@@ -7451,7 +7451,11 @@ async function chargerSupabase(){
        Elle n'est PAS dans la liste blanche de construction, et c'est voulu :
        un classement de démonstration figé dans le fichier publié vaudrait
        moins que rien. Il doit venir d'ici, ou rester vide. */
-    sansEchec(api('championnat?select=*&club_id=eq.' + club.id + '&limit=1'))
+    sansEchec(api('championnat?select=*&club_id=eq.' + club.id + '&limit=1')),
+    /* Les départs anticipés (22/10/2026). La base ne les rend qu'au DT, aux
+       coachs, au kiné et à l'assistant : pour les autres rôles la liste revient
+       vide, et c'est voulu. */
+    sansEchec(api('departs?select=seance_id,joueur_id,heure,motif,autorise_par'))
   ]);
 
   /* LE CHEMIN DU RETOUR, ACHEVÉ (12/10/2026).
@@ -7665,12 +7669,24 @@ async function chargerSupabase(){
       const d = {
         id: s.id, libelle: s.libelle, type: s.type, date: s.date_seance,
         equipe: s.equipe_code, video: s.video_url, duree: s.duree || '—',
-        intensite: s.intensite
+        intensite: s.intensite, saisiPar: s.saisi_par || '',
+        /* 22/10/2026 : les heures de la séance. Une séance ouverte à l'appel
+           (elle a un début) et pas encore close (pas de fin), datée
+           d'aujourd'hui, est rouverte : avant, recharger la page pendant
+           l'entraînement faisait perdre la séance en cours. */
+        heure: s.heure_debut || '', limite: s.heure_limite || '', fin: s.heure_fin || '',
+        ouverte: !!(s.heure_debut && !s.heure_fin && s.date_seance === AUJ())
       };
-      if (lignes.length) d.appel = lignes.map(p => ({
-        joueur: p.joueur_id, present: p.present !== false,
-        heure: p.heure || null, retard: !!p.retard, voie: p.voie || 'manuel'
-      }));
+      if (lignes.length) d.appel = lignes.map(p => {
+        const dp = (departs || []).find(x => x.seance_id === s.id && x.joueur_id === p.joueur_id);
+        const auteur = dp ? (staff || []).find(x => x.id === dp.autorise_par) : null;
+        return {
+          joueur: p.joueur_id, present: p.present !== false,
+          heure: p.heure || null, retard: !!p.retard, voie: p.voie || 'manuel',
+          depart: dp ? {heure: dp.heure, motif: dp.motif || '', par: dp.autorise_par || '',
+                        parNom: auteur ? auteur.nom : ''} : null
+        };
+      });
       return d;
     }),
     observations: (obs || []).map(o => ({
@@ -9439,6 +9455,32 @@ const presentsDe = s => appelDe(s).filter(p => p.present !== false).length;
 const retardsDe  = s => appelDe(s).filter(p => p.present !== false && p.retard).length;
 const pointeDe   = (s, id) => appelDe(s).find(p => p.joueur === id) || null;
 
+/* ── Les départs anticipés (22/10/2026) ──────────────────────────────────────
+   Un joueur qui part avant la fin demande l'autorisation à l'assistant, qui
+   note l'heure et le motif. Les autres « sortent » à la clôture. Le temps réel
+   va de l'arrivée (ou du début, pour celui qui est arrivé avant) au départ, ou
+   à la fin de la séance.
+
+   Qui les voit : le DT (dont le président et le secrétaire général), le head
+   coach, les coachs assistants, le kiné et l'assistant. Pas les joueurs, ni
+   l'analyste, ni le préparateur. La base applique la même règle sur la table
+   « departs » : pour les autres, la liste revient vide. */
+const VOIT_DEPARTS = r => ['dt', 'hc', 'ca', 'cd', 'ki', 'as'].indexOf(r) >= 0;
+const departsDe = s => appelDe(s).filter(p => p.present !== false && p.depart).length;
+
+/** Minutes réellement passées à la séance, ou null si on ne peut pas le dire. */
+function minutesReelles(s, p){
+  if (!s || !p || p.present === false) return null;
+  const debut = enMinutes(s.heure), arrivee = enMinutes(p.heure);
+  const sortie = enMinutes(p.depart ? p.depart.heure : s.fin);
+  const de = (arrivee != null && debut != null) ? Math.max(arrivee, debut)
+           : (arrivee != null ? arrivee : debut);
+  if (de == null || sortie == null) return null;
+  return Math.max(0, sortie - de);
+}
+const enDuree = m => m == null ? '—'
+  : (m >= 60 ? Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0') : m + ' min');
+
 /* L'heure au format que porte la base : « 18:05 ». */
 function heureMin(d){
   return String(d.getHours()).padStart(2, '0') + ':'
@@ -9515,22 +9557,36 @@ function ouvreSeance(){
   DB.seances.forEach(x => { x.ouverte = false; });
   DB.seances.unshift(s);
 
-  enregistrer('seances', {
-    id: s.id, equipe_code: eq, date_seance: AUJ(), type: 'entrainement',
-    libelle: lib, saisi_par: (E.moi || {}).id || null
-  }, 'id');
+  enregistrer('seances', ligneSeance(s), 'id');
 
   rendVue();
   toast('Séance ouverte. Tu peux scanner.');
+}
+
+/* La ligne complète de la séance. Renvoyée telle quelle à la clôture : un
+   upsert doit porter les colonnes obligatoires, même quand seule l'heure de
+   fin change. */
+function ligneSeance(s){
+  return {
+    id: s.id, equipe_code: s.equipe, date_seance: jourIso(s.date), type: 'entrainement',
+    libelle: s.libelle, saisi_par: s.saisiPar || (E.moi || {}).id || null,
+    heure_debut: s.heure || null, heure_limite: s.limite || null, heure_fin: s.fin || null
+  };
 }
 
 function fermeSeance(){
   const s = seanceOuverte();
   if (!s) return;
   s.ouverte = false;
+  /* L'heure de fin : c'est la sortie de tous ceux qui ne sont pas partis
+     avant. Sans elle, aucun temps réel ne se calcule. */
+  s.fin = heureMin(new Date());
+  enregistrer('seances', ligneSeance(s), 'id');
   if (typeof LECTEUR !== 'undefined') LECTEUR.arrete();
+  const dep = departsDe(s);
   journalChat('a clos l\'appel — ' + nomEq(s.equipe) + ' · ' + presentsDe(s)
-              + ' présent(s), ' + retardsDe(s) + ' en retard');
+              + ' présent(s), ' + retardsDe(s) + ' en retard'
+              + (dep ? ', ' + dep + ' départ(s) anticipé(s)' : ''));
   rendVue(); rendNav();
   toast('Séance close. ' + presentsDe(s) + ' présence(s) enregistrée(s).');
 }
@@ -9543,6 +9599,34 @@ function pointeManuel(idJoueur){
   const j = DB.joueurs.find(x => x.id === idJoueur);
   rendVue();
   toast((j ? j.nom : idJoueur) + ' pointé à la main.');
+}
+
+/* ── Le départ anticipé : ouvrir le petit formulaire, puis confirmer ───── */
+function ouvreDepart(idJoueur){
+  E.departEnCours = (E.departEnCours === idJoueur) ? null : idJoueur;
+  rendVue();
+}
+
+function confirmeDepart(idJoueur){
+  const s = seanceOuverte();
+  const p = pointeDe(s, idJoueur);
+  if (!s || !p || p.present === false) { toast('Ce joueur n\'est pas pointé présent.'); return; }
+  const heure = (($('#dp-h') || {}).value || heureMin(new Date())).slice(0, 5);
+  const motif = ((($('#dp-motif') || {}).value) || '').trim();
+  if (enMinutes(heure) == null) { toast('Heure de départ invalide.'); return; }
+  if (enMinutes(p.heure) != null && enMinutes(heure) < enMinutes(p.heure)) {
+    toast('Le départ ne peut pas précéder l\'arrivée (' + p.heure + ').'); return;
+  }
+  const moi = E.moi || {};
+  p.depart = {heure: heure, motif: motif, par: moi.id || '', parNom: moi.nom || ''};
+  enregistrer('departs', {
+    seance_id: s.id, joueur_id: idJoueur, heure: heure,
+    motif: motif || null, autorise_par: moi.id || null
+  }, 'seance_id,joueur_id');
+  E.departEnCours = null;
+  const j = DB.joueurs.find(x => x.id === idJoueur);
+  rendVue();
+  toast((j ? j.nom : idJoueur) + ' : départ noté à ' + heure + '.');
 }
 
 /* ─────────────────────────────────────────── l'écran de l'assistant */
@@ -9602,18 +9686,22 @@ function vueSeanceOuverte(s){
     <div class="tuile blanc"><div class="tuile-val">${l.length - pre}</div>
       <div class="tuile-lib">Pas encore<br>pointés</div></div>
   </div>
+  ${departsDe(s) ? `<p class="carte-note" style="margin:8px 0 0">${departsDe(s)}
+     départ(s) anticipé(s) noté(s).</p>` : ''}
 
   <div class="section-titre">Effectif</div>
-  <div class="carte">${l.map(j => ligneAppel(j, pointeDe(s, j.id), true)).join('')}</div>
+  <div class="carte">${l.map(j => ligneAppel(j, pointeDe(s, j.id), true, s)).join('')}</div>
 
   <p class="carte-note" style="margin:12px 0">
     « Pointer » sert à celui qui a oublié son téléphone ou son badge. La présence
-    est alors marquée « à la main » : la garantie, c'est toi qui l'as vu.</p>
+    est alors marquée « à la main » : la garantie, c'est toi qui l'as vu.<br>
+    « Départ » sert au joueur qui te demande l'autorisation de partir avant la
+    fin. Les autres sortent à la clôture de la séance.</p>
 
   <button class="bouton plein fant" onclick="fermeSeance()">Clore la séance</button>`;
 }
 
-function ligneAppel(j, p, avecBouton){
+function ligneAppel(j, p, avecBouton, s){
   /* Trois états, et pas deux. « Pas encore pointé » n'est pas « absent » :
      le premier veut dire qu'on ne sait pas, le second que quelqu'un a constaté
      l'absence. L'appel scanné ne produit que des présents ; la liste tapée de
@@ -9621,19 +9709,41 @@ function ligneAppel(j, p, avecBouton){
      pas se perdre dans un « pas encore pointé » qui laisse croire à un oubli. */
   const absent = p && p.present === false;
   const cl = absent ? 'retard' : (p ? (p.retard ? 'retard' : 'ok') : 'absent');
-  const tx = absent
+  const voit = VOIT_DEPARTS(E.role);
+  const dep = (voit && p && p.depart) ? p.depart : null;
+  let tx = absent
     ? 'absent'
     : (p
        ? ((p.heure || '—') + (p.retard ? ' · retard' : '')
           + (p.voie === 'manuel' ? ' · à la main' : ''))
        : 'pas encore pointé');
+  /* Le départ et le temps réel vont sur une ligne à part, sous le nom : sur
+     un téléphone, la ligne d'appel est déjà pleine avec l'heure d'arrivée. */
+  const m = (voit && s && p) ? minutesReelles(s, p) : null;
+  const sousLigne = [dep ? 'Parti à ' + dep.heure : '', dep && dep.motif ? dep.motif : '',
+                     m != null ? 'Temps réel ' + enDuree(m) : ''].filter(Boolean).join(' · ');
+
+  const peutPartir = avecBouton && voit && p && p.present !== false && !p.depart;
+  const formOuvert = peutPartir && E.departEnCours === j.id;
   return `<div class="pt-l">
     <span class="pt-num">${esc(j.numero == null ? '—' : j.numero)}</span>
     <span class="pt-nom">${esc(j.nom)}</span>
-    <span class="pt-h ${cl}">${esc(tx)}</span>
+    <span class="pt-h ${dep ? 'retard' : cl}">${esc(tx)}</span>
     ${(avecBouton && !p)
       ? `<button class="pt-bouton" onclick="pointeManuel('${esc(j.id)}')">Pointer</button>`
-      : ''}</div>`;
+      : ''}${peutPartir
+      ? `<button class="pt-bouton" onclick="ouvreDepart('${esc(j.id)}')">${formOuvert ? 'Annuler' : 'Départ'}</button>`
+      : ''}</div>${formOuvert ? `<div class="pt-depart" style="padding:10px 0 12px">
+      <div class="g2">
+        <div><label class="label" for="dp-h">Heure de départ</label>
+          <input id="dp-h" class="champ" type="time" value="${heureMin(new Date())}"></div>
+        <div><label class="label" for="dp-motif">Motif</label>
+          <input id="dp-motif" class="champ" type="text" maxlength="80"
+                 placeholder="Cours, blessure, transport…"></div></div>
+      <button class="bouton plein" style="margin-top:10px"
+              onclick="confirmeDepart('${esc(j.id)}')">Autoriser le départ</button>
+</div>` : ''}${sousLigne
+      ? `<p class="carte-note" style="margin:-4px 0 8px 34px;color:${dep ? 'var(--or)' : 'inherit'}">${esc(sousLigne)}</p>` : ''}`;
 }
 
 /* ─────────────────────────────────────────── l'écran de tout le monde */
@@ -9685,7 +9795,7 @@ function vuePresences(){
         <div class="tuile-lib">Pas encore<br>pointés</div></div>
     </div>
     <div class="carte" style="margin-top:10px">
-      ${l.map(j => ligneAppel(j, pointeDe(ouverte, j.id), false)).join('')}</div>`;
+      ${l.map(j => ligneAppel(j, pointeDe(ouverte, j.id), false, ouverte)).join('')}</div>`;
   }
 
   return o + blocSeancesPassees();
@@ -9705,7 +9815,8 @@ function blocSeancesPassees(){
        venu. C'est exactement le mensonge qu'on vient de retirer. */
     const detail = !x.appel
       ? 'appel non tenu'
-      : presentsDe(x) + '/' + tot + ' présents · ' + retardsDe(x) + ' en retard';
+      : presentsDe(x) + '/' + tot + ' présents · ' + retardsDe(x) + ' en retard'
+        + ((VOIT_DEPARTS(E.role) && departsDe(x)) ? ' · ' + departsDe(x) + ' départ(s)' : '');
     return `<button class="jl-item" style="margin-bottom:7px"
               onclick="ouvreBilanSeance('${esc(x.id)}')">
       <span class="jl-bloc"><span class="jl-nom">${esc(x.libelle)}</span>
@@ -9722,10 +9833,14 @@ function ouvreBilanSeance(id){
        <h1 class="vue-titre">${esc(s.libelle)}</h1>
        <p class="vue-sous">${esc(s.date)} · ${esc(nomEq(s.equipe))}${
          s.heure ? ' · début ' + esc(s.heure) : ''}${
-         s.limite ? ' · retard après ' + esc(s.limite) : ''}</p>`
+         s.limite ? ' · retard après ' + esc(s.limite) : ''}${
+         s.fin ? ' · fin ' + esc(s.fin) : ''}</p>${
+         (VOIT_DEPARTS(E.role) && departsDe(s))
+           ? `<p class="carte-note" style="margin:0 0 10px">${departsDe(s)} départ(s)
+                anticipé(s). Le temps affiché est le temps réel passé à la séance.</p>` : ''}`
     + (s.appel
        ? `<div class="carte">${parEq(s.equipe)
-            .map(j => ligneAppel(j, pointeDe(s, j.id), false)).join('')}</div>`
+            .map(j => ligneAppel(j, pointeDe(s, j.id), false, s)).join('')}</div>`
        : `<div class="carte centre"><p class="carte-note">
             L'appel n'a pas été tenu pour cette séance.</p></div>`);
   window.scrollTo(0, 0);
