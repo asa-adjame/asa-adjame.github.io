@@ -1757,6 +1757,7 @@ function listeJoueurs(js, action, valeur){
       <span class="jl-bloc">
         <span class="jl-nom">${esc(j.nom)}</span>
         <span class="jl-meta">${esc(j.poste)} · ${j.taille} cm · ${esc(v.meta || (j.stats.matchs + ' matchs'))}</span>
+        ${v.meta2 ? `<span class="jl-meta" style="display:block">${esc(v.meta2)}</span>` : ''}
       </span>
       <span class="jl-note" style="color:${v.coul}">${v.txt}</span>
       <span class="jl-fleche">›</span>
@@ -2451,8 +2452,11 @@ function vueJoueurs(){
     ${selEquipe()}
     ${listeJoueurs(js, 'ouvreFiche', j => {
       const m = DB.medical.find(x => x.joueur === j.id && x.statut !== 'Rétabli');
+      /* La ligne du joueur porte aussi son dernier entraînement : temps réel
+         passé à la séance, et l'heure de départ s'il est parti avant la fin. */
+      const entr = dernierEntrainement(j);
       return {txt: m ? '!' : '✓', coul: m ? 'var(--danger)' : 'var(--physique)',
-              meta: m ? m.type : 'Aucun signalement en cours'};
+              meta: m ? m.type : 'Aucun signalement', meta2: entr};
     })}`;
   }
 
@@ -9478,6 +9482,21 @@ function minutesReelles(s, p){
   if (de == null || sortie == null) return null;
   return Math.max(0, sortie - de);
 }
+/* Pour la liste « Effectif » du kiné (22/10/2026) : le dernier entraînement
+   où un appel a été tenu pour le groupe du joueur. Rend un texte court, ou ''
+   quand aucun appel n'a encore été tenu. */
+function dernierEntrainement(j){
+  const s = (DB.seances || []).find(x => x.equipe === j.equipe && x.appel && x.type !== 'match');
+  if (!s) return '';
+  const p = pointeDe(s, j.id);
+  const jour = String(s.date || '').length === 10 && s.date.indexOf('-') === 4
+    ? s.date.slice(8, 10) + '/' + s.date.slice(5, 7) : String(s.date || '').slice(0, 5);
+  if (!p || p.present === false) return 'Absent le ' + jour;
+  if (s.ouverte && !p.depart) return 'À l\'entraînement depuis ' + (p.heure || '—');
+  const m = minutesReelles(s, p);
+  return 'Entr. ' + jour + ' : ' + enDuree(m) + (p.depart ? ' (parti à ' + p.depart.heure + ')' : '');
+}
+
 const enDuree = m => m == null ? '—'
   : (m >= 60 ? Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0') : m + ' min');
 
