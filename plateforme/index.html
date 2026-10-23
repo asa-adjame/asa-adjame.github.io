@@ -1064,20 +1064,126 @@ const note1 = j => j.moyennes[j.moyennes.length - 1];
 const note0 = j => j.moyennes[0];
 const couleurNote = v => v >= 7.5 ? 'var(--physique)' : v >= 5.5 ? 'var(--or)' : v >= 4 ? 'var(--alerte)' : 'var(--danger)';
 const couleurPct = p => p >= 60 ? 'var(--physique)' : p >= 45 ? 'var(--or)' : p >= 33 ? 'var(--alerte)' : 'var(--danger)';
-const moisCourt = i => (DB.mois[i] || {}).court || ('M' + (i + 1));
-const moisNom = i => (DB.mois[i] || {}).nom || '';
+/* Le libellé d'une évaluation. En ligne, chaque évaluation porte son cycle
+   (« Cycle 1 (sept-oct) »), venu du classeur : c'est lui qu'on affiche. Avant
+   le 23/10/2026, l'écran affichait le i-ème mois du jeu de démonstration
+   (« Sep », « Septembre 2026 »…), quel que soit le cycle réellement évalué.
+   La démonstration, elle, n'a que ses mois : on y retombe. */
+const moisCourt = (i, j) => {
+  if (j && Array.isArray(j.cycles)){
+    const c = j.cycles[i];
+    if (!c) return '—';
+    const n = /cycle\s*(\d+)/i.exec(c);
+    return n ? 'C' + n[1] : String(c).slice(0, 6);
+  }
+  return (DB.mois[i] || {}).court || ('M' + (i + 1));
+};
+/* En ligne, un joueur sans évaluation n'a pas de cycle : on le dit, au lieu
+   de lui prêter « Septembre 2026 ». */
+const moisNom = (i, j) => (j && Array.isArray(j.cycles))
+  ? (j.cycles[i] || 'Pas encore évalué')
+  : ((DB.mois[i] || {}).nom || '');
+
+/* ═══════════════ L'HEURE DU CLUB ═══════════════                (23/10/2026)
+
+   Demande de Fathy : « tout ce qui demande une date et une heure doit avoir
+   l'information correcte ». Deux causes d'erreur, deux corrections.
+
+   1. LE FUSEAU. La plateforme lisait l'heure LOCALE de l'appareil. À Adjamé
+      c'est juste ; ailleurs (Fathy en France, un coach en déplacement), une
+      séance ouverte à 18 h 00 s'affichait 20 h 00, et une saisie faite à
+      23 h 30 tombait le lendemain. Tout ce qui est daté ou horodaté se lit
+      désormais à l'heure d'Abidjan, l'heure du club, sur tous les appareils.
+
+   2. L'HORLOGE. Un téléphone réglé à la main peut avoir des jours d'avance ou
+      de retard. Chaque réponse de Supabase porte l'heure du serveur (en-tête
+      Date, lisible par la page) : on en tire l'écart avec l'appareil, et
+      `maintenant()` le corrige. Un écart de moins d'une minute est ignoré
+      (l'en-tête est à la seconde près). L'écart est gardé sur l'appareil pour
+      rester juste hors ligne ; sans aucune mesure, c'est l'horloge du
+      téléphone, comme avant. */
+const FUSEAU = 'Africa/Abidjan';
+let DECALAGE_HORLOGE = (() => {
+  try { const v = Number(localStorage.getItem('asa-decalage-horloge')); return isFinite(v) ? v : 0; }
+  catch (e) { return 0; }
+})();
+const maintenant = () => new Date(Date.now() + DECALAGE_HORLOGE);
+function recaleHorloge(entete, t0, t1){
+  const serveur = Date.parse(entete || '');
+  if (isNaN(serveur)) return;
+  /* L'en-tête tronque à la seconde : +500 ms vise le milieu de cette seconde,
+     et le milieu de l'aller-retour estime l'instant de la réponse. */
+  const ecart = serveur + 500 - (t0 + t1) / 2;
+  const nouveau = Math.abs(ecart) > 60000 ? Math.round(ecart) : 0;
+  if (nouveau === DECALAGE_HORLOGE) return;
+  DECALAGE_HORLOGE = nouveau;
+  try { localStorage.setItem('asa-decalage-horloge', String(nouveau)); } catch (e) {}
+}
+/* Les morceaux d'un instant, à l'heure du club. Sans Intl à fuseaux (très
+   vieux navigateurs), on retombe sur l'heure locale de l'appareil. */
+let FMT_CLUB = null;
+function partiesClub(d){
+  d = d || maintenant();
+  try {
+    FMT_CLUB = FMT_CLUB || new Intl.DateTimeFormat('fr-FR', {timeZone: FUSEAU, year: 'numeric',
+      month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'});
+    const o = {};
+    FMT_CLUB.formatToParts(d).forEach(p => { o[p.type] = p.value; });
+    if (o.hour === '24') o.hour = '00';
+    return o;
+  } catch (e) {
+    const p = n => String(n).padStart(2, '0');
+    return {year: String(d.getFullYear()), month: p(d.getMonth() + 1), day: p(d.getDate()),
+            hour: p(d.getHours()), minute: p(d.getMinutes())};
+  }
+}
+/* « 18:05 » — l'heure du club, pour un instant donné ou pour maintenant. */
+const heureClub = d => { const p = partiesClub(d); return p.hour + ':' + p.minute; };
+/* « 12/10/2026 » — la date du club d'un instant (horodatage de la base,
+   « 2026-10-12T23:41:00+00:00 »). Une date seule (« 2026-10-12 ») n'a pas
+   d'heure : elle se lit telle quelle, sans passer par un fuseau qui pourrait
+   la décaler d'un jour. */
+function dateClubFr(v){
+  if (!v) return '';
+  const s = String(v);
+  if (!/T|\s\d{2}:/.test(s)) return s.slice(0, 10).split('-').reverse().join('/');
+  const d = new Date(s);
+  if (isNaN(d)) return s.slice(0, 10).split('-').reverse().join('/');
+  const p = partiesClub(d);
+  return p.day + '/' + p.month + '/' + p.year;
+}
+const NOMS_MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août',
+                   'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+/* La période en cours : le cycle de la saison qui contient aujourd'hui
+   (table saison_semaines, tenue par le DT), sinon le mois réel. Avant le
+   23/10/2026, c'était toujours « Décembre 2026 », le mois courant du jeu de
+   démonstration — affiché sur l'écran d'équipe et rangé dans les mots du
+   coach. */
+function periodeCourante(){
+  try {
+    if (enLigne()){
+      const auj = AUJ(), c = (DB.cycles || []).find(x => x.debut <= auj && auj <= x.fin);
+      if (c) return c.nom;
+      const [a, m] = auj.split('-');
+      return NOMS_MOIS[Number(m) - 1] + ' ' + a;
+    }
+  } catch (e) {}
+  return moisNom(DB.moisCourant - 1);
+}
 
 /* Date de référence — une seule source, pour que « aujourd'hui » veuille dire
    la même chose dans la saisie de tir, les relances et le fil du staff.
 
-   En ligne, c'est la date du téléphone. La date figée du 16/12/2026 n'existe
-   que pour la démonstration, dont les données sont écrites autour d'elle.
-   Avant le 20/10/2026 elle servait AUSSI en production : le planning s'ouvrait
-   en décembre et les séances, oppositions et signalements étaient datés du
-   16/12. La garde try/catch couvre l'appel avant que la source soit posée. */
+   En ligne, c'est la date du jour à Abidjan, horloge corrigée (voir L'HEURE
+   DU CLUB). La date figée du 16/12/2026 n'existe que pour la démonstration,
+   dont les données sont écrites autour d'elle. Avant le 20/10/2026 elle
+   servait AUSSI en production : le planning s'ouvrait en décembre et les
+   séances, oppositions et signalements étaient datés du 16/12. La garde
+   try/catch couvre l'appel avant que la source soit posée. */
 const dateDuJour = () => {
-  const d = new Date(), p = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  const p = partiesClub(maintenant());
+  return `${p.year}-${p.month}-${p.day}`;
 };
 const AUJ = () => {
   try { if (enLigne()) return dateDuJour(); } catch (e){}
@@ -1309,8 +1415,8 @@ function radar(j, taille){
   return `<div class="radar-enrob"><svg viewBox="-172 -128 344 256" width="${T}" style="max-width:100%;height:auto"
     role="img" aria-label="Profil de ${esc(j.nom)} sur les huit domaines">${g}${pts}${lab}</svg></div>
     <div class="legende">
-      <span><i style="background:#FFB246"></i>${esc(moisNom(dern))}</span>
-      ${dern>0?`<span><i style="background:#3993D1"></i>${esc(moisNom(0))} (départ)</span>`:''}
+      <span><i style="background:#FFB246"></i>${esc(moisNom(dern, j))}</span>
+      ${dern>0?`<span><i style="background:#3993D1"></i>${esc(moisNom(0, j))} (départ)</span>`:''}
     </div>`;
 }
 
@@ -2468,7 +2574,7 @@ function vueEquipe(){
     ? 'complet' : 'ext';
 
   return `<h1 class="vue-titre">${esc(titre)}</h1>
-  <p class="vue-sous">${esc(nomEq(E.equipe))} · ${s.matchs} matchs joués · ${esc(moisNom(DB.moisCourant-1))}.</p>
+  <p class="vue-sous">${esc(nomEq(E.equipe))} · ${s.matchs} matchs joués · ${esc(periodeCourante())}.</p>
   ${selEquipe()}
 
   ${PEUT_CLASSEUR(E.role) ? `<div class="carte" style="margin-bottom:14px;border-color:var(--ligne2)">
@@ -2583,7 +2689,7 @@ function ficheJoueur(j, opt){
       <div style="text-align:right">
         <div class="titre" style="font-size:28px;color:${couleurNote(j.moyennes[dern])}">${j.moyennes[dern].toFixed(1)}</div>
         <div class="mono" style="font-size:10px;color:${evol>0?'var(--physique)':evol<0?'var(--danger)':'var(--gris2)'}">
-          ${dern>0?(evol>0?'+':'')+evol.toFixed(1)+' vs '+moisCourt(0):moisCourt(0)}</div>
+          ${dern>0?(evol>0?'+':'')+evol.toFixed(1)+' vs '+moisCourt(0, j):moisCourt(0, j)}</div>
       </div>
     </div>
   </div>
@@ -2613,7 +2719,7 @@ function ficheJoueur(j, opt){
     ${domaines(j)}</div>
   ${dern > 0 ? `<div class="carte"><div class="carte-tete"><div class="carte-titre">Progression mensuelle</div>
     <div class="carte-note pousse">moyenne générale</div></div>
-    ${courbe([j.moyennes], ['Moyenne'], ['#FFB246'])}</div>` : ''}
+    ${courbe([j.moyennes], ['Moyenne'], ['#FFB246'], j.moyennes.map((_, i) => moisCourt(i, j)))}</div>` : ''}
 
   <div class="section-titre">Statistiques de match</div>
   <div class="g4">
@@ -2700,7 +2806,7 @@ function ficheJoueur(j, opt){
 function enregistreMotCoach(id){
   const j = parId(id), t = ($('#motCoach').value || '').trim();
   j.motCoach = t;
-  enregistrer('mots_coach', {joueur_id:id, cycle:moisNom(DB.moisCourant-1), texte:t,
+  enregistrer('mots_coach', {joueur_id:id, cycle:periodeCourante(), texte:t,
                              auteur_id:(E.moi||{}).id || null}, 'joueur_id,cycle');
   toast('Mot du coach enregistré — visible par ' + j.nom.split(' ')[0]);
 }
@@ -3781,10 +3887,8 @@ function envoieChat(){
   window.scrollTo(0, document.body.scrollHeight);
 }
 
-function heureCourante(){
-  const d = new Date();
-  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-}
+/* L'heure du club (Abidjan), horloge corrigée — voir L'HEURE DU CLUB. */
+function heureCourante(){ return heureClub(); }
 
 /* Journal du fil — ce qui se passe dans la plateforme s'écrit dans le fil.
    C'est la seule façon qu'il ne reste pas vide face à WhatsApp : on n'ouvre pas
@@ -3923,7 +4027,7 @@ function appliqueStatutMed(id, statut){
     m.statut = statut;
     /* Un vrai PATCH : l'insertion réduite à {id, statut} était refusée par la
        base, faute de joueur et de type (colonnes obligatoires). */
-    modifier('medical', 'id=eq.' + id, {statut, maj: new Date().toISOString()});
+    modifier('medical', 'id=eq.' + id, {statut, maj: maintenant().toISOString()});
     journalChat(`a mis à jour le suivi de ${(parId(m.joueur)||{}).nom || ''} — ${statut.toLowerCase()}`);
   }
   fermeFeuille(); toast('Statut mis à jour — le staff est notifié'); rendVue(); rendNav();
@@ -4504,7 +4608,7 @@ function ficheJoueurA4(j){
         </div>
       </div>
       <div class="a4-meta">
-        <b>${esc(moisNom(dern))}</b>
+        <b>${esc(moisNom(dern, j))}</b>
         ${esc(nomEq(j.equipe))}<br>
         ${j.stats.min} min de moyenne · ${j.presence} % de présence
       </div>
@@ -4516,7 +4620,7 @@ function ficheJoueurA4(j){
         <div class="s">sur les 8 domaines</div></div>
       <div class="a4-tuile"><div class="l">Évolution</div>
         <div class="v ${cls(evol)}">${sgn(evol)}</div>
-        <div class="s">${dern > 0 ? 'depuis ' + esc(moisNom(0)) : 'premier mois évalué'}</div></div>
+        <div class="s">${dern > 0 ? 'depuis ' + esc(moisNom(0, j)) : 'premier mois évalué'}</div></div>
       <div class="a4-tuile"><div class="l">Challenge de tir</div>
         <div class="v">${b.pct}<span style="font-size:15px;color:#9C978B"> %</span></div>
         <div class="s">${b.nb} séance${b.nb > 1 ? 's' : ''} · LF ${b.lfPct} %</div></div>
@@ -4525,21 +4629,21 @@ function ficheJoueurA4(j){
     <div class="a4-duo radar">
       <div class="a4-bloc">
         <div class="a4-leg">
-          <span><i style="background:#1A6FAF"></i>${esc(moisNom(dern))}</span>
-          ${B ? `<span><i style="background:#C77A00"></i>${esc(moisNom(prec))}</span>` : ''}
+          <span><i style="background:#1A6FAF"></i>${esc(moisNom(dern, j))}</span>
+          ${B ? `<span><i style="background:#C77A00"></i>${esc(moisNom(prec, j))}</span>` : ''}
         </div>
         ${a4Radar(DB.domaines.map(d => ABREGE[d] || d), A, B, 10)}
       </div>
       <div class="a4-bloc">
         <h3>Le détail, domaine par domaine</h3>
         <table><thead><tr><th>Domaine</th><th class="num">Note</th>
-          <th class="num">${B ? esc(moisNom(prec).split(' ')[0]) : 'Réf.'}</th><th class="num">Écart</th></tr></thead>
+          <th class="num">${B ? esc(moisCourt(prec, j)) : 'Réf.'}</th><th class="num">Écart</th></tr></thead>
           <tbody>${lignes}</tbody></table>
       </div>
     </div>
 
     ${dern > 0 ? a4Courbe([j.moyennes], ['Moyenne générale'],
-        j.moyennes.map((_,i) => moisCourt(i)), 10) : ''}
+        j.moyennes.map((_,i) => moisCourt(i, j)), 10) : ''}
 
     <div class="a4-bloc">
       <h3>Mes objectifs — définis au classeur</h3>
@@ -6608,7 +6712,7 @@ function enregistreSysteme(){
 
   enregistrer('systemes', {id_systeme: s.id, nom: s.nom, categorie: s.categorie,
                            equipe_code: s.equipe, etapes: s.etapes,
-                           auteur_id: (E.moi || {}).id || null, maj: new Date().toISOString()},
+                           auteur_id: (E.moi || {}).id || null, maj: maintenant().toISOString()},
               /* (club_id, id_systeme) : c'est LA contrainte unique de la table.
                  « id_systeme » seul ne correspond à aucune, et Postgres refuse
                  alors toute l'écriture — chaque système partait en 400 et sortait
@@ -6719,6 +6823,7 @@ const enLigne = () => SOURCE.mode === 'supabase';
 async function api(chemin, opts){
   opts = opts || {};
   let r;
+  const t0 = Date.now();
   try {
     r = await fetch(SOURCE.url + '/rest/v1/' + chemin, {
       method: opts.methode || 'GET',
@@ -6735,6 +6840,9 @@ async function api(chemin, opts){
     err.reseau = true;
     throw err;
   }
+  /* L'heure du serveur, à chaque réponse, même en erreur : c'est elle qui
+     corrige un téléphone mal réglé (voir L'HEURE DU CLUB, p3a). */
+  try { recaleHorloge(r.headers.get('date'), t0, Date.now()); } catch (e) {}
   if (!r.ok){
     const err = new Error('Plateforme (' + r.status + ') sur « ' + chemin + ' » : ' +
                           (await r.text()).slice(0, 200));
@@ -6900,7 +7008,7 @@ async function enregistrer(table, ligne, surConflit){
     table, surConflit: surConflit || null,
     corps: ligne,
     demo: !enLigne(),
-    quand: Date.now(),
+    quand: maintenant().getTime(),
     par: (E && E.moi && E.moi.nom) || ''
   });
   await majFile();
@@ -6925,7 +7033,7 @@ async function modifier(table, filtre, champs){
     table, filtre, methode: 'PATCH',
     corps: champs,
     demo: !enLigne(),
-    quand: Date.now(),
+    quand: maintenant().getTime(),
     par: (E && E.moi && E.moi.nom) || ''
   });
   await majFile();
@@ -7123,9 +7231,8 @@ async function majFile(){
 async function ouvreFile(){
   const items = await FA.tout();
   const quand = t => {
-    const d = new Date(t);
-    return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') +
-           ' · ' + String(d.getHours()).padStart(2,'0') + 'h' + String(d.getMinutes()).padStart(2,'0');
+    const p = partiesClub(new Date(t));
+    return p.day + '/' + p.month + ' · ' + p.hour + 'h' + p.minute;
   };
   ouvreFeuille(`
     <div class="feuille-titre">Saisies en attente</div>
@@ -7419,7 +7526,7 @@ async function rafraichitSession(){
   if (!enLigne() || !SESSION || !SESSION.rafraichissement) return false;
   if (navigator.onLine === false) return false;
   const marge = 120;                                  // secondes
-  if (SESSION.expire && SESSION.expire - marge > Math.floor(Date.now() / 1000)) return true;
+  if (SESSION.expire && SESSION.expire - marge > Math.floor(maintenant().getTime() / 1000)) return true;
   try {
     const r = await fetch(SOURCE.url + '/auth/v1/token?grant_type=refresh_token', {
       method: 'POST',
@@ -7602,12 +7709,17 @@ async function chargerSupabase(){
      de la photo de la feuille, relus ici : la liste des feuilles déjà
      enregistrées, et le détail joueur par joueur de chacune. Les moyennes de
      la fiche joueur, elles, continuent d'arriver par v_stats_joueurs. */
-  const [rencs, statsM, planningBase] = await Promise.all([
+  const [rencs, statsM, planningBase, semainesSaison] = await Promise.all([
     sansEchec(api('rencontres?select=*&club_id=eq.' + club.id + '&order=date_match.desc')),
     sansEchec(api('stats_match?select=*&club_id=eq.' + club.id)),
     /* LE PLANNING (19/10/2026) : une ligne par équipe et par semaine, écrite
        par le DT seul. La règle d'accès ne rend à un joueur que son équipe. */
-    sansEchec(api('planning_semaines?select=equipe_code,lundi,creneaux&club_id=eq.' + club.id + '&order=lundi'))
+    sansEchec(api('planning_semaines?select=equipe_code,lundi,creneaux&club_id=eq.' + club.id + '&order=lundi')),
+    /* LE CALENDRIER DE LA SAISON (23/10/2026) : une ligne par semaine, avec
+       son cycle (« Cycle 1 (sept-oct) »). Il donne l'ordre des évaluations et
+       la période en cours ; sans lui, la plateforme affichait les mois du jeu
+       de démonstration. */
+    sansEchec(api('saison_semaines?select=date_debut,cycle&club_id=eq.' + club.id + '&order=date_debut'))
   ]);
 
   const parJoueur = (liste, cle) => {
@@ -7637,7 +7749,18 @@ async function chargerSupabase(){
      dans le désordre sans rien signaler. Tant que ce référentiel n'est pas
      fourni, la liste reste vide : `indexOf` rend -1 pour tout le monde, le
      tri est neutre, et les évaluations gardent l'ordre de la base. */
-  const cycles = DB.cycles || [];
+  /* Le référentiel existe désormais : la table saison_semaines, tenue par le
+     DT (23/10/2026). Un cycle va du lundi de sa première semaine au dimanche
+     de sa dernière. Sans calendrier, la liste reste vide comme avant. */
+  const cycles = [];
+  (semainesSaison || []).forEach(w => {
+    if (!w.cycle || !w.date_debut) return;
+    const fin = new Date(Date.parse(w.date_debut + 'T12:00:00Z') + 6 * 86400000).toISOString().slice(0, 10);
+    const c = cycles.find(x => x.nom === w.cycle);
+    if (c){ if (w.date_debut < c.debut) c.debut = w.date_debut; if (fin > c.fin) c.fin = fin; }
+    else cycles.push({nom: w.cycle, debut: w.date_debut, fin});
+  });
+  cycles.sort((a, b) => a.debut < b.debut ? -1 : 1);
   const cyclesOrdre = cycles.map(c => c.nom);
 
   const mapJoueur = j => {
@@ -7651,13 +7774,20 @@ async function chargerSupabase(){
       moyennes.push(vals.length ? +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : 0);
     });
     if (!moyennes.length) { domaines.forEach(d => notes[d] = [0]); moyennes.push(0); }
+    /* Le cycle de chaque évaluation, dans l'ordre : c'est le libellé des
+       radars, courbes et fiches (moisNom / moisCourt, p3a). */
+    const cyclesJ = ev.map(e => e.cycle || '');
     const dern = moyennes.length - 1;
     const tri = domaines.slice().sort((a, b) => notes[a][dern] - notes[b][dern]);
     const st = statsJ[j.id] || {};
     const p = (progJ[j.id] || [])[0];
     return {
       id: j.id, nom: j.nom, equipe: j.equipe_code, poste: j.poste,
-      numero: j.numero || 0, age: j.annee_naissance ? (2027 - j.annee_naissance) : null,
+      numero: j.numero || 0,
+      /* L'âge de l'année en cours. Il était calculé sur 2027, en dur : un an de
+         trop pour toute la saison 2026 (corrigé le 23/10/2026). */
+      age: j.annee_naissance ? (Number(AUJ().slice(0, 4)) - j.annee_naissance) : null,
+      cycles: cyclesJ,
       taille: j.taille || 0,
       notes: notes, moyennes: moyennes,
       tirs: (tirsJ[j.id] || []).map(t => [Number(t.x), Number(t.y), t.points, t.reussi ? 1 : 0, dern + 1]),
@@ -7718,19 +7848,17 @@ async function chargerSupabase(){
 
   /* « 2026-10-12 » ou « 2026-10-12T09:41:00+00:00 » → « 12/10/2026 », la forme
      que tous les écrans affichent et comparent. */
-  const fr = v => v ? String(v).slice(0, 10).split('-').reverse().join('/') : '';
+  /* Depuis le 23/10/2026, à l'heure du club (Abidjan) : une date seule se lit
+     telle quelle, un horodatage passe par le fuseau du club — voir L'HEURE DU
+     CLUB (p3a). Avant, `fr` tronquait l'horodatage UTC et `heure` lisait
+     l'heure locale de l'appareil : 2 h d'écart vu de France. */
+  const fr = v => dateClubFr(v);
   const heure = v => {
     if (!v) return '—';
     const d = new Date(v);
-    return isNaN(d) ? '—' : String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    return isNaN(d) ? '—' : heureClub(d);
   };
-  const dateLocale = v => {
-    if (!v) return '';
-    const d = new Date(v);
-    if (isNaN(d)) return fr(v);
-    return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0')
-         + '/' + d.getFullYear();
-  };
+  const dateLocale = v => dateClubFr(v);
 
   /* Le rapport : le plus récent porte le travail en cours ; ceux qui sont
      envoyés forment l'historique. Le gabarit de la page fournit ce que la base
@@ -7762,7 +7890,8 @@ async function chargerSupabase(){
   return {
     saison: club.saison,
     club: {nom: club.nom, sigle: club.sigle, ville: club.ville},
-    domaines: domaines, cycles: cycles, cycleCourant: DB.cycleCourant || '',
+    domaines: domaines, cycles: cycles,
+    cycleCourant: (cycles.find(c => c.debut <= AUJ() && AUJ() <= c.fin) || {}).nom || '',
     equipes: (equipes || []).map(e => ({id: e.code, nom: e.nom})),
     staff: (staff || []).map(m => ({
       id: m.role, staffId: m.id, nom: m.nom, role: m.fonction,
@@ -9496,7 +9625,7 @@ function qrHachage(txt){
   return (a.toString(16).padStart(8, '0') + b.toString(16).padStart(8, '0')).slice(0, 8);
 }
 
-const qrFenetreCourante = () => Math.floor(Date.now() / 1000 / QR_DUREE_FENETRE);
+const qrFenetreCourante = () => Math.floor(maintenant().getTime() / 1000 / QR_DUREE_FENETRE);
 const qrJetonJoueur     = (j, w) => qrHachage(j.secret + '|' + j.id + '|' + w);
 const qrSignatureBadge  = j => qrHachage(j.secret + '|' + j.id + '|badge');
 
@@ -9799,8 +9928,9 @@ function imprimeBadges(){
   const complets = (BADGES.liste || []).filter(badgeComplet);
   if (!complets.length) return;
 
-  const jour = new Date().toLocaleDateString('fr-FR',
-                 {day: '2-digit', month: 'long', year: 'numeric'});
+  const jour = (() => { try { return maintenant().toLocaleDateString('fr-FR',
+                 {day: '2-digit', month: 'long', year: 'numeric', timeZone: FUSEAU}); }
+                 catch (e) { return AUJ_FR(); } })();
   const club = (DB.club && DB.club.nom) || 'ASA — Association Sportive Adjamé';
 
   let feuilles = '';
@@ -10025,10 +10155,8 @@ const enDuree = m => m == null ? '—'
   : (m >= 60 ? Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0') : m + ' min');
 
 /* L'heure au format que porte la base : « 18:05 ». */
-function heureMin(d){
-  return String(d.getHours()).padStart(2, '0') + ':'
-       + String(d.getMinutes()).padStart(2, '0');
-}
+/* À l'heure du club (Abidjan), horloge corrigée — voir L'HEURE DU CLUB. */
+function heureMin(d){ return heureClub(d); }
 function enMinutes(hhmm){
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || ''));
   return m ? (+m[1]) * 60 + (+m[2]) : null;
@@ -10052,10 +10180,10 @@ function inscrisPresence(s, idJoueur, voie){
     return {ok: false, message: 'Cette personne a déjà pointé pour cette séance.'};
   if (VOIES.indexOf(voie) < 0) voie = 'manuel';
 
-  const maintenant = heureMin(new Date());
-  const lim = enMinutes(s.limite), now = enMinutes(maintenant);
+  const hArrivee = heureMin(maintenant());
+  const lim = enMinutes(s.limite), now = enMinutes(hArrivee);
   const p = {
-    joueur: idJoueur, heure: maintenant, present: true,
+    joueur: idJoueur, heure: hArrivee, present: true,
     retard: (lim != null && now != null) ? now > lim : false,
     voie: voie
   };
@@ -10079,7 +10207,7 @@ function inscrisPresence(s, idJoueur, voie){
 function ouvreSeance(){
   const eq   = ($('#se-eq') || {}).value || E.equipes[0];
   const lib  = ((($('#se-lib') || {}).value) || 'Séance').trim();
-  const hDeb = ($('#se-h') || {}).value || heureMin(new Date());
+  const hDeb = ($('#se-h') || {}).value || heureMin(maintenant());
   const lim  = ($('#se-lim') || {}).value || hDeb;
 
   /* L'identifiant est fabriqué ICI, et c'est indispensable.
@@ -10123,7 +10251,7 @@ function fermeSeance(){
   s.ouverte = false;
   /* L'heure de fin : c'est la sortie de tous ceux qui ne sont pas partis
      avant. Sans elle, aucun temps réel ne se calcule. */
-  s.fin = heureMin(new Date());
+  s.fin = heureMin(maintenant());
   enregistrer('seances', ligneSeance(s), 'id');
   if (typeof LECTEUR !== 'undefined') LECTEUR.arrete();
   const dep = departsDe(s);
@@ -10154,7 +10282,7 @@ function confirmeDepart(idJoueur){
   const s = seanceOuverte();
   const p = pointeDe(s, idJoueur);
   if (!s || !p || p.present === false) { toast('Ce joueur n\'est pas pointé présent.'); return; }
-  const heure = (($('#dp-h') || {}).value || heureMin(new Date())).slice(0, 5);
+  const heure = (($('#dp-h') || {}).value || heureMin(maintenant())).slice(0, 5);
   const motif = ((($('#dp-motif') || {}).value) || '').trim();
   if (enMinutes(heure) == null) { toast('Heure de départ invalide.'); return; }
   if (enMinutes(p.heure) != null && enMinutes(heure) < enMinutes(p.heure)) {
@@ -10180,7 +10308,7 @@ function vueAppel(){
 }
 
 function vueOuvrirSeance(){
-  const d = new Date();
+  const d = maintenant();
   const hh = heureMin(d);
   const lim = heureMin(new Date(d.getTime() + 10 * 60000));
   const eqs = DB.equipes.filter(e => E.equipes.includes(e.id));
@@ -10279,7 +10407,7 @@ function ligneAppel(j, p, avecBouton, s){
       : ''}</div>${formOuvert ? `<div class="pt-depart" style="padding:10px 0 12px">
       <div class="g2">
         <div><label class="label" for="dp-h">Heure de départ</label>
-          <input id="dp-h" class="champ" type="time" value="${heureMin(new Date())}"></div>
+          <input id="dp-h" class="champ" type="time" value="${heureMin(maintenant())}"></div>
         <div><label class="label" for="dp-motif">Motif</label>
           <input id="dp-motif" class="champ" type="text" maxlength="80"
                  placeholder="Cours, blessure, transport…"></div></div>
