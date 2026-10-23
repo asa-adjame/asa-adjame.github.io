@@ -697,13 +697,31 @@ textarea.champ{resize:vertical;min-height:78px;line-height:1.5}
   max-width:720px;margin:0 auto}
 .dr-zone .terrain-enrob{margin:0;min-width:0}
 .dr-terrain{position:relative;cursor:crosshair}
-.dr-joueurs{contain:size;overflow-y:auto;background:var(--surface);border:1px solid var(--ligne2);
-  border-radius:12px;-webkit-overflow-scrolling:touch;transition:border-color .2s}
+/* Les 12 du match tiennent sans défiler : une rangée par joueur, qui se
+   partagent la hauteur du terrain. Sur téléphone, le terrain est trop petit
+   pour 12 rangées lisibles : la liste descend plus bas que lui. */
+.dr-joueurs{display:grid;grid-template-rows:auto repeat(var(--n,12),minmax(36px,auto));align-content:start;
+  overflow:hidden;background:var(--surface);border:1px solid var(--ligne2);
+  border-radius:12px;transition:border-color .2s}
+.dr-zone{align-items:start}
 .dr-joueurs.attend{border-color:var(--or)}
-.dr-joueurs-tete{position:sticky;top:0;z-index:1;padding:5px 8px;font-size:10.5px;font-weight:700;
-  text-transform:uppercase;letter-spacing:1px;color:var(--or);background:var(--surface2);
-  border-bottom:1px solid var(--ligne2)}
-.dr-joueur{padding:5px 8px;border-bottom:1px solid var(--ligne2);cursor:pointer;border-left:3px solid transparent}
+.dr-joueurs-tete{display:flex;justify-content:space-between;align-items:center;gap:4px;padding:4px 6px 4px 8px;
+  font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--or);
+  background:var(--surface2);border-bottom:1px solid var(--ligne2);min-width:0}
+.dr-joueurs-tete span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dr-douze-btn{flex:0 0 auto;font-size:10px;font-weight:700;padding:3px 7px;border-radius:6px;
+  border:1px solid var(--or);color:var(--or);background:transparent;font-family:inherit;letter-spacing:.5px}
+.dr-joueur{display:flex;flex-direction:column;justify-content:center;min-height:0;padding:2px 8px;
+  border-bottom:1px solid var(--ligne2);cursor:pointer;border-left:3px solid transparent}
+.dr-douze-tete{display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px}
+.dr-douze-compte{font-family:var(--mono);font-size:12px;color:var(--or)}
+.dr-douze{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px;max-height:50vh;overflow-y:auto}
+.dr-puce{display:flex;align-items:center;gap:5px;padding:8px 9px;border-radius:8px;background:var(--surface2);
+  border:1px solid var(--ligne2);color:var(--texte);font-size:12.5px;font-weight:600;text-align:left;
+  font-family:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dr-puce b{color:var(--gris2);font-family:var(--mono);font-size:11.5px}
+.dr-puce.on{background:rgba(201,162,39,.16);border-color:var(--or)}
+.dr-puce.on b{color:var(--or)}
 .dr-joueur:last-child{border-bottom:none}
 .dr-joueur:active,.dr-joueur:hover{background:var(--surface2)}
 .dr-joueur.choisi{background:rgba(201,162,39,.15);border-left-color:var(--or)}
@@ -744,11 +762,13 @@ textarea.champ{resize:vertical;min-height:78px;line-height:1.5}
 @media screen and (min-width:700px){
   .dr-zone{max-width:none;justify-content:center;
     grid-template-columns:minmax(0,calc((100vh - 340px) * .9333)) 220px;gap:12px}
-  .dr-joueur{padding:8px 12px}
-  .dr-nom{font-size:14.5px}
-  .dr-nom b{font-size:14px}
-  .dr-stats{font-size:11px;margin-top:2px}
-  .dr-joueurs-tete{font-size:12px;padding:8px 12px}
+  .dr-zone{align-items:stretch}
+  .dr-joueurs{contain:size;grid-template-rows:auto repeat(var(--n,12),minmax(0,1fr))}
+  .dr-joueur{padding:1px 12px}
+  .dr-nom{font-size:13.5px;line-height:1.2}
+  .dr-nom b{font-size:13px}
+  .dr-stats{font-size:10.5px;margin-top:1px;line-height:1.2}
+  .dr-joueurs-tete{font-size:11.5px;padding:5px 8px 5px 12px}
   .dr-consigne{font-size:13px}
   .dr-cote{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
   .dr-cote .carte{margin:0}
@@ -8529,9 +8549,13 @@ function demarreDirect(){
   const m = (choix != null && choix !== '' && choix !== 'autre') ? props[Number(choix)] : null;
   const adv = m ? m.adversaire : ((($('#dr-adv') || {}).value) || '').trim();
   if (!adv){ toast('Indique l\'adversaire'); return; }
-  DIRECT = {eq: M.eq || E.equipe, adversaire: adv, date: AUJ(), periode: 1,
+  const eq = M.eq || E.equipe;
+  const douze = douzeCoches();
+  if (!douze.length){ toast('Choisis les joueurs du match (12 au plus)'); return; }
+  gardeDouzeEq(eq, douze);
+  DIRECT = {eq, adversaire: adv, date: AUJ(), periode: 1,
             competition: m ? (m.competition || '') : '', dateMatch: m ? m.date : '',
-            tirs: [], stats: {}, histo: []};
+            douze, tirs: [], stats: {}, histo: []};
   ZONE = CHOISI = null;
   gardeDirect();
   ouvreSous('direct');
@@ -8578,8 +8602,51 @@ function carteDirect(){
     <div id="dr-autre" style="margin-top:10px;display:${props.length ? 'none' : 'block'}">
       <label class="label" for="dr-adv">Adversaire</label>
       <input id="dr-adv" class="champ" type="text" maxlength="60" value="${esc((pm && pm.adversaire) || '')}"></div>
+    ${choixDouze(M.eq || E.equipe, douzeEq(M.eq || E.equipe))}
     <button class="bouton plein" style="margin-top:10px" onclick="demarreDirect()">Démarrer les stats en direct</button>
   </div>`;
+}
+
+/* LES 12 DU MATCH (23/10/2026, demande de Fathy) : comme sur la feuille de
+   match, douze joueurs au plus. On les coche au démarrage, on peut les
+   changer pendant le match (« Les 12 »), et le dernier choix de l'équipe est
+   repris au match suivant — sur cet appareil seulement. Les stats d'un joueur
+   retiré en cours de match restent comptées. */
+const MAX_DOUZE = 12;
+const triNumero = l => l.slice().sort((a, b) => (parseInt(a.numero) || 999) - (parseInt(b.numero) || 999));
+function douzeEq(eq){
+  try { const l = JSON.parse(localStorage.getItem('asa-douze-' + eq) || '[]'); return Array.isArray(l) ? l : []; }
+  catch (e) { return []; }
+}
+function gardeDouzeEq(eq, l){ try { localStorage.setItem('asa-douze-' + eq, JSON.stringify(l)); } catch (e) {} }
+function choixDouze(eq, coches){
+  const js = triNumero(parEq(eq));
+  const pris = new Set((coches || []).filter(id => js.some(j => j.id === id)).slice(0, MAX_DOUZE));
+  return `<div class="dr-douze-tete"><span class="label" style="margin:0">Les 12 du match</span>
+      <span class="dr-douze-compte" id="dr-douze-compte">${pris.size}/${MAX_DOUZE}</span></div>
+    <div class="dr-douze" id="dr-douze">${js.map(j => `<button type="button" class="dr-puce${pris.has(j.id) ? ' on' : ''}"
+      data-id="${esc(j.id)}" onclick="basculeDouze(this)"><b>#${esc(String(j.numero))}</b>${esc((String(j.nom).split(' ').slice(-1)[0]) || j.nom)}</button>`).join('')}</div>`;
+}
+function basculeDouze(b){
+  const n = document.querySelectorAll('#dr-douze .dr-puce.on').length;
+  if (!b.classList.contains('on') && n >= MAX_DOUZE){ toast('12 joueurs au plus : retire-en un d\'abord'); return; }
+  b.classList.toggle('on');
+  const c = $('#dr-douze-compte');
+  if (c) c.textContent = document.querySelectorAll('#dr-douze .dr-puce.on').length + '/' + MAX_DOUZE;
+}
+const douzeCoches = () => [...document.querySelectorAll('#dr-douze .dr-puce.on')].map(b => b.dataset.id);
+function changeDouze(){
+  ouvreFeuille(`<div class="feuille-titre">Les 12 du match</div>
+    ${choixDouze(DIRECT.eq, DIRECT.douze || parEq(DIRECT.eq).map(j => j.id))}
+    <button class="bouton plein" style="margin-top:12px" onclick="valideDouze()">Valider</button>
+    <button class="bouton fant plein" style="margin-top:6px" onclick="fermeFeuille()">Annuler</button>`);
+}
+function valideDouze(){
+  const l = douzeCoches();
+  if (!l.length){ toast('Garde au moins un joueur'); return; }
+  DIRECT.douze = l; gardeDouzeEq(DIRECT.eq, l);
+  if (CHOISI && !l.includes(CHOISI)) CHOISI = null;
+  gardeDirect(); fermeFeuille(); rendVue();
 }
 
 /* L'écran du demi-terrain — aligné sur HOOPS TROPHY le 23/10/2026.
@@ -8613,11 +8680,12 @@ function depuisDirect(t){
 function vueDirect(){
   const d = litDirect();
   if (!d) { E.sous = null; ZONE = CHOISI = null; return vueMatchAccueil(equipesMatch()); }
-  const js = parEq(d.eq).slice().sort((a, b) => (parseInt(a.numero) || 999) - (parseInt(b.numero) || 999));
+  const tous = triNumero(parEq(d.eq));
+  const js = d.douze ? tous.filter(j => d.douze.includes(j.id)) : tous.slice(0, MAX_DOUZE);
   const marques = d.tirs.map(t => `<circle cx="${t.x}" cy="${t.y}" r="5" fill="${t.reussi ? '#4FA83A' : '#E0564B'}"
       fill-opacity="${t.reussi ? .9 : .55}" stroke="${t.reussi ? '#4FA83A' : '#E0564B'}" stroke-width="1.2"/>`).join('');
   const act = (cle, lib, cls) => `<button class="dr-act ${cls}" onclick="actionRapide('${cle}')">${lib}</button>`;
-  const lignes = js.filter(j => d.stats[j.id]).map(j => {
+  const lignes = tous.filter(j => d.stats[j.id]).map(j => {
     const s = d.stats[j.id], pts = 2 * s.m2 + 3 * s.m3 + s.lfm;
     return `<tr><td>${esc(nomCourt(j))}</td><td>${pts}</td><td>${s.m2}/${s.a2}</td><td>${s.m3}/${s.a3}</td>
       <td>${s.lfm}/${s.lfa}</td><td>${s.reb}</td><td>${s.pd}</td><td>${s.int}</td><td>${s.bp}</td></tr>`;
@@ -8633,8 +8701,9 @@ function vueDirect(){
   <p class="dr-consigne">Clique sur le terrain → sélectionne le joueur</p>
   <div class="dr-zone">
     <div class="terrain-enrob dr-terrain" id="terrainDirect">${terrainSVG('svgDirect', marques)}</div>
-    <div class="dr-joueurs${ZONE ? ' attend' : ''}" id="dr-joueurs">
-      <div class="dr-joueurs-tete">${esc(nomEq(d.eq))}</div>
+    <div class="dr-joueurs${ZONE ? ' attend' : ''}" id="dr-joueurs" style="--n:${Math.max(js.length, 1)}">
+      <div class="dr-joueurs-tete"><span>${esc(nomEq(d.eq))}</span>
+        <button class="dr-douze-btn" onclick="changeDouze()">Les 12</button></div>
       ${js.map(j => {
         const s = d.stats[j.id] || {}, pts = 2 * (s.m2 || 0) + 3 * (s.m3 || 0) + (s.lfm || 0);
         return `<div class="dr-joueur${CHOISI === j.id ? ' choisi' : ''}" data-id="${esc(j.id)}" onclick="joueurDirect('${esc(j.id)}')">
