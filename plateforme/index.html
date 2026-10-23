@@ -7380,7 +7380,26 @@ function fusionneChampionnat(gabarit, ligne){
   if (ligne.prochain && typeof ligne.prochain === 'object' && !Array.isArray(ligne.prochain)){
     sortie.prochain = Object.assign({}, base.prochain || {}, ligne.prochain);
   }
+  /* 23/10/2026 — les prochains matchs du calendrier (jusqu'à 12). Le
+     « prochain » envoyé par le classeur est calculé le jour de l'envoi : si
+     personne ne renvoie le classeur après un match, il désigne un match déjà
+     joué. On le recalcule donc ici, chaque jour : le plus proche à partir
+     d'aujourd'hui. Sans liste (ancien envoi), rien ne change. */
+  if (Array.isArray(ligne.a_venir)){
+    sortie.aVenir = ligne.a_venir.slice();
+    const futurs = matchsAVenirDe(sortie.aVenir);
+    if (futurs.length) sortie.prochain = Object.assign({}, base.prochain || {}, futurs[0]);
+  }
   return sortie;
+}
+
+/* Les matchs d'une liste du calendrier qui ne sont pas encore passés, du plus
+   proche au plus lointain. Les dates arrivent en jj/mm/aaaa. */
+function matchsAVenirDe(liste){
+  const auj = AUJ();
+  return (liste || [])
+    .filter(m => m && m.adversaire && /^\d{2}\/\d{2}\/\d{4}$/.test(m.date || '') && jourIso(m.date) >= auj)
+    .sort((a, b) => jourIso(a.date) < jourIso(b.date) ? -1 : 1);
 }
 
 /* ─────────────────────────────────────────── chargement du club
@@ -8418,10 +8437,28 @@ const statsDirect = id => (DIRECT.stats[id] ||
   (DIRECT.stats[id] = {reb:0, pd:0, int:0, bp:0, a2:0, m2:0, a3:0, m3:0, lfa:0, lfm:0}));
 const nomCourt = j => j ? ('n°' + j.numero + ' ' + (String(j.nom).split(' ').slice(-1)[0] || j.nom)) : '?';
 
+/* Les matchs proposés au démarrage : ceux du classeur Championnat, du plus
+   proche au plus lointain (23/10/2026). Sans liste — ancien envoi du
+   classeur — on retombe sur son « prochain » s'il n'est pas passé. */
+function matchsProposes(){
+  const C = DB.championnat || {};
+  let l = matchsAVenirDe(C.aVenir || []);
+  if (!l.length && C.prochain && C.prochain.adversaire) l = matchsAVenirDe([C.prochain]);
+  return l.slice(0, 6);
+}
+const LIB_COMPET = {championnat: 'Championnat', coupe: 'Coupe', playoff: 'Play-off', amical: 'Amical'};
+const libMatch = m => [String(m.date || '').slice(0, 5), m.adversaire,
+  (LIB_COMPET[m.competition] || '') + (m.tour ? ' · ' + m.tour : ''),
+  (m.domicile === false ? 'Extérieur' : 'Domicile') + (m.heure ? ' ' + m.heure : '')].filter(Boolean).join(' · ');
+
 function demarreDirect(){
-  const adv = ((($('#dr-adv') || {}).value) || '').trim();
+  const choix = ($('#dr-match') || {}).value;
+  const props = matchsProposes();
+  const m = (choix != null && choix !== '' && choix !== 'autre') ? props[Number(choix)] : null;
+  const adv = m ? m.adversaire : ((($('#dr-adv') || {}).value) || '').trim();
   if (!adv){ toast('Indique l\'adversaire'); return; }
   DIRECT = {eq: M.eq || E.equipe, adversaire: adv, date: AUJ(), periode: 1,
+            competition: m ? (m.competition || '') : '', dateMatch: m ? m.date : '',
             tirs: [], stats: {}, histo: [], joueur: null};
   gardeDirect();
   ouvreSous('direct');
@@ -8443,19 +8480,30 @@ function carteDirect(){
     const n = d.histo.length;
     return `<div class="carte">
       <div class="carte-titre">Stats en direct · ASA — ${esc(d.adversaire)}</div>
+      ${d.competition ? `<div class="carte-note">${esc(LIB_COMPET[d.competition] || '')}${d.dateMatch ? ' · ' + esc(d.dateMatch) : ''}</div>` : ''}
       <p class="carte-note" style="margin-top:5px">${d.tirs.length} tir${d.tirs.length > 1 ? 's' : ''} ·
         ${n} action${n > 1 ? 's' : ''} relevée${n > 1 ? 's' : ''}. À la fin du match, photographie la
         feuille : ces stats s'y ajouteront.</p>
       <button class="bouton plein" style="margin-top:10px" onclick="ouvreSous('direct')">Reprendre le terrain</button>
     </div>`;
   }
-  const pm = (typeof prochainMatch === 'function') ? prochainMatch(M.eq || E.equipe) : null;
+  /* Le match proposé : le plus proche à venir du calendrier du classeur
+     Championnat. Les suivants restent au choix, et « Autre adversaire »
+     couvre un match qui n'y serait pas. */
+  const props = matchsProposes();
+  const pm = (!props.length && typeof prochainMatch === 'function') ? prochainMatch(M.eq || E.equipe) : null;
   return `<div class="carte">
     <div class="carte-titre">Stats en direct</div>
     <p class="carte-note" style="margin-top:5px">Pendant le match, sur le demi-terrain : tirs avec leur
       emplacement, rebonds, passes, interceptions, balles perdues. La feuille photographiée à la fin
       apporte les points, les fautes et le temps de jeu.</p>
-    <div style="margin-top:10px"><label class="label" for="dr-adv">Adversaire</label>
+    ${props.length ? `<div style="margin-top:10px"><label class="label" for="dr-match">Match</label>
+      <select id="dr-match" class="champ" onchange="$('#dr-autre').style.display=this.value==='autre'?'block':'none'">
+        ${props.map((m, i) => `<option value="${i}"${i === 0 ? ' selected' : ''}>${esc(libMatch(m))}</option>`).join('')}
+        <option value="autre">Autre adversaire…</option>
+      </select></div>` : ''}
+    <div id="dr-autre" style="margin-top:10px;display:${props.length ? 'none' : 'block'}">
+      <label class="label" for="dr-adv">Adversaire</label>
       <input id="dr-adv" class="champ" type="text" maxlength="60" value="${esc((pm && pm.adversaire) || '')}"></div>
     <button class="bouton plein" style="margin-top:10px" onclick="demarreDirect()">Démarrer les stats en direct</button>
   </div>`;
