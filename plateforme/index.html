@@ -6742,7 +6742,7 @@ let FA_EN_COURS = false;
 let FA_MINUTERIE = null;
 
 const LIB_TABLE = {
-  sessions_tir:'Session de tir', tirs_opposition:'Tir en opposition', oppositions:'Opposition',
+  sessions_tir:'Session de tir', tirs:'Tir en match', tirs_opposition:'Tir en opposition', oppositions:'Opposition',
   seances:'Séance', departs:'Départ anticipé', medical:'Signalement médical', messages:'Message au staff',
   quiz:'Quiz', quiz_reponses:'Réponse au quiz', directives:'Consigne',
   mots_coach:'Mot du coach', preferences_joueur:'Questionnaire joueur',
@@ -8012,6 +8012,7 @@ function vueMatch(){
   if (!PEUT_MATCH(E.role)) return `<div class="vide">Réservé aux coachs assistants, à l'assistant administratif et au DT.</div>`;
   const eqs = equipesMatch();
   if (!M.eq || !eqs.some(e => e.id === M.eq)) M.eq = (eqs[0] || {}).id || E.equipe;
+  if (E.sous === 'direct') return vueDirect();
   if (M.etape === 'lecture') return vueMatchLecture();
   if (M.etape === 'verif' && M.lecture){ setTimeout(totauxMatch, 0); return vueMatchVerif(); }
   return vueMatchAccueil(eqs);
@@ -8024,6 +8025,7 @@ function vueMatchAccueil(eqs){
   return `<h1 class="vue-titre">Match</h1>
   <p class="vue-sous">Photographie la feuille du marqueur à la fin du match. Les points, les fautes et le
     score se remplissent seuls ; tu vérifies, tu complètes si tu veux, tu enregistres.</p>
+  ${carteDirect()}
 
   <div class="carte">
     <div class="carte-titre">Nouvelle feuille de match</div>
@@ -8164,6 +8166,20 @@ const FACULTATIF = [['reb', 'Reb'], ['pd', 'PD'], ['int', 'Int'], ['bp', 'BP'],
 
 function vueMatchVerif(){
   const L = M.lecture, roster = parEq(M.eq);
+  /* Les stats relevées en direct sur le demi-terrain pré-remplissent les
+     cases facultatives. Les tentatives ne descendent jamais sous les paniers
+     de la feuille : un panier que le terrain a manqué compte quand même. */
+  const D = (litDirect() && DIRECT.eq === M.eq) ? DIRECT : null;
+  const lusN = {}; (L.joueurs || []).forEach(l => { lusN[String(l.numero)] = l; });
+  const pre = (j, c) => {
+    const s = D && D.stats[j.id];
+    if (!s) return '';
+    const l = lusN[String(j.numero)] || {};
+    if (c === 'a2') return s.a2 + Math.max(0, (l.p2 || 0) - s.m2);
+    if (c === 'a3') return s.a3 + Math.max(0, (l.p3 || 0) - s.m3);
+    if (c === 'lfa') return s.lfa + Math.max(0, (l.lf || 0) - s.lfm);
+    return s[c];
+  };
   const lus = {}; (L.joueurs || []).forEach(l => { lus[String(l.numero)] = l; });
   const orphelins = (L.joueurs || []).filter(l => !roster.some(j => String(j.numero) === String(l.numero)));
   const douteux = (l, c) => l && Array.isArray(l.douteux) && l.douteux.includes(c);
@@ -8202,6 +8218,11 @@ function vueMatchVerif(){
     ${orphelins.map(l => `n°${esc(l.numero)} (${esc(l.nom_lu || '?')}, ${(l.lf || 0) + 2 * (l.p2 || 0) + 3 * (l.p3 || 0)} pts)`).join(', ')}.
     Reporte ses chiffres sur le bon joueur ci-dessous.</div></div>` : ''}
 
+  ${D ? `<div class="msg" style="border-left-color:var(--physique)"><div class="msg-txt">
+    Les stats en direct contre ${esc(D.adversaire)} sont reprises : rebonds, passes, interceptions,
+    balles perdues et tirs tentés sont pré-remplis dans « Compléter » pour chaque joueur, et les
+    ${D.tirs.length} tirs partiront avec leur emplacement. Vérifie-les avant d'enregistrer.</div></div>` : ''}
+
   <div class="section-titre">Joueurs</div>
   ${roster.map(j => {
     const l = lus[String(j.numero)];
@@ -8216,11 +8237,11 @@ function vueMatchVerif(){
         ${cell(j, l, 'lf', 'LF')}${cell(j, l, 'p2', '2 pts')}${cell(j, l, 'p3', '3 pts')}${cell(j, l, 'fautes', 'Fautes')}${cell(j, l, 'min', 'Min')}
       </div>
       <div class="carte-note" style="margin-top:6px"><span id="mt-pts-${esc(j.id)}">0</span> pts</div>
-      <details style="margin-top:8px"><summary class="carte-note" style="cursor:pointer">Compléter (facultatif)</summary>
+      <details style="margin-top:8px"${D && D.stats[j.id] ? ' open' : ''}><summary class="carte-note" style="cursor:pointer">Compléter (facultatif)${D && D.stats[j.id] ? ' — repris du terrain' : ''}</summary>
         <div class="g4" style="gap:6px;margin-top:8px">
           ${FACULTATIF.map(([c, lib]) => `<div><label class="label" for="mt-${c}-${esc(j.id)}">${lib}</label>
             <input id="mt-${c}-${esc(j.id)}" class="champ" type="number" min="0" inputmode="numeric"
-              style="text-align:center;padding:9px 4px"></div>`).join('')}
+              value="${esc(pre(j, c))}" style="text-align:center;padding:9px 4px"></div>`).join('')}
         </div>
       </details>
     </div>`;
@@ -8303,6 +8324,17 @@ async function enregistreMatch(){
       a2: l.a2, m2: l.m2, a3: l.a3, m3: l.m3, lfa: l.lfa, lfm: l.lfm}, 'rencontre_id,joueur_id');
   }
 
+  /* Les tirs relevés en direct, rattachés au match : ils alimentent la carte
+     de tirs des joueurs. Puis la saisie en direct est effacée de l'appareil. */
+  if (litDirect() && DIRECT.eq === M.eq){
+    for (const t of DIRECT.tirs){
+      if (!lignes.some(l => l.joueur === t.id)) continue;   // joueur décoché : on n'invente rien
+      await enregistrer('tirs', {rencontre_id: rid, joueur_id: t.id, x: t.x, y: t.y,
+                                 points: t.pts, reussi: !!t.reussi, periode: t.q});
+    }
+    DIRECT = null; gardeDirect();
+  }
+
   // L'écran se met à jour tout de suite, sans attendre le réseau.
   (DB.rencontres = DB.rencontres || []).unshift({id: rid, date: date, equipe: M.eq, adversaire: adv,
     pour: pour, contre: contre, saisiPar: par, lignes: lignes});
@@ -8346,6 +8378,206 @@ function ouvreRencontre(id){
     </table></div>
     <button class="bouton fant plein" style="margin-top:14px" onclick="fermeFeuille()">Fermer</button>`);
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LES STATS EN DIRECT — le demi-terrain, un + à la feuille      (22/10/2026)
+
+   Demande de Fathy : pendant le match, sur le banc, Oumar relève NOS joueurs
+   seulement, sur un demi-terrain (un seul panier : l'adversaire ne nous
+   intéresse pas). Il touche l'endroit du tir, choisit réussi ou manqué, et
+   note rebonds, passes décisives, interceptions, balles perdues.
+
+   La feuille photographiée reste la référence pour ce qui est officiel :
+   points, fautes, temps de jeu, score. Le terrain apporte ce qu'elle n'a pas.
+   Rien ne part en base pendant le match : la saisie est gardée sur
+   l'appareil, et c'est l'écran « Vérifier la feuille » qui la récupère —
+   les cases facultatives (rebonds, passes, interceptions, balles perdues, tirs
+   tentés) arrivent pré-remplies, Oumar contrôle, et « Enregistrer le match »
+   envoie le tout, plus l'emplacement de chaque tir rattaché au match (table
+   « tirs », qui alimente la carte de tirs des joueurs).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const CLE_DIRECT = 'asa-stats-direct';
+let DIRECT = null;
+
+function litDirect(){
+  if (DIRECT) return DIRECT;
+  try {
+    const d = JSON.parse(localStorage.getItem(CLE_DIRECT) || 'null');
+    if (d && d.eq && Array.isArray(d.tirs)) DIRECT = d;
+  } catch (e) {}
+  return DIRECT;
+}
+function gardeDirect(){
+  try {
+    if (DIRECT) localStorage.setItem(CLE_DIRECT, JSON.stringify(DIRECT));
+    else localStorage.removeItem(CLE_DIRECT);
+  } catch (e) {}
+}
+const statsDirect = id => (DIRECT.stats[id] ||
+  (DIRECT.stats[id] = {reb:0, pd:0, int:0, bp:0, a2:0, m2:0, a3:0, m3:0, lfa:0, lfm:0}));
+const nomCourt = j => j ? ('n°' + j.numero + ' ' + (String(j.nom).split(' ').slice(-1)[0] || j.nom)) : '?';
+
+function demarreDirect(){
+  const adv = ((($('#dr-adv') || {}).value) || '').trim();
+  if (!adv){ toast('Indique l\'adversaire'); return; }
+  DIRECT = {eq: M.eq || E.equipe, adversaire: adv, date: AUJ(), periode: 1,
+            tirs: [], stats: {}, histo: [], joueur: null};
+  gardeDirect();
+  ouvreSous('direct');
+}
+
+function abandonneDirect(){
+  ouvreFeuille(`<div class="feuille-titre">Effacer les stats en direct ?</div>
+    <div class="feuille-sous">${DIRECT.tirs.length} tirs et ${DIRECT.histo.length} actions seront perdus.</div>
+    <div class="act">
+      <button class="act-b large non" onclick="DIRECT=null;gardeDirect();fermeFeuille();fermeSous()">Effacer</button>
+      <button class="act-b large neutre" onclick="fermeFeuille()">Garder</button>
+    </div>`);
+}
+
+/* La carte de l'onglet Match. */
+function carteDirect(){
+  const d = litDirect();
+  if (d){
+    const n = d.histo.length;
+    return `<div class="carte">
+      <div class="carte-titre">Stats en direct · ASA — ${esc(d.adversaire)}</div>
+      <p class="carte-note" style="margin-top:5px">${d.tirs.length} tir${d.tirs.length > 1 ? 's' : ''} ·
+        ${n} action${n > 1 ? 's' : ''} relevée${n > 1 ? 's' : ''}. À la fin du match, photographie la
+        feuille : ces stats s'y ajouteront.</p>
+      <button class="bouton plein" style="margin-top:10px" onclick="ouvreSous('direct')">Reprendre le terrain</button>
+    </div>`;
+  }
+  const pm = (typeof prochainMatch === 'function') ? prochainMatch(M.eq || E.equipe) : null;
+  return `<div class="carte">
+    <div class="carte-titre">Stats en direct</div>
+    <p class="carte-note" style="margin-top:5px">Pendant le match, sur le demi-terrain : tirs avec leur
+      emplacement, rebonds, passes, interceptions, balles perdues. La feuille photographiée à la fin
+      apporte les points, les fautes et le temps de jeu.</p>
+    <div style="margin-top:10px"><label class="label" for="dr-adv">Adversaire</label>
+      <input id="dr-adv" class="champ" type="text" maxlength="60" value="${esc((pm && pm.adversaire) || '')}"></div>
+    <button class="bouton plein" style="margin-top:10px" onclick="demarreDirect()">Démarrer les stats en direct</button>
+  </div>`;
+}
+
+/* L'écran du demi-terrain. */
+function vueDirect(){
+  const d = litDirect();
+  if (!d) { E.sous = null; return vueMatchAccueil(equipesMatch()); }
+  const js = parEq(d.eq);
+  const marques = d.tirs.map(t => `<circle cx="${t.x}" cy="${t.y}" r="5" fill="${t.reussi ? '#4FA83A' : '#E0564B'}"
+      fill-opacity="${t.reussi ? .9 : .55}" stroke="${t.reussi ? '#4FA83A' : '#E0564B'}" stroke-width="1.2"/>`).join('');
+  const sel = d.joueur ? parId(d.joueur) : null;
+  const act = (cle, lib) => `<button class="pt-bouton" style="flex:1 1 30%" onclick="actionDirect('${cle}')">${lib}</button>`;
+  const lignes = js.filter(j => d.stats[j.id]).map(j => {
+    const s = d.stats[j.id], pts = 2 * s.m2 + 3 * s.m3 + s.lfm;
+    return `<tr><td>${esc(nomCourt(j))}</td><td>${pts}</td><td>${s.m2}/${s.a2}</td><td>${s.m3}/${s.a3}</td>
+      <td>${s.lfm}/${s.lfa}</td><td>${s.reb}</td><td>${s.pd}</td><td>${s.int}</td><td>${s.bp}</td></tr>`;
+  }).join('');
+
+  return `${retour('Match', 'fermeSous()')}
+  <h1 class="vue-titre">ASA — ${esc(d.adversaire)}</h1>
+  <p class="vue-sous">Stats en direct · ${esc(nomEq(d.eq))} · période ${d.periode}
+    <button class="pt-bouton" onclick="DIRECT.periode=Math.max(1,DIRECT.periode-1);gardeDirect();rendVue()">−</button>
+    <button class="pt-bouton" onclick="DIRECT.periode++;gardeDirect();rendVue()">+</button></p>
+
+  <div class="section-titre">1. Le joueur</div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px">${js.map(j => `<button class="pt-bouton"
+      style="${d.joueur === j.id ? 'background:var(--or);color:#16150F;border-color:var(--or)' : ''}"
+      onclick="DIRECT.joueur=(DIRECT.joueur==='${esc(j.id)}'?null:'${esc(j.id)}');gardeDirect();rendVue()">${esc(nomCourt(j))}</button>`).join('')}</div>
+
+  <div class="section-titre">2. L'action${sel ? ' — ' + esc(nomCourt(sel)) : ''}</div>
+  <p class="carte-note" style="margin:0 0 8px">Un tir : touche le terrain à l'endroit du tir.</p>
+  <div class="terrain-enrob" id="terrainDirect" style="max-width:420px;margin:0 auto">
+    ${terrainSVG('svgDirect', marques)}</div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
+    ${act('reb', 'Rebond')}${act('pd', 'Passe déc.')}${act('int', 'Interception')}
+    ${act('bp', 'Balle perdue')}${act('lf1', 'LF réussi')}${act('lf0', 'LF manqué')}
+  </div>
+
+  <div class="section-titre">Dernières actions</div>
+  <div class="carte">${d.histo.slice(0, 8).map(h => `<div class="carte-note" style="padding:3px 0">P${h.q} · ${esc(h.txt)}</div>`).join('')
+    || '<p class="carte-note">Rien pour l\'instant.</p>'}
+    ${d.histo.length ? `<button class="bouton fant plein" style="margin-top:8px" onclick="annuleDirect()">Annuler la dernière action</button>` : ''}</div>
+
+  ${lignes ? `<div class="section-titre">Récapitulatif</div>
+  <div class="carte" style="overflow-x:auto"><table class="tab" style="width:100%;font-size:12px">
+    <tr><th>Joueur</th><th>Pts</th><th>2 pts</th><th>3 pts</th><th>LF</th><th>Reb</th><th>PD</th><th>Int</th><th>BP</th></tr>
+    ${lignes}</table>
+    <p class="carte-note" style="margin-top:6px">Points du terrain, pour contrôle : la feuille fait foi.</p></div>` : ''}
+
+  <p class="carte-note" style="margin:14px 0">À la fin du match, reviens dans Match et photographie la
+    feuille : ces stats arrivent pré-remplies dans la vérification.</p>
+  <button class="bouton fant plein" onclick="abandonneDirect()">Effacer ces stats</button>`;
+}
+
+function brancheDirect(){
+  const enrob = $('#terrainDirect');
+  if (!enrob || enrob._branche) return;
+  enrob._branche = true;
+  enrob.addEventListener('click', ev => {
+    const svg = $('#svgDirect');
+    if (!svg) return;
+    const r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;
+    const p = {x: (ev.clientX - r.left) * vb.width / r.width, y: (ev.clientY - r.top) * vb.height / r.height};
+    if (p.x < 0 || p.x > vb.width || p.y < 0 || p.y > vb.height) return;
+    if (!DIRECT.joueur){ toast('Choisis d\'abord le joueur'); return; }
+    const z = detecteZone(p);
+    /* Un tir pris depuis la raquette n'est pas un lancer franc : les lancers
+       francs se notent avec leurs deux boutons. */
+    const pts = z.pts === 3 ? 3 : 2;
+    const j = parId(DIRECT.joueur);
+    ouvreFeuille(`<div class="feuille-titre">${pts} points — ${esc(nomCourt(j))}</div>
+      <div class="act">
+        <button class="act-b large oui" onclick="tirDirect(${p.x.toFixed(1)},${p.y.toFixed(1)},${pts},true)">Réussi</button>
+        <button class="act-b large non" onclick="tirDirect(${p.x.toFixed(1)},${p.y.toFixed(1)},${pts},false)">Manqué</button>
+        <button class="act-b large neutre" onclick="fermeFeuille()">Annuler</button>
+      </div>`);
+  });
+}
+
+function tirDirect(x, y, pts, reussi){
+  const id = DIRECT.joueur, s = statsDirect(id), j = parId(id);
+  if (pts === 3){ s.a3++; if (reussi) s.m3++; } else { s.a2++; if (reussi) s.m2++; }
+  DIRECT.tirs.push({id, x, y, pts, reussi: !!reussi, q: DIRECT.periode});
+  DIRECT.histo.unshift({type: 'tir', id, pts, reussi: !!reussi, q: DIRECT.periode,
+    txt: nomCourt(j) + ' — ' + pts + ' pts ' + (reussi ? 'réussi' : 'manqué')});
+  gardeDirect(); fermeFeuille(); rendVue();
+}
+
+function actionDirect(cle){
+  if (!DIRECT.joueur){ toast('Choisis d\'abord le joueur'); return; }
+  const id = DIRECT.joueur, s = statsDirect(id), j = parId(id);
+  const lib = {reb: 'Rebond', pd: 'Passe décisive', int: 'Interception', bp: 'Balle perdue',
+               lf1: 'LF réussi', lf0: 'LF manqué'}[cle];
+  if (cle === 'lf1'){ s.lfa++; s.lfm++; }
+  else if (cle === 'lf0'){ s.lfa++; }
+  else s[cle]++;
+  DIRECT.histo.unshift({type: cle, id, q: DIRECT.periode, txt: nomCourt(j) + ' — ' + lib});
+  gardeDirect(); rendVue();
+  toast(lib + ' — ' + nomCourt(j));
+}
+
+function annuleDirect(){
+  const h = DIRECT.histo.shift();
+  if (!h) return;
+  const s = statsDirect(h.id);
+  if (h.type === 'tir'){
+    DIRECT.tirs.pop();
+    if (h.pts === 3){ s.a3--; if (h.reussi) s.m3--; } else { s.a2--; if (h.reussi) s.m2--; }
+  } else if (h.type === 'lf1'){ s.lfa--; s.lfm--; }
+  else if (h.type === 'lf0'){ s.lfa--; }
+  else s[h.type]--;
+  gardeDirect(); rendVue(); toast('Dernière action annulée');
+}
+
+/* Le branchement du terrain après chaque rendu. */
+const _rendVueDirect = rendVue;
+rendVue = function(){
+  _rendVueDirect();
+  if (E.sous === 'direct' && PEUT_MATCH(E.role)) brancheDirect();
+};
 
 /* ══════════════════════════════════════════════════════════════════════════
    PLANNING — l'emploi du temps de la semaine                    (19/10/2026)
