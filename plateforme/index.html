@@ -689,26 +689,77 @@ textarea.champ{resize:vertical;min-height:78px;line-height:1.5}
 .pt-bouton{background:var(--surface2);border:1px solid var(--ligne2);color:var(--texte);
   border-radius:9px;padding:6px 11px;font-size:12px;font-weight:600;white-space:nowrap}
 
-/* Stats en direct : le terrain à gauche, la liste des joueurs à droite.
-   La liste prend la hauteur du terrain (contain:size) et défile au-delà. */
-.dr-zone{display:grid;grid-template-columns:minmax(0,1fr) 104px;gap:8px;align-items:stretch;
-  max-width:620px;margin:0 auto}
+/* Stats en direct — le geste de HOOPS TROPHY (23/10/2026) : le terrain à
+   gauche, la liste des joueurs à droite, même sur téléphone. La liste prend
+   la hauteur du terrain (contain:size) et défile au-delà. */
+.dr-consigne{font-size:12px;color:var(--gris2);text-align:center;margin:4px 0 8px}
+.dr-zone{display:grid;grid-template-columns:minmax(0,1fr) 132px;gap:8px;align-items:stretch;
+  max-width:720px;margin:0 auto}
 .dr-zone .terrain-enrob{margin:0;min-width:0}
-.dr-joueurs{contain:size;overflow-y:auto;display:flex;flex-direction:column;gap:5px;
-  border:1px solid var(--ligne2);border-radius:10px;padding:5px;-webkit-overflow-scrolling:touch}
-.dr-joueurs.attend{border-color:var(--or);box-shadow:0 0 0 1px var(--or) inset}
-.dr-joueur{display:flex;align-items:center;gap:6px;width:100%;min-height:38px;flex:0 0 auto;
-  background:var(--surface2);border:1px solid var(--ligne2);border-radius:8px;padding:4px 7px;
-  color:var(--texte);text-align:left;font-size:12px}
-.dr-joueur b{font-family:var(--mono);color:var(--or);min-width:20px;font-size:13px}
-.dr-joueur span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
-.dr-joueurs.attend .dr-joueur:active{background:var(--or);color:#16150F}
-.dr-consigne{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:36px;
-  margin:6px 0 8px;padding:6px 10px;border-radius:9px;border:1px solid var(--ligne2);
-  font-size:12.5px;color:var(--gris2)}
-.dr-consigne.on{border-color:var(--or);color:var(--texte)}
-.pt-bouton.dr-act{flex:1 1 30%}
-.pt-bouton.dr-act.on{background:var(--or);color:#16150F;border-color:var(--or)}
+.dr-terrain{position:relative;cursor:crosshair}
+.dr-joueurs{contain:size;overflow-y:auto;background:var(--surface);border:1px solid var(--ligne2);
+  border-radius:12px;-webkit-overflow-scrolling:touch;transition:border-color .2s}
+.dr-joueurs.attend{border-color:var(--or)}
+.dr-joueurs-tete{position:sticky;top:0;z-index:1;padding:5px 8px;font-size:10.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:1px;color:var(--or);background:var(--surface2);
+  border-bottom:1px solid var(--ligne2)}
+.dr-joueur{padding:5px 8px;border-bottom:1px solid var(--ligne2);cursor:pointer;border-left:3px solid transparent}
+.dr-joueur:last-child{border-bottom:none}
+.dr-joueur:active,.dr-joueur:hover{background:var(--surface2)}
+.dr-joueur.choisi{background:rgba(201,162,39,.15);border-left-color:var(--or)}
+.dr-nom{font-size:12px;font-weight:600;color:var(--texte);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dr-nom b{background:var(--surface2);color:var(--or);font-family:'Bebas Neue',sans-serif;font-weight:400;
+  font-size:12px;letter-spacing:1px;padding:0 4px;border-radius:3px;margin-right:4px}
+.dr-stats{font-size:9.5px;color:var(--gris2);margin-top:1px;white-space:nowrap}
+.dr-stats span{color:var(--texte);font-weight:700;margin-right:2px}
+@keyframes drFlash{0%{transform:translate(-50%,-50%) scale(.5);opacity:1}100%{transform:translate(-50%,-50%) scale(2.5);opacity:0}}
+.dr-flash{position:absolute;width:24px;height:24px;border-radius:50%;pointer-events:none;
+  border:3px solid;transform:translate(-50%,-50%);animation:drFlash .5s ease-out forwards}
+.dr-indice{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.8);background:var(--surface);
+  border:2px solid var(--or);border-radius:14px;padding:18px 26px;text-align:center;z-index:410;
+  opacity:0;pointer-events:none;transition:all .2s;max-width:86vw}
+.dr-indice.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.dr-indice-titre{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--or);letter-spacing:2px;white-space:nowrap}
+.dr-indice-sous{font-size:13px;color:var(--gris2);margin-top:4px}
+.dr-titre-petit{font-size:11px;color:var(--gris2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.dr-act{padding:10px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;flex:1 1 40%}
+.dr-act.reb{background:rgba(255,92,0,.15);color:#FF7A2E;border:1px solid #FF7A2E}
+.dr-act.pd{background:rgba(150,100,255,.15);color:#A884FF;border:1px solid #A884FF}
+.dr-act.int{background:rgba(0,217,126,.15);color:#00D97E;border:1px solid #00D97E}
+.dr-act.bp{background:rgba(255,59,92,.15);color:#FF5C78;border:1px solid #FF5C78}
+.dr-undo-tete{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.dr-undo{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;border:1px solid #FFD60A;
+  background:rgba(255,214,10,.1);color:#FFD60A;font-family:inherit}
+.dr-undo:disabled{opacity:.3;pointer-events:none}
+.dr-undo-liste{display:flex;flex-direction:column;gap:4px}
+.dr-undo-ligne{display:flex;justify-content:space-between;gap:8px;padding:5px 10px;background:var(--surface2);
+  border-radius:6px;font-size:11px;color:var(--texte)}
+.dr-undo-ligne:first-child{border-left:3px solid #FFD60A}
+.dr-undo-age{color:var(--gris2);font-size:10px;white-space:nowrap}
+.dr-rapides{margin-top:12px}
+/* Ordinateur et tablette : c'est là qu'il servira le plus (Fathy, 23/10).
+   Le terrain grandit jusqu'à la hauteur de l'écran, la liste s'élargit et
+   montre plus de stats ; à partir de 1100 px, les actions rapides et les
+   dernières actions passent dans une colonne à droite, toujours visibles. */
+@media screen and (min-width:700px){
+  .dr-zone{max-width:none;justify-content:center;
+    grid-template-columns:minmax(0,calc((100vh - 340px) * .9333)) 220px;gap:12px}
+  .dr-joueur{padding:8px 12px}
+  .dr-nom{font-size:14.5px}
+  .dr-nom b{font-size:14px}
+  .dr-stats{font-size:11px;margin-top:2px}
+  .dr-joueurs-tete{font-size:12px;padding:8px 12px}
+  .dr-consigne{font-size:13px}
+  .dr-cote{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+  .dr-cote .carte{margin:0}
+  .dr-act{font-size:14px;padding:12px 16px}
+  .dr-undo-ligne{font-size:12.5px}
+}
+@media screen and (min-width:1100px){
+  .dr-plan{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:14px;align-items:start}
+  .dr-cote{display:flex;flex-direction:column;margin-top:30px;position:sticky;top:90px}
+  .dr-act{flex:1 1 100%}
+}
 
 /* ══════════════════ LE SCANNER ══════════════════
    Repris tel quel d'ASA Sniper : c'est le même geste, au même endroit, et
@@ -8424,8 +8475,8 @@ function ouvreRencontre(id){
 
    Demande de Fathy : pendant le match, sur le banc, Oumar relève NOS joueurs
    seulement, sur un demi-terrain (un seul panier : l'adversaire ne nous
-   intéresse pas). Il touche l'endroit du tir, puis le joueur, puis marqué
-   ou raté (ordre revu le 23/10), et note rebonds, passes décisives, interceptions, balles perdues.
+   intéresse pas). Il touche l'endroit du tir, puis le joueur, puis réussi
+   ou manqué (comme dans Hoops Trophy, depuis le 23/10), et note rebonds, passes décisives, interceptions, balles perdues.
 
    La feuille photographiée reste la référence pour ce qui est officiel :
    points, fautes, temps de jeu, score. Le terrain apporte ce qu'elle n'a pas.
@@ -8481,7 +8532,7 @@ function demarreDirect(){
   DIRECT = {eq: M.eq || E.equipe, adversaire: adv, date: AUJ(), periode: 1,
             competition: m ? (m.competition || '') : '', dateMatch: m ? m.date : '',
             tirs: [], stats: {}, histo: []};
-  ATTENTE = null;
+  ZONE = CHOISI = null;
   gardeDirect();
   ouvreSous('direct');
 }
@@ -8490,7 +8541,7 @@ function abandonneDirect(){
   ouvreFeuille(`<div class="feuille-titre">Effacer les stats en direct ?</div>
     <div class="feuille-sous">${DIRECT.tirs.length} tirs et ${DIRECT.histo.length} actions seront perdus.</div>
     <div class="act">
-      <button class="act-b large non" onclick="DIRECT=null;ATTENTE=null;gardeDirect();fermeFeuille();fermeSous()">Effacer</button>
+      <button class="act-b large non" onclick="DIRECT=null;ZONE=CHOISI=null;gardeDirect();fermeFeuille();fermeSous()">Effacer</button>
       <button class="act-b large neutre" onclick="fermeFeuille()">Garder</button>
     </div>`);
 }
@@ -8531,38 +8582,41 @@ function carteDirect(){
   </div>`;
 }
 
-/* L'écran du demi-terrain — refait le 23/10/2026 à la demande de Fathy.
+/* L'écran du demi-terrain — aligné sur HOOPS TROPHY le 23/10/2026.
 
-   L'ordre suit ce que voit le banc : on sait OÙ le tir a été pris avant de
-   savoir qui l'a pris et s'il est rentré.
-     1. toucher le terrain à l'endroit du tir (un rond or marque le point) ;
-     2. toucher le joueur dans la liste, À CÔTÉ du terrain ;
-     3. choisir Marqué ou Raté.
-   Les autres actions suivent la même logique « quoi, puis qui » : Rebond,
-   puis le joueur. Il n'y a plus de joueur « sélectionné » qui reste actif
-   d'une action à l'autre : chaque saisie se termine sur le joueur.
+   Demande de Fathy : « l'utilisation doit être identique à Hoops Trophy ».
+   Le geste est donc repris tel quel :
+     — un tir : toucher le terrain (un rond clignote, coloré selon la zone, et
+       un encart annonce « TENTER À 3 PTS — sélectionnez le tireur »), puis
+       toucher le joueur, puis Réussi ou Manqué. La ligne des lancers francs
+       se touche comme le reste : c'est un lancer franc, à 1 point ;
+     — une autre action : toucher le joueur (il reste en surbrillance), puis
+       l'action dans la feuille qui s'ouvre, ou dans « Actions rapides » ;
+     — « Dernières actions » : les 5 dernières, avec leur âge, et Annuler.
+   Deux écarts, voulus : la liste des joueurs reste À CÔTÉ du terrain sur
+   téléphone (demande de Fathy, Hoops Trophy l'empilait dessous), et il n'y
+   a qu'une équipe et un panier. Pas de faute : la feuille fait foi.
 
-   L'action en cours (ATTENTE) n'est pas gardée sur l'appareil : un tir à
-   moitié saisi ne survit pas à un rechargement, c'est voulu. */
-let ATTENTE = null;
+   ZONE (tir en attente) et CHOISI (joueur en surbrillance) ne sont pas gardés
+   sur l'appareil : un geste à moitié fait ne survit pas à un rechargement. */
+let ZONE = null, CHOISI = null;
 const LIB_ACTION = {reb: 'Rebond', pd: 'Passe décisive', int: 'Interception', bp: 'Balle perdue',
                     lf1: 'LF réussi', lf0: 'LF manqué'};
+const COUL_ZONE = {1: '#00D97E', 2: '#4A90FF', 3: '#FFD60A'};
+const LIB_ZONE = {1: 'TENTER UN LANCER FRANC', 2: 'TENTER À 2 PTS', 3: 'TENTER À 3 PTS'};
+
+function depuisDirect(t){
+  const ago = Math.round((Date.now() - (t || Date.now())) / 1000);
+  return ago < 60 ? ago + ' s' : '~' + Math.round(ago / 60) + ' min';
+}
 
 function vueDirect(){
   const d = litDirect();
-  if (!d) { E.sous = null; ATTENTE = null; return vueMatchAccueil(equipesMatch()); }
-  const js = parEq(d.eq);
+  if (!d) { E.sous = null; ZONE = CHOISI = null; return vueMatchAccueil(equipesMatch()); }
+  const js = parEq(d.eq).slice().sort((a, b) => (parseInt(a.numero) || 999) - (parseInt(b.numero) || 999));
   const marques = d.tirs.map(t => `<circle cx="${t.x}" cy="${t.y}" r="5" fill="${t.reussi ? '#4FA83A' : '#E0564B'}"
-      fill-opacity="${t.reussi ? .9 : .55}" stroke="${t.reussi ? '#4FA83A' : '#E0564B'}" stroke-width="1.2"/>`).join('')
-    + (ATTENTE && ATTENTE.type === 'tir' ? `<circle cx="${ATTENTE.x}" cy="${ATTENTE.y}" r="9" fill="rgba(201,162,39,.25)"
-      stroke="var(--or)" stroke-width="2.4"/><circle cx="${ATTENTE.x}" cy="${ATTENTE.y}" r="2.5" fill="var(--or)"/>` : '');
-  const act = (cle, lib) => {
-    const on = ATTENTE && ATTENTE.type === cle;
-    return `<button class="pt-bouton dr-act${on ? ' on' : ''}" onclick="choisitActionDirect('${cle}')">${lib}</button>`;
-  };
-  const consigne = !ATTENTE ? 'Touche le terrain à l\'endroit du tir, ou choisis une action.'
-    : ATTENTE.type === 'tir' ? `Tir à ${ATTENTE.pts} points : touche le joueur qui a tiré.`
-    : `${LIB_ACTION[ATTENTE.type]} : touche le joueur.`;
+      fill-opacity="${t.reussi ? .9 : .55}" stroke="${t.reussi ? '#4FA83A' : '#E0564B'}" stroke-width="1.2"/>`).join('');
+  const act = (cle, lib, cls) => `<button class="dr-act ${cls}" onclick="actionRapide('${cle}')">${lib}</button>`;
   const lignes = js.filter(j => d.stats[j.id]).map(j => {
     const s = d.stats[j.id], pts = 2 * s.m2 + 3 * s.m3 + s.lfm;
     return `<tr><td>${esc(nomCourt(j))}</td><td>${pts}</td><td>${s.m2}/${s.a2}</td><td>${s.m3}/${s.a3}</td>
@@ -8575,26 +8629,38 @@ function vueDirect(){
     <button class="pt-bouton" onclick="DIRECT.periode=Math.max(1,DIRECT.periode-1);gardeDirect();rendVue()">−</button>
     <button class="pt-bouton" onclick="DIRECT.periode++;gardeDirect();rendVue()">+</button></p>
 
-  <div class="dr-consigne${ATTENTE ? ' on' : ''}" id="dr-consigne">
-    <span>${esc(consigne)}</span>
-    ${ATTENTE ? `<button class="pt-bouton" onclick="ATTENTE=null;rendVue()">Annuler</button>` : ''}</div>
-
+  <div class="dr-plan"><div class="dr-gauche">
+  <p class="dr-consigne">Clique sur le terrain → sélectionne le joueur</p>
   <div class="dr-zone">
-    <div class="terrain-enrob" id="terrainDirect">${terrainSVG('svgDirect', marques)}</div>
-    <div class="dr-joueurs${ATTENTE ? ' attend' : ''}" id="dr-joueurs">
-      ${js.map(j => `<button class="dr-joueur" data-id="${esc(j.id)}" onclick="joueurDirect('${esc(j.id)}')">
-        <b>${esc(String(j.numero))}</b><span>${esc((String(j.nom).split(' ').slice(-1)[0]) || j.nom)}</span></button>`).join('')}
+    <div class="terrain-enrob dr-terrain" id="terrainDirect">${terrainSVG('svgDirect', marques)}</div>
+    <div class="dr-joueurs${ZONE ? ' attend' : ''}" id="dr-joueurs">
+      <div class="dr-joueurs-tete">${esc(nomEq(d.eq))}</div>
+      ${js.map(j => {
+        const s = d.stats[j.id] || {}, pts = 2 * (s.m2 || 0) + 3 * (s.m3 || 0) + (s.lfm || 0);
+        return `<div class="dr-joueur${CHOISI === j.id ? ' choisi' : ''}" data-id="${esc(j.id)}" onclick="joueurDirect('${esc(j.id)}')">
+          <div class="dr-nom"><b>#${esc(String(j.numero))}</b>${esc((String(j.nom).split(' ').slice(-1)[0]) || j.nom)}</div>
+          <div class="dr-stats">PTS <span>${pts}</span> REB <span>${s.reb || 0}</span> PD <span>${s.pd || 0}</span></div></div>`;
+      }).join('')}
     </div>
   </div>
-  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
-    ${act('reb', 'Rebond')}${act('pd', 'Passe déc.')}${act('int', 'Interception')}
-    ${act('bp', 'Balle perdue')}${act('lf1', 'LF réussi')}${act('lf0', 'LF manqué')}
+  </div><div class="dr-cote">
+
+  <div class="carte dr-rapides">
+    <div class="dr-titre-petit">Actions rapides — sélectionne d'abord un joueur</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${act('reb', 'Rebond', 'reb')}${act('pd', 'Passe décisive', 'pd')}
+      ${act('int', 'Interception', 'int')}${act('bp', 'Balle perdue', 'bp')}
+    </div>
   </div>
 
-  <div class="section-titre">Dernières actions</div>
-  <div class="carte">${d.histo.slice(0, 8).map(h => `<div class="carte-note" style="padding:3px 0">P${h.q} · ${esc(h.txt)}</div>`).join('')
-    || '<p class="carte-note">Rien pour l\'instant.</p>'}
-    ${d.histo.length ? `<button class="bouton fant plein" style="margin-top:8px" onclick="annuleDirect()">Annuler la dernière action</button>` : ''}</div>
+  <div class="carte">
+    <div class="dr-undo-tete"><div class="dr-titre-petit" style="margin:0">↩ Dernières actions</div>
+      <button class="dr-undo" onclick="annuleDirect()"${d.histo.length ? '' : ' disabled'}>↩ Annuler</button></div>
+    <div class="dr-undo-liste">${d.histo.slice(0, 5).map(h => `<div class="dr-undo-ligne">
+        <span>P${h.q} · ${esc(h.txt)}</span><span class="dr-undo-age">il y a ${depuisDirect(h.t)}</span></div>`).join('')
+      || '<div class="carte-note" style="text-align:center">Aucune action</div>'}</div>
+  </div>
+  </div></div>
 
   ${lignes ? `<div class="section-titre">Récapitulatif</div>
   <div class="carte" style="overflow-x:auto"><table class="tab" style="width:100%;font-size:12px">
@@ -8604,10 +8670,13 @@ function vueDirect(){
 
   <p class="carte-note" style="margin:14px 0">À la fin du match, reviens dans Match et photographie la
     feuille : ces stats arrivent pré-remplies dans la vérification.</p>
-  <button class="bouton fant plein" onclick="abandonneDirect()">Effacer ces stats</button>`;
+  <button class="bouton fant plein" onclick="abandonneDirect()">Effacer ces stats</button>
+  <div class="dr-indice" id="dr-indice"><div class="dr-indice-titre" id="dr-indice-titre"></div>
+    <div class="dr-indice-sous" id="dr-indice-sous"></div></div>`;
 }
 
-/* Étape 1 : l'endroit du tir. Un second toucher déplace le point. */
+/* Le toucher sur le terrain : le rond qui clignote, l'encart, et le tir en
+   attente de son tireur. */
 function brancheDirect(){
   const enrob = $('#terrainDirect');
   if (!enrob || enrob._branche) return;
@@ -8618,56 +8687,84 @@ function brancheDirect(){
     const r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;
     const p = {x: (ev.clientX - r.left) * vb.width / r.width, y: (ev.clientY - r.top) * vb.height / r.height};
     if (p.x < 0 || p.x > vb.width || p.y < 0 || p.y > vb.height) return;
-    /* Un tir pris depuis la raquette n'est pas un lancer franc : les lancers
-       francs se notent avec leurs deux boutons. */
-    const pts = detecteZone(p).pts === 3 ? 3 : 2;
-    ATTENTE = {type: 'tir', x: +p.x.toFixed(1), y: +p.y.toFixed(1), pts};
-    rendVue();
+    const z = detecteZone(p);
+    const pts = z.pts === 3 ? 3 : z.pts === 1 ? 1 : 2;
+    const e = enrob.getBoundingClientRect(), c = COUL_ZONE[pts];
+    const rond = document.createElement('div');
+    rond.className = 'dr-flash';
+    rond.style.cssText = `left:${ev.clientX - e.left}px;top:${ev.clientY - e.top}px;border-color:${c};background:${c}4D`;
+    enrob.appendChild(rond);
+    setTimeout(() => rond.remove(), 500);
+    ZONE = {x: +p.x.toFixed(1), y: +p.y.toFixed(1), pts, lib: z.lib};
+    CHOISI = null;
+    document.querySelectorAll('.dr-joueur.choisi').forEach(x => x.classList.remove('choisi'));
+    const l = $('#dr-joueurs'); if (l) l.classList.add('attend');
+    $('#dr-indice-titre').textContent = LIB_ZONE[pts];
+    $('#dr-indice-sous').textContent = z.lib + ' — sélectionne le tireur';
+    const ind = $('#dr-indice');
+    ind.classList.add('on'); clearTimeout(ind._t); ind._t = setTimeout(() => ind.classList.remove('on'), 2500);
   });
 }
 
-/* Une action autre qu'un tir : on la choisit, puis le joueur. */
-function choisitActionDirect(cle){
-  ATTENTE = (ATTENTE && ATTENTE.type === cle) ? null : {type: cle};
-  rendVue();
-}
-
-/* Étape 2 : le joueur. Pour un tir, il reste l'étape 3 — marqué ou raté. */
+/* Le joueur touché : s'il y a un tir en attente, c'est le tireur ; sinon il
+   devient le joueur choisi et ses actions s'ouvrent. */
 function joueurDirect(id){
-  if (!ATTENTE){ toast('Touche d\'abord le terrain, ou choisis une action'); return; }
   const j = parId(id);
-  if (ATTENTE.type !== 'tir'){ actionDirect(ATTENTE.type, id); return; }
-  ATTENTE.id = id;
-  ouvreFeuille(`<div class="feuille-titre">${ATTENTE.pts} points — ${esc(nomCourt(j))}</div>
-    <div class="feuille-sous">Le panier est-il marqué ?</div>
-    <div class="act">
-      <button class="act-b large oui" onclick="tirDirect(true)">Marqué</button>
-      <button class="act-b large non" onclick="tirDirect(false)">Raté</button>
-      <button class="act-b large neutre" onclick="fermeFeuille()">Retour</button>
-    </div>`);
+  CHOISI = id;
+  if (ZONE){
+    const tl = ZONE.pts === 1 ? 'Lancer franc' : 'Tir à ' + ZONE.pts + ' pts';
+    ouvreFeuille(`<div class="feuille-titre" style="text-align:center">Action pour <span style="color:var(--or)">${esc(nomCourt(j))}</span></div>
+      <div class="feuille-sous" style="text-align:center">${tl} — ${esc(ZONE.lib)}</div>
+      <div class="act">
+        <button class="act-b large oui" onclick="tirDirect(true)">Réussi<br><small>+${ZONE.pts} PT${ZONE.pts > 1 ? 'S' : ''}</small></button>
+        <button class="act-b large non" onclick="tirDirect(false)">Manqué</button>
+      </div>
+      <button class="bouton fant plein" style="margin-top:8px" onclick="fermeFeuille();ZONE=null;CHOISI=null;rendVue()">Annuler</button>`);
+    return;
+  }
+  rendVue();
+  ouvreFeuille(`<div class="feuille-titre" style="text-align:center">Action pour <span style="color:var(--or)">${esc(nomCourt(j))}</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px">
+      <button class="dr-act reb" onclick="actionDirect('reb','${esc(id)}')">Rebond</button>
+      <button class="dr-act pd" onclick="actionDirect('pd','${esc(id)}')">Passe</button>
+      <button class="dr-act int" onclick="actionDirect('int','${esc(id)}')">Interception</button>
+      <button class="dr-act bp" onclick="actionDirect('bp','${esc(id)}')">Balle perdue</button>
+    </div>
+    <button class="bouton fant plein" style="margin-top:10px" onclick="fermeFeuille();CHOISI=null;rendVue()">Annuler</button>`);
 }
 
-/* Étape 3 : le résultat. */
+/* Le résultat du tir. Un lancer franc compte dans les LF, sans emplacement :
+   la carte de tirs ne garde que les tirs du jeu. */
 function tirDirect(reussi){
-  if (!ATTENTE || ATTENTE.type !== 'tir' || !ATTENTE.id) return;
-  const {id, x, y, pts} = ATTENTE, s = statsDirect(id), j = parId(id);
-  if (pts === 3){ s.a3++; if (reussi) s.m3++; } else { s.a2++; if (reussi) s.m2++; }
-  DIRECT.tirs.push({id, x, y, pts, reussi: !!reussi, q: DIRECT.periode});
-  DIRECT.histo.unshift({type: 'tir', id, pts, reussi: !!reussi, q: DIRECT.periode,
-    txt: nomCourt(j) + ' — ' + pts + ' pts ' + (reussi ? 'marqué' : 'raté')});
-  ATTENTE = null;
+  if (!ZONE || !CHOISI) return;
+  const id = CHOISI, {x, y, pts} = ZONE, s = statsDirect(id), j = parId(id);
+  const lib = (reussi ? '+' + pts + ' pt' + (pts > 1 ? 's' : '') : 'Manqué ' + pts + ' pt' + (pts > 1 ? 's' : '')) + ' ' + nomCourt(j);
+  if (pts === 1){
+    s.lfa++; if (reussi) s.lfm++;
+    DIRECT.histo.unshift({type: reussi ? 'lf1' : 'lf0', id, q: DIRECT.periode, t: Date.now(), txt: lib});
+  } else {
+    if (pts === 3){ s.a3++; if (reussi) s.m3++; } else { s.a2++; if (reussi) s.m2++; }
+    DIRECT.tirs.push({id, x, y, pts, reussi: !!reussi, q: DIRECT.periode});
+    DIRECT.histo.unshift({type: 'tir', id, pts, reussi: !!reussi, q: DIRECT.periode, t: Date.now(), txt: lib});
+  }
+  ZONE = null; CHOISI = null;
   gardeDirect(); fermeFeuille(); rendVue();
+  toast((reussi ? '✓ ' : '✕ ') + lib);
+}
+
+/* « Actions rapides » : sur le joueur choisi, qui le reste. */
+function actionRapide(cle){
+  if (!CHOISI){ toast('Sélectionne un joueur !'); return; }
+  actionDirect(cle, CHOISI);
 }
 
 function actionDirect(cle, id){
   const s = statsDirect(id), j = parId(id), lib = LIB_ACTION[cle];
-  if (cle === 'lf1'){ s.lfa++; s.lfm++; }
-  else if (cle === 'lf0'){ s.lfa++; }
-  else s[cle]++;
-  DIRECT.histo.unshift({type: cle, id, q: DIRECT.periode, txt: nomCourt(j) + ' — ' + lib});
-  ATTENTE = null;
-  gardeDirect(); rendVue();
-  toast(lib + ' — ' + nomCourt(j));
+  s[cle]++;
+  DIRECT.histo.unshift({type: cle, id, q: DIRECT.periode, t: Date.now(), txt: lib + ' → ' + nomCourt(j)});
+  ZONE = null; CHOISI = id;
+  gardeDirect(); fermeFeuille(); rendVue();
+  toast(lib + ' → ' + nomCourt(j));
 }
 
 function annuleDirect(){
