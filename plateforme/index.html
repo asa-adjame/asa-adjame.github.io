@@ -923,7 +923,7 @@ table.tab tr.nous{background:rgba(255,178,70,.12)}
 
   <div class="cx-panneau">
     <h1 class="cx-bienvenue">Bienvenue sur la plateforme du club</h1>
-    <p class="cx-sous">Suivi des joueurs, des séances et des rencontres — équipe pro de l'ASA.</p>
+    <p class="cx-sous">Suivi des joueurs, des séances et des rencontres — équipes pro et espoirs de l'ASA.</p>
 
     <form class="cx-form" id="cxForm" onsubmit="tenteCode(event)">
       <label class="label" for="cxCode">Code d'accès personnel</label>
@@ -1029,10 +1029,13 @@ const parEq = e => DB.joueurs.filter(j => j.equipe === e);
    ils sont seulement écartés à l'affichage, ici et nulle part ailleurs.
    Pour les rouvrir : EQUIPES_ACTIVES = ['pro', 'espoirs'], et c'est tout.
 
+   23/10/2026 : ROUVERTS, à la demande de Fathy, qui a reçu l'effectif du
+   groupe espoirs. Pour les masquer de nouveau : ['pro'].
+
    Le filtre s'applique à chaque fois que DB est posé ou remplacé (connexion,
    rechargement des données du club). Il ne touche que la copie en mémoire :
    aucune écriture ne part d'ici, rien n'est effacé côté serveur. */
-const EQUIPES_ACTIVES = ['pro'];
+const EQUIPES_ACTIVES = ['pro', 'espoirs'];
 const equipeOuverte = e => !e || e === '*' || EQUIPES_ACTIVES.includes(e);
 function focusEquipes(){
   if (typeof DB === 'undefined' || !DB) return;
