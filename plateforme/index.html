@@ -689,6 +689,27 @@ textarea.champ{resize:vertical;min-height:78px;line-height:1.5}
 .pt-bouton{background:var(--surface2);border:1px solid var(--ligne2);color:var(--texte);
   border-radius:9px;padding:6px 11px;font-size:12px;font-weight:600;white-space:nowrap}
 
+/* Stats en direct : le terrain à gauche, la liste des joueurs à droite.
+   La liste prend la hauteur du terrain (contain:size) et défile au-delà. */
+.dr-zone{display:grid;grid-template-columns:minmax(0,1fr) 104px;gap:8px;align-items:stretch;
+  max-width:620px;margin:0 auto}
+.dr-zone .terrain-enrob{margin:0;min-width:0}
+.dr-joueurs{contain:size;overflow-y:auto;display:flex;flex-direction:column;gap:5px;
+  border:1px solid var(--ligne2);border-radius:10px;padding:5px;-webkit-overflow-scrolling:touch}
+.dr-joueurs.attend{border-color:var(--or);box-shadow:0 0 0 1px var(--or) inset}
+.dr-joueur{display:flex;align-items:center;gap:6px;width:100%;min-height:38px;flex:0 0 auto;
+  background:var(--surface2);border:1px solid var(--ligne2);border-radius:8px;padding:4px 7px;
+  color:var(--texte);text-align:left;font-size:12px}
+.dr-joueur b{font-family:var(--mono);color:var(--or);min-width:20px;font-size:13px}
+.dr-joueur span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.dr-joueurs.attend .dr-joueur:active{background:var(--or);color:#16150F}
+.dr-consigne{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:36px;
+  margin:6px 0 8px;padding:6px 10px;border-radius:9px;border:1px solid var(--ligne2);
+  font-size:12.5px;color:var(--gris2)}
+.dr-consigne.on{border-color:var(--or);color:var(--texte)}
+.pt-bouton.dr-act{flex:1 1 30%}
+.pt-bouton.dr-act.on{background:var(--or);color:#16150F;border-color:var(--or)}
+
 /* ══════════════════ LE SCANNER ══════════════════
    Repris tel quel d'ASA Sniper : c'est le même geste, au même endroit, et
    l'assistant ne doit pas réapprendre un écran entre les deux applications. */
@@ -8403,8 +8424,8 @@ function ouvreRencontre(id){
 
    Demande de Fathy : pendant le match, sur le banc, Oumar relève NOS joueurs
    seulement, sur un demi-terrain (un seul panier : l'adversaire ne nous
-   intéresse pas). Il touche l'endroit du tir, choisit réussi ou manqué, et
-   note rebonds, passes décisives, interceptions, balles perdues.
+   intéresse pas). Il touche l'endroit du tir, puis le joueur, puis marqué
+   ou raté (ordre revu le 23/10), et note rebonds, passes décisives, interceptions, balles perdues.
 
    La feuille photographiée reste la référence pour ce qui est officiel :
    points, fautes, temps de jeu, score. Le terrain apporte ce qu'elle n'a pas.
@@ -8459,7 +8480,8 @@ function demarreDirect(){
   if (!adv){ toast('Indique l\'adversaire'); return; }
   DIRECT = {eq: M.eq || E.equipe, adversaire: adv, date: AUJ(), periode: 1,
             competition: m ? (m.competition || '') : '', dateMatch: m ? m.date : '',
-            tirs: [], stats: {}, histo: [], joueur: null};
+            tirs: [], stats: {}, histo: []};
+  ATTENTE = null;
   gardeDirect();
   ouvreSous('direct');
 }
@@ -8468,7 +8490,7 @@ function abandonneDirect(){
   ouvreFeuille(`<div class="feuille-titre">Effacer les stats en direct ?</div>
     <div class="feuille-sous">${DIRECT.tirs.length} tirs et ${DIRECT.histo.length} actions seront perdus.</div>
     <div class="act">
-      <button class="act-b large non" onclick="DIRECT=null;gardeDirect();fermeFeuille();fermeSous()">Effacer</button>
+      <button class="act-b large non" onclick="DIRECT=null;ATTENTE=null;gardeDirect();fermeFeuille();fermeSous()">Effacer</button>
       <button class="act-b large neutre" onclick="fermeFeuille()">Garder</button>
     </div>`);
 }
@@ -8509,15 +8531,38 @@ function carteDirect(){
   </div>`;
 }
 
-/* L'écran du demi-terrain. */
+/* L'écran du demi-terrain — refait le 23/10/2026 à la demande de Fathy.
+
+   L'ordre suit ce que voit le banc : on sait OÙ le tir a été pris avant de
+   savoir qui l'a pris et s'il est rentré.
+     1. toucher le terrain à l'endroit du tir (un rond or marque le point) ;
+     2. toucher le joueur dans la liste, À CÔTÉ du terrain ;
+     3. choisir Marqué ou Raté.
+   Les autres actions suivent la même logique « quoi, puis qui » : Rebond,
+   puis le joueur. Il n'y a plus de joueur « sélectionné » qui reste actif
+   d'une action à l'autre : chaque saisie se termine sur le joueur.
+
+   L'action en cours (ATTENTE) n'est pas gardée sur l'appareil : un tir à
+   moitié saisi ne survit pas à un rechargement, c'est voulu. */
+let ATTENTE = null;
+const LIB_ACTION = {reb: 'Rebond', pd: 'Passe décisive', int: 'Interception', bp: 'Balle perdue',
+                    lf1: 'LF réussi', lf0: 'LF manqué'};
+
 function vueDirect(){
   const d = litDirect();
-  if (!d) { E.sous = null; return vueMatchAccueil(equipesMatch()); }
+  if (!d) { E.sous = null; ATTENTE = null; return vueMatchAccueil(equipesMatch()); }
   const js = parEq(d.eq);
   const marques = d.tirs.map(t => `<circle cx="${t.x}" cy="${t.y}" r="5" fill="${t.reussi ? '#4FA83A' : '#E0564B'}"
-      fill-opacity="${t.reussi ? .9 : .55}" stroke="${t.reussi ? '#4FA83A' : '#E0564B'}" stroke-width="1.2"/>`).join('');
-  const sel = d.joueur ? parId(d.joueur) : null;
-  const act = (cle, lib) => `<button class="pt-bouton" style="flex:1 1 30%" onclick="actionDirect('${cle}')">${lib}</button>`;
+      fill-opacity="${t.reussi ? .9 : .55}" stroke="${t.reussi ? '#4FA83A' : '#E0564B'}" stroke-width="1.2"/>`).join('')
+    + (ATTENTE && ATTENTE.type === 'tir' ? `<circle cx="${ATTENTE.x}" cy="${ATTENTE.y}" r="9" fill="rgba(201,162,39,.25)"
+      stroke="var(--or)" stroke-width="2.4"/><circle cx="${ATTENTE.x}" cy="${ATTENTE.y}" r="2.5" fill="var(--or)"/>` : '');
+  const act = (cle, lib) => {
+    const on = ATTENTE && ATTENTE.type === cle;
+    return `<button class="pt-bouton dr-act${on ? ' on' : ''}" onclick="choisitActionDirect('${cle}')">${lib}</button>`;
+  };
+  const consigne = !ATTENTE ? 'Touche le terrain à l\'endroit du tir, ou choisis une action.'
+    : ATTENTE.type === 'tir' ? `Tir à ${ATTENTE.pts} points : touche le joueur qui a tiré.`
+    : `${LIB_ACTION[ATTENTE.type]} : touche le joueur.`;
   const lignes = js.filter(j => d.stats[j.id]).map(j => {
     const s = d.stats[j.id], pts = 2 * s.m2 + 3 * s.m3 + s.lfm;
     return `<tr><td>${esc(nomCourt(j))}</td><td>${pts}</td><td>${s.m2}/${s.a2}</td><td>${s.m3}/${s.a3}</td>
@@ -8530,15 +8575,17 @@ function vueDirect(){
     <button class="pt-bouton" onclick="DIRECT.periode=Math.max(1,DIRECT.periode-1);gardeDirect();rendVue()">−</button>
     <button class="pt-bouton" onclick="DIRECT.periode++;gardeDirect();rendVue()">+</button></p>
 
-  <div class="section-titre">1. Le joueur</div>
-  <div style="display:flex;flex-wrap:wrap;gap:6px">${js.map(j => `<button class="pt-bouton"
-      style="${d.joueur === j.id ? 'background:var(--or);color:#16150F;border-color:var(--or)' : ''}"
-      onclick="DIRECT.joueur=(DIRECT.joueur==='${esc(j.id)}'?null:'${esc(j.id)}');gardeDirect();rendVue()">${esc(nomCourt(j))}</button>`).join('')}</div>
+  <div class="dr-consigne${ATTENTE ? ' on' : ''}" id="dr-consigne">
+    <span>${esc(consigne)}</span>
+    ${ATTENTE ? `<button class="pt-bouton" onclick="ATTENTE=null;rendVue()">Annuler</button>` : ''}</div>
 
-  <div class="section-titre">2. L'action${sel ? ' — ' + esc(nomCourt(sel)) : ''}</div>
-  <p class="carte-note" style="margin:0 0 8px">Un tir : touche le terrain à l'endroit du tir.</p>
-  <div class="terrain-enrob" id="terrainDirect" style="max-width:420px;margin:0 auto">
-    ${terrainSVG('svgDirect', marques)}</div>
+  <div class="dr-zone">
+    <div class="terrain-enrob" id="terrainDirect">${terrainSVG('svgDirect', marques)}</div>
+    <div class="dr-joueurs${ATTENTE ? ' attend' : ''}" id="dr-joueurs">
+      ${js.map(j => `<button class="dr-joueur" data-id="${esc(j.id)}" onclick="joueurDirect('${esc(j.id)}')">
+        <b>${esc(String(j.numero))}</b><span>${esc((String(j.nom).split(' ').slice(-1)[0]) || j.nom)}</span></button>`).join('')}
+    </div>
+  </div>
   <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
     ${act('reb', 'Rebond')}${act('pd', 'Passe déc.')}${act('int', 'Interception')}
     ${act('bp', 'Balle perdue')}${act('lf1', 'LF réussi')}${act('lf0', 'LF manqué')}
@@ -8560,6 +8607,7 @@ function vueDirect(){
   <button class="bouton fant plein" onclick="abandonneDirect()">Effacer ces stats</button>`;
 }
 
+/* Étape 1 : l'endroit du tir. Un second toucher déplace le point. */
 function brancheDirect(){
   const enrob = $('#terrainDirect');
   if (!enrob || enrob._branche) return;
@@ -8570,39 +8618,54 @@ function brancheDirect(){
     const r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;
     const p = {x: (ev.clientX - r.left) * vb.width / r.width, y: (ev.clientY - r.top) * vb.height / r.height};
     if (p.x < 0 || p.x > vb.width || p.y < 0 || p.y > vb.height) return;
-    if (!DIRECT.joueur){ toast('Choisis d\'abord le joueur'); return; }
-    const z = detecteZone(p);
     /* Un tir pris depuis la raquette n'est pas un lancer franc : les lancers
        francs se notent avec leurs deux boutons. */
-    const pts = z.pts === 3 ? 3 : 2;
-    const j = parId(DIRECT.joueur);
-    ouvreFeuille(`<div class="feuille-titre">${pts} points — ${esc(nomCourt(j))}</div>
-      <div class="act">
-        <button class="act-b large oui" onclick="tirDirect(${p.x.toFixed(1)},${p.y.toFixed(1)},${pts},true)">Réussi</button>
-        <button class="act-b large non" onclick="tirDirect(${p.x.toFixed(1)},${p.y.toFixed(1)},${pts},false)">Manqué</button>
-        <button class="act-b large neutre" onclick="fermeFeuille()">Annuler</button>
-      </div>`);
+    const pts = detecteZone(p).pts === 3 ? 3 : 2;
+    ATTENTE = {type: 'tir', x: +p.x.toFixed(1), y: +p.y.toFixed(1), pts};
+    rendVue();
   });
 }
 
-function tirDirect(x, y, pts, reussi){
-  const id = DIRECT.joueur, s = statsDirect(id), j = parId(id);
+/* Une action autre qu'un tir : on la choisit, puis le joueur. */
+function choisitActionDirect(cle){
+  ATTENTE = (ATTENTE && ATTENTE.type === cle) ? null : {type: cle};
+  rendVue();
+}
+
+/* Étape 2 : le joueur. Pour un tir, il reste l'étape 3 — marqué ou raté. */
+function joueurDirect(id){
+  if (!ATTENTE){ toast('Touche d\'abord le terrain, ou choisis une action'); return; }
+  const j = parId(id);
+  if (ATTENTE.type !== 'tir'){ actionDirect(ATTENTE.type, id); return; }
+  ATTENTE.id = id;
+  ouvreFeuille(`<div class="feuille-titre">${ATTENTE.pts} points — ${esc(nomCourt(j))}</div>
+    <div class="feuille-sous">Le panier est-il marqué ?</div>
+    <div class="act">
+      <button class="act-b large oui" onclick="tirDirect(true)">Marqué</button>
+      <button class="act-b large non" onclick="tirDirect(false)">Raté</button>
+      <button class="act-b large neutre" onclick="fermeFeuille()">Retour</button>
+    </div>`);
+}
+
+/* Étape 3 : le résultat. */
+function tirDirect(reussi){
+  if (!ATTENTE || ATTENTE.type !== 'tir' || !ATTENTE.id) return;
+  const {id, x, y, pts} = ATTENTE, s = statsDirect(id), j = parId(id);
   if (pts === 3){ s.a3++; if (reussi) s.m3++; } else { s.a2++; if (reussi) s.m2++; }
   DIRECT.tirs.push({id, x, y, pts, reussi: !!reussi, q: DIRECT.periode});
   DIRECT.histo.unshift({type: 'tir', id, pts, reussi: !!reussi, q: DIRECT.periode,
-    txt: nomCourt(j) + ' — ' + pts + ' pts ' + (reussi ? 'réussi' : 'manqué')});
+    txt: nomCourt(j) + ' — ' + pts + ' pts ' + (reussi ? 'marqué' : 'raté')});
+  ATTENTE = null;
   gardeDirect(); fermeFeuille(); rendVue();
 }
 
-function actionDirect(cle){
-  if (!DIRECT.joueur){ toast('Choisis d\'abord le joueur'); return; }
-  const id = DIRECT.joueur, s = statsDirect(id), j = parId(id);
-  const lib = {reb: 'Rebond', pd: 'Passe décisive', int: 'Interception', bp: 'Balle perdue',
-               lf1: 'LF réussi', lf0: 'LF manqué'}[cle];
+function actionDirect(cle, id){
+  const s = statsDirect(id), j = parId(id), lib = LIB_ACTION[cle];
   if (cle === 'lf1'){ s.lfa++; s.lfm++; }
   else if (cle === 'lf0'){ s.lfa++; }
   else s[cle]++;
   DIRECT.histo.unshift({type: cle, id, q: DIRECT.periode, txt: nomCourt(j) + ' — ' + lib});
+  ATTENTE = null;
   gardeDirect(); rendVue();
   toast(lib + ' — ' + nomCourt(j));
 }
