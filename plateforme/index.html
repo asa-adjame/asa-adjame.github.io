@@ -761,7 +761,7 @@ textarea.champ{resize:vertical;min-height:78px;line-height:1.5}
    dernières actions passent dans une colonne à droite, toujours visibles. */
 @media screen and (min-width:700px){
   .dr-zone{max-width:none;justify-content:center;
-    grid-template-columns:minmax(0,calc((100vh - 340px) * .9333)) 220px;gap:12px}
+    grid-template-columns:minmax(0,calc((100vh - 340px) * 1.0714)) 220px;gap:12px}
   .dr-zone{align-items:stretch}
   .dr-joueurs{contain:size;grid-template-rows:auto repeat(var(--n,12),minmax(0,1fr))}
   .dr-joueur{padding:1px 12px}
@@ -8700,7 +8700,7 @@ function vueDirect(){
   <div class="dr-plan"><div class="dr-gauche">
   <p class="dr-consigne">Clique sur le terrain → sélectionne le joueur</p>
   <div class="dr-zone">
-    <div class="terrain-enrob dr-terrain" id="terrainDirect">${terrainSVG('svgDirect', marques)}</div>
+    <div class="terrain-enrob dr-terrain" id="terrainDirect">${terrainVertical('svgDirect', marques)}</div>
     <div class="dr-joueurs${ZONE ? ' attend' : ''}" id="dr-joueurs" style="--n:${Math.max(js.length, 1)}">
       <div class="dr-joueurs-tete"><span>${esc(nomEq(d.eq))}</span>
         <button class="dr-douze-btn" onclick="changeDouze()">Les 12</button></div>
@@ -8744,6 +8744,19 @@ function vueDirect(){
     <div class="dr-indice-sous" id="dr-indice-sous"></div></div>`;
 }
 
+/* LE TERRAIN VERTICAL (23/10/2026, demande de Fathy) : le panier en haut,
+   la ligne médiane en bas. Le dessin est celui de terrainSVG, retourné par
+   une symétrie sur la diagonale (x ↔ y) : le terrain étant symétrique, il se
+   lit comme une rotation, et le corner « gauche » (y petit) reste à gauche.
+   Les tirs gardent le repère d'origine — 280 de profondeur, 300 de large —,
+   donc detecteZone, la table « tirs » et les cartes de tirs ne changent pas.
+   Seul le toucher est converti (x = Y à l'écran, y = X à l'écran). */
+function terrainVertical(id, contenu){
+  const svg = terrainSVG(id, contenu).replace('viewBox="0 0 280 300"', 'viewBox="0 0 300 280"');
+  const i = svg.indexOf('>') + 1, f = svg.lastIndexOf('</svg>');
+  return svg.slice(0, i) + '<g transform="matrix(0 1 1 0 0 0)">' + svg.slice(i, f) + '</g>' + svg.slice(f);
+}
+
 /* Le toucher sur le terrain : le rond qui clignote, l'encart, et le tir en
    attente de son tireur. */
 function brancheDirect(){
@@ -8754,8 +8767,10 @@ function brancheDirect(){
     const svg = $('#svgDirect');
     if (!svg) return;
     const r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;
-    const p = {x: (ev.clientX - r.left) * vb.width / r.width, y: (ev.clientY - r.top) * vb.height / r.height};
-    if (p.x < 0 || p.x > vb.width || p.y < 0 || p.y > vb.height) return;
+    const X = (ev.clientX - r.left) * vb.width / r.width, Y = (ev.clientY - r.top) * vb.height / r.height;
+    if (X < 0 || X > vb.width || Y < 0 || Y > vb.height) return;
+    /* Terrain vertical : on revient au repère d'origine (voir terrainVertical). */
+    const p = {x: Y, y: X};
     const z = detecteZone(p);
     const pts = z.pts === 3 ? 3 : z.pts === 1 ? 1 : 2;
     const e = enrob.getBoundingClientRect(), c = COUL_ZONE[pts];
