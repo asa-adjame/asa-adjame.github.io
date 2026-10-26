@@ -4054,11 +4054,11 @@ function vueChat(){
     }).join('')}
   </div>
 
-  ${LECTURE_SEULE() ? '<p class="carte-note" style="text-align:center;margin-top:12px">Lecture seule.</p>' : `<div class="chat-saisie">
+  ${/* Tout le staff écrit, dirigeants compris depuis le 26/10/2026. */ ''}<div class="chat-saisie">
     <textarea class="champ" id="chatTexte" style="min-height:62px"
       placeholder="Écrire au staff…"></textarea>
     <button class="bouton plein" style="margin-top:9px" onclick="envoieChat()">Envoyer</button>
-  </div>`}`;
+  </div>`;
 }
 
 function envoieChat(){
@@ -7320,7 +7320,9 @@ function clubCourant(){
 }
 
 async function enregistrer(table, ligne, surConflit){
-  if (typeof LECTURE_SEULE === 'function' && LECTURE_SEULE()){ toast('Compte dirigeant : lecture seule'); return false; }
+  /* Le dirigeant est en lecture seule partout, SAUF le fil du staff (26/10/2026 :
+     « ils doivent aussi pouvoir communiquer »). La base tient la même règle. */
+  if (typeof LECTURE_SEULE === 'function' && LECTURE_SEULE() && table !== 'messages'){ toast('Compte dirigeant : lecture seule'); return false; }
   /* On NE met PAS le club dans la ligne ici.
      Il est ajouté au moment de l'envoi, pas au moment de la saisie. La
      différence compte : une saisie faite avant le premier chargement — ou
@@ -10540,7 +10542,7 @@ function blocAccueilDirigeant(){
     <div class="carte-tete"><div class="carte-titre">Fil du staff</div>
       <span class="etiq pousse" style="color:var(--gris)">lecture</span></div>
     <p class="msg-txt">Ce que le staff se dit, et ce que la plateforme y consigne. Tu le lis, tu n'y écris pas.</p>
-    <button class="bouton fant plein" style="margin-top:11px" onclick="ouvreSous('chat')">Lire le fil</button>
+    <button class="bouton fant plein" style="margin-top:11px" onclick="ouvreSous('chat')">Ouvrir le fil du staff</button>
   </div>
   <p class="carte-note" style="margin-top:12px;text-align:center">Compte dirigeant : lecture seule.</p>`;
 }
