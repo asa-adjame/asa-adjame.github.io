@@ -10082,7 +10082,7 @@ function vueFichesDT(){
     const nbE = e ? e.evals.length : 0;
     const fin = (DB.rapportsMembres || []).some(r => r.personne === m.pid && r.periode === p);
     const r = ROLES[m.role] || ROLES.as;
-    return `<button class="jl-item" onclick="ouvreFiche('${m.pid}')">
+    return `<button class="jl-item" onclick="ouvreFicheEval('${m.pid}')">
       <span class="cx-pastille" style="width:32px;height:32px;flex:0 0 32px;border-radius:9px;font-size:12px;background:${r.couleur}">${r.court}</span>
       <span class="jl-bloc"><span class="jl-nom">${esc(m.nom)}</span>
         <span class="jl-meta">${esc(m.sous)}${fin ? ' · transmise' : e ? ' · ' + nbE + ' évaluation' + (nbE > 1 ? 's' : '') : ' · à noter'}</span></span>
@@ -10091,7 +10091,10 @@ function vueFichesDT(){
   }).join('') || '<div class="vide">Personne dans ce groupe.</div>'}</div>`;
 }
 
-function ouvreFiche(pid, periode){
+/* 26/10/2026 — renommée : elle s'appelait « ouvreFiche », comme la fiche
+   JOUEUR de p3b_ecrans.js. Déclarée après, elle l'écrasait : depuis le 25/10,
+   toucher un joueur dans la liste n'ouvrait plus son espace. */
+function ouvreFicheEval(pid, periode){
   EVAL.pid = pid;
   const es = evalsDe(pid);
   EVAL.periode = periode || (es.length ? es[es.length - 1].periode : periodeDuJour());
@@ -10279,7 +10282,7 @@ function vueFichesFinalisees(){
   ${Object.keys(parPeriode).map(p => `<div class="section-titre">${esc(libPeriode(p))}</div>
     <div class="jl">${parPeriode[p].map(r => {
       const d = r.contenu || {}, ro = ROLES[d.role] || ROLES.as;
-      return `<button class="jl-item" onclick="ouvreFiche('${r.personne}','${r.periode}')">
+      return `<button class="jl-item" onclick="ouvreFicheEval('${r.personne}','${r.periode}')">
         <span class="cx-pastille" style="width:32px;height:32px;flex:0 0 32px;border-radius:9px;font-size:12px;background:${ro.couleur}">${ro.court}</span>
         <span class="jl-bloc"><span class="jl-nom">${esc(d.nom || r.personne)}</span>
           <span class="jl-meta">${esc(d.sous || '')} · transmise le ${esc(r.finaliseLe || '')}</span></span>
