@@ -894,6 +894,34 @@ table.tab tr.nous{background:rgba(255,178,70,.12)}
   #app.on>.hf{margin-left:248px}
   #app.on>.vue{margin-left:248px;width:auto;max-width:none;padding:28px 36px 48px}
 }
+
+/* ── 25/10/2026 : fatigue, échéances, fiches d'évaluation (p3m_suivi.js) ── */
+.fat.due{border-color:var(--or)}
+.fat.faite{border-color:var(--physique)}
+.fat-g{display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:4px;margin-top:10px}
+.fat-b{aspect-ratio:1;min-height:30px;border-radius:9px;border:1.5px solid var(--c);background:transparent;
+  color:var(--texte);font:700 14px/1 var(--mono);cursor:pointer;padding:0}
+.fat-b.actif{background:var(--c);color:#06162A;transform:scale(1.08)}
+.fat-h{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.fat-h span{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 0;border-radius:9px;
+  border:1px solid var(--ligne);background:var(--surface2)}
+.fat-h b{font:700 15px/1 var(--mono);color:var(--c)}
+.fat-h i{font-style:normal;font-size:10px;color:var(--gris2);text-transform:capitalize}
+.ech-l{display:grid;grid-template-columns:86px minmax(0,1fr) auto;gap:8px;align-items:center;width:100%;
+  padding:10px 0;border:0;border-bottom:1px solid var(--ligne);background:none;color:inherit;text-align:left;cursor:pointer}
+.ech-l:last-child{border-bottom:0}
+.ech-j{font-family:var(--mono);font-size:11px;color:var(--gris)}
+.ech-q{display:flex;flex-direction:column;min-width:0;font-size:12.5px}
+.ech-q small{color:var(--gris2);font-size:10.5px}
+.ech-moi.jour{border-color:var(--or)}
+.ech-moi.retard{border-color:var(--danger);background:linear-gradient(0deg,rgba(224,86,75,.06),rgba(224,86,75,.06)),var(--surface)}
+.ech-case{display:flex;gap:9px;align-items:center;padding:8px 0;font-size:13px;cursor:pointer}
+.ech-case input{width:20px;height:20px;accent-color:var(--or)}
+.ev-l{padding:8px 0;border-bottom:1px solid var(--ligne)}
+.ev-l:last-child{border-bottom:0}
+.ev-t{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;margin-bottom:6px}
+.ev-t .mono{font-size:10.5px;color:var(--gris2)}
+@media (max-width:380px){.fat-g{grid-template-columns:repeat(6,minmax(0,1fr))}.ech-l{grid-template-columns:72px minmax(0,1fr) auto}}
 </style>
 </head>
 <body>
@@ -1001,6 +1029,8 @@ const ROLES = {
   ki: {lib:'Kinésithérapeute',     couleur:'var(--medical)',  court:'KI'},
   as: {lib:'Assistant administratif', couleur:'var(--gris)',  court:'AS'},
   pp: {lib:'Préparateur physique', couleur:'var(--physique)', court:'PP'},
+  /* Les dirigeants (25/10/2026) : tout en lecture seule. Voir p3m_suivi.js. */
+  dg: {lib:'Dirigeant',            couleur:'var(--or-sombre)', court:'DG'},
   jr: {lib:'Joueur',               couleur:'var(--or-clair)', court:'JR'},
 };
 const ABREGE = {
@@ -1623,7 +1653,7 @@ const PLAN = {
      onglets, et c'est lui qui a tranché quand j'ai voulu en ajouter un
      septième. */
   dt: [['maison','Accueil',vueAccueil],['gens','Joueurs',vueJoueurs],['grille','Classeur',vueClasseur],
-       ['coeur','Médical',vueMedical],['doc','Rapport',vueRapport],['message','Chat',vueChat]],
+       ['coeur','Médical',vueMedical],['doc','Rapports',vueRapports],['message','Chat',vueChat]],
   hc: [['maison','Accueil',vueAccueil],['bord','Équipe',vueEquipe],['gens','Joueurs',vueJoueurs],
        ['grille','Classeur',vueClasseur],['cerveau','Quiz',vueQuizCoach],['message','Chat',vueChat]],
   /* Les coachs assistants : « Match » remplace les anciens onglets Attaque et
@@ -1651,6 +1681,10 @@ const PLAN = {
        ['coeur','Médical',vueMedical],['message','Chat',vueChat]],
   pp: [['maison','Accueil',vueAccueil],['gens','Présences',vuePresences],
        ['coeur','Médical',vueMedical],['message','Chat',vueChat]],
+  /* Le dirigeant (25/10/2026) : il lit tout et n'écrit rien. Le fil du staff
+     s'ouvre depuis son accueil, en lecture : six onglets est le plafond. */
+  dg: [['maison','Accueil',vueAccueil],['gens','Joueurs',vueJoueurs],['bord','Staff',vueStaff],
+       ['doc','Rapports',vueRapports],['coeur','Médical',vueMedical],['grille','Playbook',vuePlaybook]],
   /* « Mon badge » est le premier onglet du joueur après l'accueil, et c'est
      voulu : c'est l'écran qu'il ouvre en arrivant au gymnase, souvent en
      marchant, presque toujours sans réseau. Le reste peut attendre. */
@@ -1996,6 +2030,10 @@ function vueAccueil(){
      ont déjà six onglets, et six est un plafond tenu par un harnais.
      L'impression se fait donc depuis l'accueil, comme l'appel. */
   if (E.sous === 'badges')     return vueBadges();
+  /* 25/10/2026 — échéances, fatigue, et le fil en lecture pour le dirigeant. */
+  if (E.sous === 'echeances')  return vueEcheances();
+  if (E.sous === 'fatigue')    return vueFatigue();
+  if (E.sous === 'chat')       return retour('Accueil', 'fermeSous()') + vueChat();
 
   const C = DB.championnat;
   const nous = C.classement.find(l => l.nous) || {};
@@ -2003,7 +2041,10 @@ function vueAccueil(){
   const p = C.prochain;
   const principal = DB.sponsors[0] || {};
 
-  return `
+  /* Ce que la personne doit faire aujourd'hui passe avant le championnat : la
+     fatigue pour le joueur, son retour de la semaine pour le kiné, le
+     préparateur physique et le head coach. */
+  return `${carteFatigueJoueur()}${carteMonEcheance()}
   <div class="banniere">
     <div class="ban-sur">${esc(C.instance)}</div>
     <div class="ban-titre">${esc(C.nom)}</div>
@@ -2130,10 +2171,14 @@ function blocAccueilRole(){
       <div class="carte-tete"><div class="carte-titre">Rapport au président</div>
         <span class="etiq pousse" style="color:var(--or)">${esc(DB.rapport.periode)}</span></div>
       <p class="msg-txt">${esc(DB.rapport.synthese.slice(0, 150))}…</p>
-      <button class="bouton fant plein" style="margin-top:11px" onclick="vaVers(4)">Ouvrir le rapport</button>
+      <button class="bouton fant plein" style="margin-top:11px" onclick="E.rapVue='president';vaVers(4)">Ouvrir le rapport</button>
     </div>
+    ${carteEcheances()}
+    ${carteFatigueStaff()}
     ${carteBadges()}`;
   }
+
+  if (E.role === 'dg') return blocAccueilDirigeant();
 
   if (E.role === 'jr'){
     const j = E.joueur, b = bilanTir(j, parcoursDe(j));
@@ -2153,7 +2198,8 @@ function blocAccueilRole(){
       <div class="tuile ${indispo?'rouge':'vert'}"><div class="tuile-val">${indispo}</div><div class="tuile-lib">Indispo-<br>nibles</div></div>
       <div class="tuile"><div class="tuile-val">${adapte}</div><div class="tuile-lib">Reprise<br>adaptée</div></div>
       <div class="tuile blanc"><div class="tuile-val">${DB.joueurs.length - indispo - adapte}</div><div class="tuile-lib">Effectif<br>disponible</div></div>
-    </div>`;
+    </div>
+    ${carteFatigueStaff()}`;
   }
 
   const js = parEq(E.equipe);
@@ -2164,6 +2210,7 @@ function blocAccueilRole(){
     <div class="tuile ${indispo?'rouge':'vert'}"><div class="tuile-val">${indispo}</div><div class="tuile-lib">Indispo-<br>nibles</div></div>
   </div>
   ${EST_COACH(E.role) ? carteRelances() : ''}
+  ${carteFatigueStaff()}
   ${carteBadges()}`;
 }
 
@@ -2549,7 +2596,7 @@ function enregistreRapport(){
 
 function vueEquipe(){
   if (E.sous === 'exercices' && PEUT_CLASSEUR(E.role)) return vueBibliotheque();
-  if (E.sous === 'playbook'  && PEUT_CLASSEUR(E.role)) return vuePlaybook();
+  if (E.sous === 'playbook'  && PEUT_PLAYBOOK(E.role)) return vuePlaybook();
   const js = parEq(E.equipe);
   const s = js.reduce((a,j) => {
     ['pts','reb','pd','int','bp','a2','m2','a3','m3','lfa','lfm'].forEach(k => a[k] = (a[k]||0) + j.stats[k]);
@@ -2588,14 +2635,14 @@ function vueEquipe(){
     <button class="bouton fant plein" style="margin-top:11px" onclick="ouvreSous('exercices')">
       Préparer une séance</button>
   </div>
-  <div class="carte" style="margin-bottom:14px;border-color:var(--ligne2)">
+  ${PEUT_PLAYBOOK(E.role) ? `<div class="carte" style="margin-bottom:14px;border-color:var(--ligne2)">
     <div class="carte-tete"><div class="carte-titre">Playbook</div>
       <span class="carte-note pousse mono">${(DB.systemes || []).filter(x => E.equipes.includes(x.equipe)).length} systèmes</span></div>
     <p class="msg-txt">Construis tes systèmes avec les signes du tableau : déplacements, dribbles,
     passes, écrans, tirs. Chaque système se lit en plusieurs temps et s'imprime pour le vestiaire.</p>
     <button class="bouton fant plein" style="margin-top:11px" onclick="ouvreSous('playbook')">
       Ouvrir le playbook</button>
-  </div>` : ''}
+  </div>` : ''}` : ''}
 
   <div class="section-titre">Statistiques de match</div>
   <div class="g4">
@@ -2938,7 +2985,8 @@ function vueStaff(){
   const eq = DB.staff.filter(m => m.id !== 'dt');
   return `${E.sous === 'staff' ? retour('Accueil', 'fermeSous()') : ''}
   <h1 class="vue-titre">Staff</h1>
-  <p class="vue-sous">Objectifs du mois posés par chacun. Aucune note, aucune évaluation nominative dans la plateforme.</p>
+  <p class="vue-sous">Objectifs du mois posés par chacun.${E.role === 'dt' || E.role === 'dg'
+    ? ' Les fiches d\'évaluation sont dans l\'onglet Rapports.' : ''}</p>
   ${eq.map(m => {
     const objs = objectifsDe(m);
     const r = ROLES[m.role] || ROLES.as;
@@ -2955,7 +3003,14 @@ function vueStaff(){
         : '<p class="carte-note">Pas d\'objectif du mois renseigné.</p>'}
     </div>`;
   }).join('')}
-  ${E.role === 'dt' ? blocEvaluations() : ''}`;
+  ${E.role === 'dt' || E.role === 'dg' ? `<div class="carte" style="border-color:var(--ligne2);border-style:dashed">
+    <div class="carte-tete"><div class="carte-titre">Fiches d'évaluation</div>
+      <span class="etiq pousse" style="color:var(--or)">${E.role === 'dt' ? 'DT' : 'transmises'}</span></div>
+    <p class="msg-txt">${E.role === 'dt'
+      ? 'Une fiche par membre, construite à partir de tes notes du classeur. Tu la finalises et elle part chez les dirigeants.'
+      : 'Les fiches finalisées par le directeur technique, pour chaque membre du staff et chaque joueur.'}</p>
+    <button class="bouton fant plein" style="margin-top:11px" onclick="E.rapVue='fiches';EVAL.filtre='staff';vaVers(indexOnglet('Rapports'))">Ouvrir les fiches</button>
+  </div>` : ''}`;
 }
 
 /* Les grilles d'évaluation — écran du directeur technique, et de lui seul.
@@ -3005,6 +3060,12 @@ function vuePrepa(){
   <p class="vue-sous">Suivie par ${esc(P.nom)}, dans son application.</p>
 
   ${med.map(x => blocMedical(x, false)).join('')}
+
+  ${carteFatigueJoueur()}
+  <div class="carte">
+    <div class="carte-tete"><div class="carte-titre">Ma fatigue, 7 derniers jours</div></div>
+    ${bandeFatigue(j.id)}
+  </div>
 
   <div class="carte">
     <div class="carte-tete">
@@ -3869,11 +3930,11 @@ function vueChat(){
     }).join('')}
   </div>
 
-  <div class="chat-saisie">
+  ${LECTURE_SEULE() ? '<p class="carte-note" style="text-align:center;margin-top:12px">Lecture seule.</p>' : `<div class="chat-saisie">
     <textarea class="champ" id="chatTexte" style="min-height:62px"
       placeholder="Écrire au staff…"></textarea>
     <button class="bouton plein" style="margin-top:9px" onclick="envoieChat()">Envoyer</button>
-  </div>`;
+  </div>`}`;
 }
 
 function envoieChat(){
@@ -4342,7 +4403,7 @@ const logoSrc = () => ((document.querySelector('.ent-logo img') || {}).src) || '
 function vueClasseur(){
   if (E.sous === 'match')      return vueChoixMatch();
   if (E.sous === 'exercices')  return vueBibliotheque();
-  if (E.sous === 'playbook')   return vuePlaybook();
+  if (E.sous === 'playbook' && PEUT_PLAYBOOK(E.role)) return vuePlaybook();
   const mes = (DB.classeurs || []).filter(c => (c.acces || []).includes(E.role));
 
   return `<h1 class="vue-titre">Classeur</h1>
@@ -4402,14 +4463,15 @@ function vueClasseur(){
     <button class="bouton plein" style="margin-top:11px" onclick="ouvreSous('exercices')">
       Ouvrir la bibliothèque</button>
   </div>
-  <div class="carte">
+  ${PEUT_PLAYBOOK(E.role) ? `<div class="carte">
     <div class="carte-tete"><div class="carte-titre">Playbook</div>
       <span class="carte-note pousse mono">${(DB.systemes || []).length} systèmes</span></div>
     <p class="msg-txt">Les systèmes du club, dessinés avec les signes du tableau. Chaque système se
-    lit en plusieurs temps et s'imprime en planche A4.</p>
+    lit en plusieurs temps et s'imprime en planche A4. Réservé au directeur technique, au head coach
+    et aux dirigeants.</p>
     <button class="bouton plein" style="margin-top:11px" onclick="ouvreSous('playbook')">
       Ouvrir le playbook</button>
-  </div>
+  </div>` : ''}
 
   <div class="section-titre">Fiches à imprimer</div>
   <div class="carte">
@@ -6078,16 +6140,20 @@ function ouvrePlaybook(id){
 const PB_CATS = ['Attaque placée', 'Défense', 'Transition', 'Remise en jeu', 'Fin de match'];
 
 function vuePlaybook(){
-  if (PB) return vueEditeurPb();
-  const mes = (DB.systemes || []).filter(s => E.equipes.includes(s.equipe));
+  if (PB) return LECTURE_SEULE() ? vueLecturePb() : vueEditeurPb();
+  /* Le dirigeant suit les deux groupes, un à la fois, avec le sélecteur. */
+  const mes = (DB.systemes || []).filter(s => LECTURE_SEULE() ? s.equipe === E.equipe : E.equipes.includes(s.equipe));
 
-  return `${retour(E.role === 'dt' ? 'Classeur' : nomEq(E.equipe), 'fermeSous()')}
+  const lecture = LECTURE_SEULE();
+  /* Le dirigeant l'a en onglet : pas de retour, et rien à modifier. */
+  return `${lecture ? '' : retour(E.role === 'dt' ? 'Classeur' : nomEq(E.equipe), 'fermeSous()')}
   <h1 class="vue-titre">Playbook</h1>
   <p class="vue-sous">Les systèmes du groupe, dessinés avec les signes du tableau. Chaque système se
   lit en plusieurs temps ; la planche s'imprime pour le vestiaire.</p>
 
-  <button class="bouton plein" style="margin-bottom:14px" onclick="ouvrePlaybook(null)">
-    + Nouveau système</button>
+  ${lecture ? `${selEquipe()}<p class="carte-note" style="margin-bottom:12px">Lecture seule : planche A4 et animation.</p>`
+    : `<button class="bouton plein" style="margin-bottom:14px" onclick="ouvrePlaybook(null)">
+    + Nouveau système</button>`}
 
   ${mes.length ? mes.map(s => {
     const a = membre(s.auteur);
@@ -6105,10 +6171,41 @@ function vuePlaybook(){
       <div class="${s.etapes.length > 1 ? 'g3' : 'g2'}" style="margin-top:11px">
         <button class="bouton fant" onclick="imprimeSysteme('${s.id}')">Planche A4</button>
         ${s.etapes.length > 1 ? `<button class="bouton fant" onclick="animeSysteme('${s.id}')">▶ Animer</button>` : ''}
-        <button class="bouton" onclick="ouvrePlaybook('${s.id}')">Ouvrir</button>
+        <button class="bouton" onclick="ouvrePlaybook('${s.id}')">${lecture ? 'Voir' : 'Ouvrir'}</button>
       </div>
     </div>`;
   }).join('') : '<div class="vide">Aucun système pour l\'instant. Le premier se dessine en deux minutes.</div>'}`;
+}
+
+/* ═══════════════════════════════════ LECTURE (dirigeant) ═══════════════════════════════════
+   Le même terrain, les mêmes temps, la même animation — sans un outil pour
+   dessiner ni un bouton pour enregistrer. */
+function vueLecturePb(){
+  const et = pbEtape();
+  return `${retour('Playbook', 'PB=null;rendVue()')}
+  <h1 class="vue-titre">${esc(PB.nom || 'Système')}</h1>
+  <p class="vue-sous">${esc(PB.categorie || '')} · ${esc(nomEq(PB.equipe))} · lecture seule.</p>
+  <div class="pb-temps">
+    <button class="bouton fant" style="padding:8px 12px" onclick="pbVaEtape(-1)"
+      ${PB.i === 0 ? 'disabled style="opacity:.4;padding:8px 12px"' : ''}>‹</button>
+    <div class="centre" style="flex:1;min-width:0">
+      <div class="titre" style="font-size:17px" id="pbTempsTitre">Temps ${PB.i + 1} / ${PB.etapes.length}</div>
+    </div>
+    <button class="bouton fant" style="padding:8px 12px" onclick="pbVaEtape(1)"
+      ${PB.i === PB.etapes.length - 1 ? 'disabled style="opacity:.4;padding:8px 12px"' : ''}>›</button>
+  </div>
+  <div class="pb-enrob" id="pbEnrob">
+    ${terrainPlaybook('pbSvg', `<g data-pb="1">${pbDessin(et.elements)}</g>`)}
+  </div>
+  ${PB.etapes.length > 1 ? `<div class="g2" style="margin-top:10px">
+    <button class="bouton plein" id="pbJouer" onclick="pbJoue()">▶ Lire l'animation</button>
+    <button class="bouton fant" id="pbVideo" onclick="pbExporteVideo()">⤓ Vidéo à partager</button>
+  </div>
+  <p class="carte-note centre" id="pbAnimNote" style="min-height:1.2em;margin-top:6px"></p>` : ''}
+  ${et.note ? `<div class="carte" style="margin-top:12px"><p class="msg-txt">${esc(et.note)}</p></div>` : ''}
+  <button class="bouton fant plein" style="margin-top:12px" onclick="imprimeSystemeCourant()">Planche A4</button>
+  <div class="section-titre">Les signes</div>
+  <div class="carte">${legendePb()}</div>`;
 }
 
 /* ═══════════════════════════════════ ÉDITEUR ═══════════════════════════════════ */
@@ -6599,6 +6696,7 @@ function pbSymboleProche(p, max){
 }
 
 function branchePlaybook(){
+  if (LECTURE_SEULE()) return;   // le dirigeant regarde, il ne dessine pas
   const enrob = document.getElementById('pbEnrob');
   if (!enrob || enrob._pb) return;
   enrob._pb = true;
@@ -6998,6 +7096,7 @@ function clubCourant(){
 }
 
 async function enregistrer(table, ligne, surConflit){
+  if (typeof LECTURE_SEULE === 'function' && LECTURE_SEULE()){ toast('Compte dirigeant : lecture seule'); return false; }
   /* On NE met PAS le club dans la ligne ici.
      Il est ajouté au moment de l'envoi, pas au moment de la saisie. La
      différence compte : une saisie faite avant le premier chargement — ou
@@ -7032,6 +7131,7 @@ async function enregistrer(table, ligne, surConflit){
    Ici on envoie un vrai PATCH, limité par un filtre. Il passe par la même file
    durable que tout le reste : hors ligne, il attend. */
 async function modifier(table, filtre, champs){
+  if (typeof LECTURE_SEULE === 'function' && LECTURE_SEULE()){ toast('Compte dirigeant : lecture seule'); return false; }
   await FA.pousser({
     table, filtre, methode: 'PATCH',
     corps: champs,
@@ -7725,6 +7825,20 @@ async function chargerSupabase(){
     sansEchec(api('saison_semaines?select=date_debut,cycle&club_id=eq.' + club.id + '&order=date_debut'))
   ]);
 
+  /* LE SUIVI (25/10/2026) : fatigue des joueurs, retours de la semaine,
+     évaluations du DT et fiches finalisées. Les règles de la base font le tri :
+     un joueur ne reçoit que sa fatigue, les évaluations ne vont qu'au DT, les
+     fiches finalisées au DT et aux dirigeants. Huit semaines suffisent aux
+     écrans ; les plus anciennes restent en base. */
+  const depuis = (() => { try { return decaleJour(AUJ(), -56); } catch (e){ return '2000-01-01'; } })();
+  const [fatigueBase, retoursBase, evalsDTBase, grillesDTBase, rapmBase] = await Promise.all([
+    sansEchec(api('fatigue?select=joueur_id,jour,note&club_id=eq.' + club.id + '&jour=gte.' + depuis)),
+    sansEchec(api('retours?select=type,jour,auteur_id,contenu,rendu_le&club_id=eq.' + club.id + '&jour=gte.' + depuis)),
+    sansEchec(api('evaluations_dt?select=*&club_id=eq.' + club.id)),
+    sansEchec(api('grilles_dt?select=role,lib,criteres&club_id=eq.' + club.id)),
+    sansEchec(api('rapports_membres?select=*&club_id=eq.' + club.id))
+  ]);
+
   const parJoueur = (liste, cle) => {
     const m = {}; (liste || []).forEach(l => { (m[l[cle]] = m[l[cle]] || []).push(l); });
     return m;
@@ -8017,6 +8131,20 @@ async function chargerSupabase(){
     mois: DB.mois, moisCourant: DB.moisCourant,
     championnat: fusionneChampionnat(DB.championnat, (championnatBase || [])[0]),
     preferences: DB.preferences,
+    fatigue: (fatigueBase || []).map(f => ({joueur: f.joueur_id, jour: String(f.jour).slice(0, 10), note: f.note})),
+    retours: (retoursBase || []).map(r => ({type: r.type, jour: String(r.jour).slice(0, 10),
+      auteur: r.auteur_id, contenu: r.contenu || {}, renduLe: r.rendu_le ? dateClubFr(r.rendu_le) + ' ' + heureClub(new Date(r.rendu_le)) : ''})),
+    evalsDT: (evalsDTBase || []).map(e => ({id: e.id, personne: e.personne_id, role: e.role,
+      equipe: e.equipe || null, periode: e.periode, date: e.date_eval ? fr(e.date_eval) : '',
+      notes: Array.isArray(e.notes) ? e.notes : [], forts: e.forts || '', axes: e.axes || '',
+      commentaire: e.commentaire || ''})),
+    /* Les grilles du classeur, si le DT en a envoyé ; sinon celles de la page. */
+    grillesDT: (grillesDTBase || []).reduce((g, x) => {
+      if (x && x.role && Array.isArray(x.criteres) && x.criteres.length) g[x.role] = {lib: x.lib, criteres: x.criteres};
+      return g;
+    }, {}),
+    rapportsMembres: (rapmBase || []).map(r => ({personne: r.personne_id, periode: r.periode,
+      contenu: r.contenu || {}, finaliseLe: r.finalise_le ? dateClubFr(r.finalise_le) + ' à ' + heureClub(new Date(r.finalise_le)) : ''})),
     /* Relus depuis le 12/10/2026 — voir « LE CHEMIN DU RETOUR, ACHEVÉ ». */
     quiz: (quizBase || []).map(q => ({
       id: q.id, titre: q.titre, clip: q.clip_url || '', equipe: q.equipe_code,
@@ -9248,6 +9376,877 @@ async function copieSemainePrecedente(){
   await ecritSemaine(eq, lundi, avant.map(c => Object.assign({}, c, {id: nouvelId(), jour: plusJours(c.jour, 7)})));
   toast(avant.length + ' créneau' + (avant.length > 1 ? 'x copiés' : ' copié'));
   rendVue();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SUIVI — échéances, fatigue des joueurs, évaluations du DT, dirigeants
+   (25/10/2026)
+
+   Ce que Fathy a demandé :
+   1. Le DT voit tout et fait un rapport sur chaque membre du club, à partir de
+      critères précis et notés — notés dans SON classeur privé, lus ici sous
+      forme de fiche, « comme une fiche éval stats coach ».
+   2. Un rôle « dirigeant » (dg) : tout en lecture seule, plus les rapports
+      finalisés par le DT. La lecture seule est tenue PAR LA BASE (règles
+      restrictives) ; ce qui est ici n'en est que la politesse à l'écran.
+   3-4. Le playbook : DT, head coach et dirigeants. Plus les coachs assistants.
+   5. Les échéances de la semaine — kiné lundi et jeudi, préparateur physique
+      et fatigue des joueurs mercredi et dimanche, head coach mardi — avec un
+      rappel chez la personne et le tableau de la semaine chez le DT et les
+      dirigeants. L'échéance tombe à minuit, heure d'Abidjan.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const LECTURE_SEULE = () => E.role === 'dg';
+const PEUT_PLAYBOOK = r => ['dt', 'hc', 'dg'].includes(r);
+const PEUT_FATIGUE  = r => ['dt', 'hc', 'ca', 'cd', 'pp', 'ki', 'dg'].includes(r);
+const VOIT_ECHEANCES = r => ['dt', 'dg'].includes(r);
+
+/* L'adresse du classeur privé du DT. Vide tant qu'il n'est pas créé : les
+   boutons qui l'ouvrent le disent au lieu d'ouvrir une page blanche. */
+const URL_CLASSEUR_EVAL = 'https://docs.google.com/spreadsheets/d/1dLznvawXeIa6kJxFvLpraFFg4k9WA6B9Zp783GCfOmU/edit';
+
+/* Mon identifiant d'effectif (« st04 »), celui que les règles de la base
+   comparent à mon_staff(). Le rôle (« ki ») n'est PAS un identifiant : deux
+   personnes peuvent le partager. */
+const monIdEffectif = () => (E.moi && (E.moi.staffId || E.moi.id)) || E.role;
+
+/* ═══════════════════════════════════ LES DATES DE LA SEMAINE ═══════════════════════════════════ */
+
+const NOMS_JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+const jourSemaine = iso => new Date(iso + 'T12:00:00Z').getUTCDay();
+const decaleJour = (iso, n) => {
+  const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+/* lundiDe() est celle du planning (p3l) : même semaine, du lundi au dimanche. */
+const libJour = iso => {
+  const n = NOMS_JOURS[jourSemaine(iso)];
+  return n.charAt(0).toUpperCase() + n.slice(1) + ' ' + jourFr(iso).slice(0, 5);
+};
+
+/* ═══════════════════════════════════ LES ÉCHÉANCES ═══════════════════════════════════ */
+
+const ECHEANCES = [
+  {type: 'kine', role: 'ki', jours: [1, 4], lib: 'Retour du kiné',
+   quoi: 'Le secteur médical à jour : chaque joueur suivi, son statut et la consigne au staff.'},
+  {type: 'hc', role: 'hc', jours: [2], lib: 'Retour du head coach',
+   quoi: 'La vidéo du dernier match analysée, le scouting de l\'adversaire et la préparation du prochain match.'},
+  {type: 'physique', role: 'pp', jours: [3, 0], lib: 'Avis du préparateur physique',
+   quoi: 'L\'état physique du groupe, la charge à venir et les joueurs à surveiller.'},
+  {type: 'fatigue', role: 'jr', jours: [3, 0], lib: 'Fatigue des joueurs',
+   quoi: 'Chaque joueur note sa fatigue de 0 à 10 sur son accueil.'}
+];
+const echeance = t => ECHEANCES.find(e => e.type === t);
+
+/* Les joueurs attendus pour la fatigue : ceux des équipes ouvertes. */
+const joueursAttendus = () => (DB.joueurs || []).filter(j => equipeOuverte(j.equipe));
+
+function fatigueDu(jour){
+  return (DB.fatigue || []).filter(f => f.jour === jour);
+}
+function retoursDu(type, jour){
+  return (DB.retours || []).filter(r => r.type === type && r.jour === jour);
+}
+
+/* L'état d'une échéance un jour donné : rendu, en retard, aujourd'hui, à venir.
+   Pour la fatigue, « rendu » veut dire : tous les joueurs attendus ont noté. */
+function etatEcheance(type, jour){
+  const auj = AUJ();
+  let fait, detail = '';
+  if (type === 'fatigue'){
+    const n = joueursAttendus().length, k = new Set(fatigueDu(jour).map(f => f.joueur)).size;
+    fait = n > 0 && k >= n;
+    detail = `${k}/${n}`;
+  } else {
+    const r = retoursDu(type, jour);
+    fait = r.length > 0;
+    if (fait) detail = 'rendu' + (r[0].renduLe ? ' à ' + r[0].renduLe : '');
+  }
+  const etat = fait ? 'rendu' : jour < auj ? 'retard' : jour === auj ? 'jour' : 'avenir';
+  return {etat, detail};
+}
+
+/* Les jours d'échéance d'une semaine, dans l'ordre. */
+function joursEcheances(lundi){
+  const l = [];
+  for (let i = 0; i < 7; i++){
+    const d = decaleJour(lundi, i), js = jourSemaine(d);
+    ECHEANCES.forEach(e => { if (e.jours.includes(js)) l.push({jour: d, e}); });
+  }
+  return l;
+}
+
+const COUL_ETAT = {rendu: 'var(--physique)', retard: 'var(--danger)', jour: 'var(--or)', avenir: 'var(--gris2)'};
+const LIB_ETAT  = {rendu: 'rendu', retard: 'en retard', jour: 'aujourd\'hui', avenir: 'à venir'};
+
+/* ─────────────────────────── le tableau de la semaine (DT et dirigeants) */
+
+let SEMAINE_ECH = 0;   // 0 = cette semaine, -1 = la précédente…
+
+function vueEcheances(){
+  const lundi = decaleJour(lundiDe(AUJ()), 7 * SEMAINE_ECH);
+  const lignes = joursEcheances(lundi);
+  const etats = lignes.map(x => etatEcheance(x.e.type, x.jour));
+  const nbRetard = etats.filter(s => s.etat === 'retard').length;
+  const nbRendu = etats.filter(s => s.etat === 'rendu').length;
+  const echus = nbRendu + nbRetard;
+
+  return `${retour('Accueil', 'fermeSous()')}
+  <h1 class="vue-titre">Échéances</h1>
+  <p class="vue-sous">Semaine du ${esc(jourFr(lundi))} au ${esc(jourFr(decaleJour(lundi, 6)))}.
+  Une échéance tombe à minuit, heure d'Abidjan.</p>
+
+  <div class="g2" style="margin-bottom:12px">
+    <button class="bouton fant" onclick="SEMAINE_ECH--;rendVue()">‹ Semaine précédente</button>
+    <button class="bouton fant" ${SEMAINE_ECH >= 0 ? 'disabled' : ''} onclick="SEMAINE_ECH++;rendVue()">Semaine suivante ›</button>
+  </div>
+
+  <div class="g3">
+    <div class="tuile vert"><div class="tuile-val">${nbRendu}</div><div class="tuile-lib">Rendus</div></div>
+    <div class="tuile ${nbRetard ? 'rouge' : 'blanc'}"><div class="tuile-val">${nbRetard}</div><div class="tuile-lib">En retard</div></div>
+    <div class="tuile"><div class="tuile-val">${echus ? Math.round(nbRendu / echus * 100) + '<small style="font-size:14px">%</small>' : '—'}</div><div class="tuile-lib">Tenue des<br>délais</div></div>
+  </div>
+
+  <div class="carte" style="padding:6px 14px;margin-top:12px">
+    ${lignes.map((x, i) => {
+      const s = etats[i];
+      return `<button class="ech-l" onclick="ouvreRetour('${x.e.type}','${x.jour}')">
+        <span class="ech-j">${esc(libJour(x.jour))}</span>
+        <span class="ech-q"><b>${esc(x.e.lib)}</b>${s.detail ? `<small>${esc(s.detail)}</small>` : ''}</span>
+        <span class="etiq" style="color:${COUL_ETAT[s.etat]}"><i class="puce" style="background:${COUL_ETAT[s.etat]}"></i>${LIB_ETAT[s.etat]}</span>
+      </button>`;
+    }).join('')}
+  </div>
+
+  <div class="section-titre">Le calendrier</div>
+  <div class="carte">
+    ${ECHEANCES.map(e => `<div style="margin-bottom:9px">
+      <div class="dom-nom">${esc(e.lib)} — ${e.jours.map(j => NOMS_JOURS[j]).join(' et ')}</div>
+      <div class="carte-note">${esc(e.quoi)}</div></div>`).join('')}
+  </div>`;
+}
+
+/* La carte de l'accueil du DT et des dirigeants. */
+function carteEcheances(){
+  if (!VOIT_ECHEANCES(E.role)) return '';
+  const lundi = lundiDe(AUJ());
+  const lignes = joursEcheances(lundi).filter(x => x.jour <= AUJ());
+  const etats = lignes.map(x => ({x, s: etatEcheance(x.e.type, x.jour)}));
+  const retards = etats.filter(o => o.s.etat === 'retard');
+  const jour = etats.filter(o => o.s.etat === 'jour');
+  return `<div class="carte" style="margin-top:10px;${retards.length ? 'border-color:var(--danger)' : ''}">
+    <div class="carte-tete"><div class="carte-titre">Échéances de la semaine</div>
+      <span class="etiq pousse" style="color:${retards.length ? 'var(--danger)' : 'var(--physique)'}">
+        ${retards.length ? retards.length + ' en retard' : 'à jour'}</span></div>
+    ${retards.concat(jour).slice(0, 4).map(o => `<div class="carte-note" style="margin-bottom:4px">
+      <i class="puce" style="background:${COUL_ETAT[o.s.etat]}"></i>
+      ${esc(libJour(o.x.jour))} · ${esc(o.x.e.lib)}${o.s.detail ? ' · ' + esc(o.s.detail) : ''}</div>`).join('')
+      || '<p class="msg-txt">Tout ce qui était attendu cette semaine a été rendu.</p>'}
+    <button class="bouton fant plein" style="margin-top:11px" onclick="ouvreSous('echeances')">Voir le tableau de la semaine</button>
+  </div>`;
+}
+
+/* ─────────────────────────── le rappel chez la personne concernée
+
+   Une carte en tête de l'accueil, rien de plus. Les pastilles de navigation
+   ont été retirées le 12/10 à la demande de Fathy : on ne les remet pas. */
+
+/* L'échéance que je dois traiter maintenant : celle du jour si elle n'est pas
+   rendue, sinon la plus ancienne en retard sur 7 jours. Rien à rendre : la
+   date du prochain retour. */
+function monEcheance(){
+  const e = ECHEANCES.find(x => x.role === E.role && x.type !== 'fatigue');
+  if (!e) return null;
+  const auj = AUJ(), moi = monIdEffectif();
+  const fait = j => (DB.retours || []).some(r => r.type === e.type && r.jour === j && r.auteur === moi);
+  const dus = [];
+  for (let i = 6; i >= 0; i--){
+    const d = decaleJour(auj, -i);
+    if (e.jours.includes(jourSemaine(d)) && !fait(d)) dus.push(d);
+  }
+  if (!dus.length){
+    let p = decaleJour(auj, 1);
+    while (!e.jours.includes(jourSemaine(p))) p = decaleJour(p, 1);
+    return {e, jour: null, prochain: p};
+  }
+  // Le jour même passe avant un retard : c'est ce qu'on attend de lui maintenant.
+  const j = dus.includes(auj) ? auj : dus[0];
+  return {e, jour: j, retard: j < auj};
+}
+
+function carteMonEcheance(){
+  const m = monEcheance();
+  if (!m) return '';
+  if (!m.jour) return `<div class="carte ech-moi ok">
+    <div class="carte-tete"><div class="carte-titre">${esc(m.e.lib)}</div>
+      <span class="etiq pousse" style="color:var(--physique)">à jour</span></div>
+    <p class="carte-note">Prochain retour attendu : ${esc(libJour(m.prochain).toLowerCase())}.</p></div>`;
+  return `<div class="carte ech-moi ${m.retard ? 'retard' : 'jour'}">
+    <div class="carte-tete"><div class="carte-titre">${m.retard ? 'En retard' : 'À rendre aujourd\'hui'}</div>
+      <span class="etiq pousse" style="color:${m.retard ? 'var(--danger)' : 'var(--or)'}">${esc(libJour(m.jour))}</span></div>
+    <div class="dom-nom" style="margin-bottom:4px">${esc(m.e.lib)}</div>
+    <p class="msg-txt">${esc(m.e.quoi)}</p>
+    ${formulaireRetour(m.e.type, m.jour)}
+  </div>`;
+}
+
+/* Le formulaire de chaque retour. Court exprès : il se remplit debout. */
+function formulaireRetour(type, jour){
+  if (type === 'kine'){
+    const indispo = (DB.medical || []).filter(x => x.statut === 'Indisponible').length;
+    const adapte = (DB.medical || []).filter(x => x.statut === 'Reprise adaptée').length;
+    return `<p class="carte-note" style="margin:8px 0">Aujourd'hui dans le secteur médical : ${indispo} indisponible${indispo > 1 ? 's' : ''},
+      ${adapte} en reprise adaptée. Mets d'abord à jour les signalements qui ont bougé.</p>
+    <label class="label" for="retTexte">Le point pour le staff</label>
+    <textarea class="champ" id="retTexte" placeholder="Qui revient, qui reste à l'écart, ce que le staff doit adapter cette semaine."></textarea>
+    <button class="bouton plein" style="margin-top:10px" onclick="rendRetour('kine','${jour}')">Valider mon retour</button>`;
+  }
+  if (type === 'physique'){
+    const f = fatigueDu(jour), n = joueursAttendus().length;
+    const hauts = f.filter(x => x.note >= 7).map(x => (parId(x.joueur) || {}).nom).filter(Boolean);
+    const m = f.length ? (f.reduce((a, x) => a + x.note, 0) / f.length).toFixed(1) : '—';
+    return `<div class="g3" style="margin:9px 0">
+      <div class="tuile"><div class="tuile-val">${m}</div><div class="tuile-lib">Fatigue<br>moyenne</div></div>
+      <div class="tuile blanc"><div class="tuile-val">${f.length}/${n}</div><div class="tuile-lib">Joueurs<br>ayant noté</div></div>
+      <div class="tuile ${hauts.length ? 'rouge' : 'vert'}"><div class="tuile-val">${hauts.length}</div><div class="tuile-lib">À 7<br>ou plus</div></div>
+    </div>
+    ${hauts.length ? `<p class="carte-note">À 7 ou plus : ${esc(hauts.join(', '))}.</p>` : ''}
+    <label class="label" for="retTexte">Ton avis sur l'état physique du groupe</label>
+    <textarea class="champ" id="retTexte" placeholder="Charge de la semaine, récupération, ce que tu conseilles au head coach."></textarea>
+    <label class="label" for="retSurv" style="margin-top:10px">Joueurs à surveiller</label>
+    <input class="champ" id="retSurv" placeholder="Noms, et pourquoi en deux mots">
+    <button class="bouton plein" style="margin-top:10px" onclick="rendRetour('physique','${jour}')">Valider mon avis</button>`;
+  }
+  if (type === 'hc'){
+    const m = (typeof prochainMatch === 'function') ? prochainMatch(E.equipe) : null;
+    const coche = (id, lib) => `<label class="ech-case"><input type="checkbox" id="${id}"> ${esc(lib)}</label>`;
+    return `${m ? `<p class="carte-note" style="margin:8px 0">Prochain match : ${esc(m.adversaire)} · ${esc(m.date)}.</p>` : ''}
+    ${coche('retVideo', 'Vidéo du dernier match analysée')}
+    ${coche('retScout', 'Scouting de l\'adversaire fait')}
+    ${coche('retPrepa', 'Préparation du match faite (classeur, onglet 4_PREPA_MATCH)')}
+    <label class="label" for="retLien" style="margin-top:10px">Lien de la vidéo (Hudl), facultatif</label>
+    <input class="champ" id="retLien" placeholder="https://…">
+    <label class="label" for="retTexte" style="margin-top:10px">Ce que tu retiens</label>
+    <textarea class="champ" id="retTexte" placeholder="Trois lignes : ce qui a marché, ce qui coince, le plan."></textarea>
+    <button class="bouton plein" style="margin-top:10px" onclick="rendRetour('hc','${jour}')">Valider mon retour</button>`;
+  }
+  return '';
+}
+
+function rendRetour(type, jour){
+  if (LECTURE_SEULE()) return toast('Lecture seule');
+  const v = id => (($('#' + id) || {}).value || '').trim();
+  const c = id => !!(($('#' + id) || {}).checked);
+  let contenu;
+  if (type === 'hc'){
+    contenu = {video: c('retVideo'), scouting: c('retScout'), prepa: c('retPrepa'),
+               lien: v('retLien'), texte: v('retTexte')};
+    if (!contenu.video || !contenu.scouting || !contenu.prepa){
+      toast('Coche les trois points avant de valider'); return;
+    }
+  } else if (type === 'physique'){
+    contenu = {texte: v('retTexte'), surveiller: v('retSurv')};
+    if (!contenu.texte){ toast('Écris ton avis'); return; }
+    const f = fatigueDu(jour);
+    contenu.fatigueMoy = f.length ? +(f.reduce((a, x) => a + x.note, 0) / f.length).toFixed(1) : null;
+  } else {
+    contenu = {texte: v('retTexte'),
+               indispo: (DB.medical || []).filter(x => x.statut === 'Indisponible').length,
+               adapte: (DB.medical || []).filter(x => x.statut === 'Reprise adaptée').length};
+    if (!contenu.texte){ toast('Écris le point pour le staff'); return; }
+  }
+  const auteur = monIdEffectif();
+  DB.retours = (DB.retours || []).filter(r => !(r.type === type && r.jour === jour && r.auteur === auteur));
+  DB.retours.push({type, jour, auteur, contenu, renduLe: heureClub()});
+  enregistrer('retours', {type, jour, auteur_id: auteur, contenu}, 'club_id,type,jour,auteur_id');
+  if (typeof journalChat === 'function')
+    journalChat(`a rendu : ${echeance(type).lib.toLowerCase()} — ${libJour(jour).toLowerCase()}`);
+  toast('Retour enregistré');
+  rendVue();
+}
+
+/* Lire un retour rendu (DT, dirigeants), ou la fatigue d'un jour. */
+function ouvreRetour(type, jour){
+  const e = echeance(type);
+  let corps;
+  if (type === 'fatigue'){
+    corps = tableFatigueJour(jour);
+  } else {
+    const rs = retoursDu(type, jour);
+    corps = rs.length ? rs.map(r => {
+      const c = r.contenu || {}, m = (DB.staff || []).find(s => s.staffId === r.auteur || s.id === r.auteur) || {};
+      return `<div class="carte">
+        <div class="carte-tete"><div class="carte-titre">${esc(m.nom || r.auteur)}</div>
+          <span class="carte-note pousse mono">${esc(r.renduLe || '')}</span></div>
+        ${type === 'hc' ? `<p class="carte-note">Vidéo ${c.video ? '✓' : '✗'} · Scouting ${c.scouting ? '✓' : '✗'} · Préparation ${c.prepa ? '✓' : '✗'}</p>` : ''}
+        ${type === 'kine' ? `<p class="carte-note">${c.indispo || 0} indisponible(s) · ${c.adapte || 0} en reprise adaptée</p>` : ''}
+        ${type === 'physique' && c.fatigueMoy != null ? `<p class="carte-note">Fatigue moyenne du jour : ${c.fatigueMoy}/10</p>` : ''}
+        ${c.texte ? `<p class="msg-txt" style="margin-top:6px">${esc(c.texte)}</p>` : ''}
+        ${c.surveiller ? `<p class="msg-txt"><b>À surveiller :</b> ${esc(c.surveiller)}</p>` : ''}
+        ${/^https?:\/\//.test(c.lien || '') ? `<a class="bouton fant plein" style="margin-top:9px" href="${esc(c.lien)}" target="_blank" rel="noopener">Ouvrir la vidéo ↗</a>` : ''}
+      </div>`;
+    }).join('') : `<div class="vide">Pas encore rendu.</div>`;
+  }
+  ouvreFeuille(`<div class="carte-titre" style="font-size:17px">${esc(e.lib)}</div>
+    <p class="carte-note" style="margin-bottom:12px">${esc(libJour(jour))}</p>${corps}
+    <button class="bouton plein" style="margin-top:12px" onclick="fermeFeuille()">Fermer</button>`);
+}
+
+/* ═══════════════════════════════════ LA FATIGUE ═══════════════════════════════════ */
+
+const couleurFatigue = n => n == null ? 'var(--gris2)'
+  : n <= 3 ? 'var(--physique)' : n <= 6 ? 'var(--or)' : n <= 8 ? 'var(--alerte)' : 'var(--danger)';
+const MOT_FATIGUE = ['Très frais', 'Frais', 'Frais', 'Bien', 'Correct', 'Un peu fatigué',
+                     'Fatigué', 'Fatigué', 'Très fatigué', 'Épuisé', 'Épuisé'];
+
+function maFatigue(jour){
+  const j = E.joueur;
+  return j ? (DB.fatigue || []).find(f => f.joueur === j.id && f.jour === (jour || AUJ())) : null;
+}
+
+/* La carte du joueur, tout en haut de son accueil : un geste, c'est noté. */
+function carteFatigueJoueur(){
+  if (E.role !== 'jr') return '';
+  const auj = AUJ(), f = maFatigue(auj);
+  const attendu = echeance('fatigue').jours.includes(jourSemaine(auj));
+  return `<div class="carte fat ${f ? 'faite' : attendu ? 'due' : ''}">
+    <div class="carte-tete"><div class="carte-titre">Ta fatigue aujourd'hui</div>
+      <span class="etiq pousse" style="color:${f ? 'var(--physique)' : attendu ? 'var(--or)' : 'var(--gris)'}">
+        ${f ? 'notée' : attendu ? 'attendue aujourd\'hui' : 'facultatif'}</span></div>
+    <p class="carte-note">0 = tout frais · 10 = épuisé. Touche ta note : c'est enregistré.</p>
+    <div class="fat-g">
+      ${Array.from({length: 11}, (_, n) => `<button class="fat-b ${f && f.note === n ? 'actif' : ''}"
+        style="--c:${couleurFatigue(n)}" onclick="noteFatigue(${n})" aria-label="Fatigue ${n} sur 10">${n}</button>`).join('')}
+    </div>
+    ${f ? `<p class="carte-note" style="margin-top:8px">${f.note}/10 — ${esc(MOT_FATIGUE[f.note])}. Tu peux changer jusqu'à minuit.</p>` : ''}
+  </div>`;
+}
+
+function noteFatigue(n){
+  const j = E.joueur;
+  if (!j) return;
+  const jour = AUJ();
+  DB.fatigue = (DB.fatigue || []).filter(f => !(f.joueur === j.id && f.jour === jour));
+  DB.fatigue.push({joueur: j.id, jour, note: n});
+  enregistrer('fatigue', {joueur_id: j.id, jour, note: n}, 'club_id,joueur_id,jour');
+  toast('Fatigue notée : ' + n + '/10');
+  rendVue();
+}
+
+/* Les derniers jours d'un joueur, pour sa prépa et pour le staff. */
+function historiqueFatigue(joueurId, nb){
+  const auj = AUJ(), k = nb || 7;
+  return Array.from({length: k}, (_, i) => {
+    const d = decaleJour(auj, -(k - 1 - i));
+    const f = (DB.fatigue || []).find(x => x.joueur === joueurId && x.jour === d);
+    return {jour: d, note: f ? f.note : null};
+  });
+}
+function bandeFatigue(joueurId){
+  return `<div class="fat-h">${historiqueFatigue(joueurId).map(h => `<span title="${esc(libJour(h.jour))}"
+    style="--c:${couleurFatigue(h.note)}"><b>${h.note == null ? '·' : h.note}</b><i>${esc(NOMS_JOURS[jourSemaine(h.jour)].slice(0, 2))}</i></span>`).join('')}</div>`;
+}
+
+function tableFatigueJour(jour){
+  const js = joueursAttendus();
+  const f = fatigueDu(jour);
+  return `<div class="carte" style="padding:6px 14px">${js.map(j => {
+    const x = f.find(y => y.joueur === j.id);
+    return `<div class="dom-ligne" style="grid-template-columns:minmax(0,1fr) auto">
+      <div><div class="dom-nom">${esc(j.nom)}</div><div class="carte-note">${esc(nomEq(j.equipe))}</div></div>
+      <span class="mono" style="font-weight:700;color:${couleurFatigue(x ? x.note : null)}">${x ? x.note + '/10' : 'non noté'}</span></div>`;
+  }).join('') || '<div class="vide">Aucun joueur.</div>'}</div>`;
+}
+
+/* L'écran « Fatigue » du staff : les joueurs × les 7 derniers jours. */
+function vueFatigue(){
+  const js = joueursAttendus().filter(j => j.equipe === E.equipe);
+  const jours = historiqueFatigue('', 7).map(h => h.jour);
+  return `${retour('Accueil', 'fermeSous()')}
+  <h1 class="vue-titre">Fatigue des joueurs</h1>
+  <p class="vue-sous">Notée par chaque joueur, de 0 (frais) à 10 (épuisé). Attendue le mercredi et le dimanche.</p>
+  ${selEquipe()}
+  <div class="tab-enrob"><table class="tab">
+    <thead><tr><th>Joueur</th>${jours.map(d => `<th class="num">${esc(NOMS_JOURS[jourSemaine(d)].slice(0, 3))}<br><small>${esc(jourFr(d).slice(0, 5))}</small></th>`).join('')}</tr></thead>
+    <tbody>${js.map(j => `<tr><td class="tab-nom">${esc(j.nom)}</td>${jours.map(d => {
+      const x = (DB.fatigue || []).find(f => f.joueur === j.id && f.jour === d);
+      return `<td class="num" style="font-weight:700;color:${couleurFatigue(x ? x.note : null)}">${x ? x.note : '·'}</td>`;
+    }).join('')}</tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function carteFatigueStaff(){
+  if (!PEUT_FATIGUE(E.role)) return '';
+  const auj = AUJ(), f = fatigueDu(auj), n = joueursAttendus().length;
+  const m = f.length ? f.reduce((a, x) => a + x.note, 0) / f.length : null;
+  const hauts = f.filter(x => x.note >= 7).length;
+  return `<div class="carte" style="margin-top:10px">
+    <div class="carte-tete"><div class="carte-titre">Fatigue du jour</div>
+      <span class="etiq pousse" style="color:var(--gris)">${f.length}/${n} joueurs</span></div>
+    <p class="msg-txt">Moyenne : <b style="color:${couleurFatigue(m == null ? null : Math.round(m))}">${m == null ? '—' : m.toFixed(1) + '/10'}</b>.
+    ${hauts ? hauts + ' joueur(s) à 7 ou plus.' : ''}</p>
+    <button class="bouton fant plein" style="margin-top:11px" onclick="ouvreSous('fatigue')">Voir les 7 derniers jours</button>
+  </div>`;
+}
+
+/* ═══════════════════════════════════ LES ÉVALUATIONS DU DT ═══════════════════════════════════
+
+   Les notes s'écrivent dans le classeur privé du DT (« ASA — Évaluations du
+   DT »), une ligne par évaluation. Le classeur les envoie dans la base en se
+   connectant avec le code du DT : la base vérifie que c'est lui, et personne
+   d'autre ne les lit. La plateforme en fait la fiche ; le DT la finalise, et
+   c'est cette version figée que lisent les dirigeants.
+
+   Les grilles ci-dessous sont celles du classeur. Si le DT les retouche, le
+   classeur envoie les siennes et ce sont elles qui comptent. */
+
+const GRILLES_DT = {
+  jr: {lib: 'Joueur', criteres: [
+    ['Investissement à l\'entraînement', 'Investissement', .16, .16],
+    ['Progression technique', 'Progression', .14, .18],
+    ['Compréhension tactique', 'Tactique', .12, .12],
+    ['Condition physique', 'Physique', .12, .10],
+    ['Performance en match', 'Match', .16, .10],
+    ['Attitude et comportement', 'Attitude', .12, .14],
+    ['Esprit d\'équipe', 'Collectif', .10, .12],
+    ['Assiduité et ponctualité', 'Assiduité', .08, .08]]},
+  hc: {lib: 'Head coach', criteres: [
+    ['Préparation et planification des séances', 'Préparation', .12, .12],
+    ['Conduite de séance et pédagogie', 'Pédagogie', .12, .15],
+    ['Gestion et coaching de match', 'Coaching match', .18, .10],
+    ['Développement individuel des joueurs', 'Dévelop. joueurs', .16, .24],
+    ['Pilotage et animation du staff', 'Pilotage staff', .14, .12],
+    ['Communication et gestion du groupe', 'Communication', .12, .13],
+    ['Retour du mardi : vidéo, scouting, préparation', 'Retour du mardi', .10, .08],
+    ['Rigueur, ponctualité et administratif', 'Rigueur', .06, .06]]},
+  ca: {lib: 'Coach assistant', criteres: [
+    ['Préparation des séances', 'Préparation', .14, .14],
+    ['Conduite de séance et pédagogie', 'Pédagogie', .14, .17],
+    ['Statistiques et feuille de match', 'Stats de match', .12, .10],
+    ['Développement individuel des joueurs', 'Dévelop. joueurs', .16, .24],
+    ['Analyse vidéo et scouting', 'Vidéo & scouting', .14, .10],
+    ['Apport en match', 'Apport en match', .12, .07],
+    ['Coopération avec le head coach', 'Coopération', .10, .10],
+    ['Rigueur et ponctualité', 'Rigueur', .08, .08]]},
+  an: {lib: 'Analyste', criteres: [
+    ['Qualité des films d\'entraînement', 'Films', .16, .16],
+    ['Statistiques d\'entraînement', 'Stats entr.', .14, .14],
+    ['Relevé des oppositions', 'Oppositions', .14, .14],
+    ['Délais de livraison', 'Délais', .14, .14],
+    ['Clips et découpages utiles au staff', 'Clips', .14, .14],
+    ['Fiabilité des données', 'Fiabilité', .12, .12],
+    ['Coopération avec le staff', 'Coopération', .08, .08],
+    ['Rigueur et ponctualité', 'Rigueur', .08, .08]]},
+  ki: {lib: 'Kinésithérapeute', criteres: [
+    ['Suivi des blessures', 'Suivi blessures', .16, .16],
+    ['Retours du lundi et du jeudi tenus', 'Retours tenus', .14, .14],
+    ['Clarté des consignes au staff', 'Consignes', .14, .14],
+    ['Prévention', 'Prévention', .14, .14],
+    ['Reprise et réathlétisation', 'Reprise', .14, .14],
+    ['Disponibilité', 'Disponibilité', .10, .10],
+    ['Relation avec les joueurs', 'Relation', .10, .10],
+    ['Rigueur et ponctualité', 'Rigueur', .08, .08]]},
+  as: {lib: 'Assistant administratif', criteres: [
+    ['Tenue de l\'appel', 'Appel', .16, .16],
+    ['Feuilles de match et statistiques', 'Feuilles de match', .14, .14],
+    ['Grilles de tir', 'Grilles de tir', .14, .14],
+    ['Logistique et matériel', 'Logistique', .14, .14],
+    ['Communication avec les joueurs', 'Communication', .12, .12],
+    ['Fiabilité des données', 'Fiabilité', .12, .12],
+    ['Réactivité', 'Réactivité', .10, .10],
+    ['Ponctualité', 'Ponctualité', .08, .08]]},
+  pp: {lib: 'Préparateur physique', criteres: [
+    ['Planification de la charge', 'Charge', .16, .14],
+    ['Avis du mercredi et du dimanche tenus', 'Avis tenus', .12, .12],
+    ['Suivi de la fatigue', 'Fatigue', .14, .14],
+    ['Prévention des blessures', 'Prévention', .14, .16],
+    ['Tests et mesures', 'Tests', .12, .10],
+    ['Sécurité d\'exécution', 'Sécurité', .12, .18],
+    ['Coopération avec le kiné et le staff', 'Coopération', .12, .10],
+    ['Rigueur et ponctualité', 'Rigueur', .08, .06]]}
+};
+const grilleDT = r => ((DB.grillesDT || {})[r]) || GRILLES_DT[r] || null;
+/* Le second coach assistant porte encore le code « cd » : même grille. */
+const roleGrille = r => r === 'cd' ? 'ca' : r;
+
+const libPeriode = p => {
+  const [a, m] = String(p || '').split('-');
+  return (a && m && NOMS_MOIS[Number(m) - 1]) ? NOMS_MOIS[Number(m) - 1] + ' ' + a : String(p || '');
+};
+const periodeDuJour = () => AUJ().slice(0, 7);
+
+/* En ligne comme en démonstration, le staff est rangé sous son rôle
+   (id = « ki ») ; roleCode, quand il est là, vient de l'effectif de connexion. */
+function roleDeMembre(m){ return m.roleCode || (ROLES[m.id] ? m.id : '') || ''; }
+
+/* Les membres évaluables : tous les joueurs suivis, et tout le staff sauf le
+   DT lui-même et les dirigeants. */
+function membresEvaluables(){
+  const staff = (DB.staff || []).filter(m => !['dt', 'dg', ''].includes(roleDeMembre(m)))
+    .map(m => ({pid: m.staffId || m.id, nom: m.nom, role: roleGrille(roleDeMembre(m)),
+                sous: m.fonction || (ROLES[roleDeMembre(m)] || {}).lib || '', equipe: null, staff: true}));
+  const js = joueursAttendus().map(j => ({pid: j.id, nom: j.nom, role: 'jr',
+    sous: `${j.poste} · ${nomEq(j.equipe)}`, equipe: j.equipe, staff: false}));
+  return staff.concat(js);
+}
+
+const evalsDe = pid => (DB.evalsDT || []).filter(e => e.personne === pid)
+  .sort((a, b) => a.periode < b.periode ? -1 : a.periode > b.periode ? 1 : 0);
+
+function scoreEval(e){
+  const g = e && grilleDT(e.role);
+  if (!g || !e.notes || !e.notes.length) return null;
+  const esp = e.equipe === 'espoirs';
+  let s = 0, p = 0;
+  g.criteres.forEach((c, i) => {
+    const n = Number(e.notes[i]);
+    if (!isNaN(n) && n > 0){ const w = esp ? c[3] : c[2]; s += n * w; p += w; }
+  });
+  return p ? Math.round(s / p / 5 * 100) : null;
+}
+const couleurScore = s => s == null ? 'var(--gris2)' : s >= 70 ? 'var(--physique)' : s >= 55 ? 'var(--or)' : 'var(--danger)';
+
+/* Ce que la plateforme a relevé d'elle-même, à côté des notes. */
+function activiteDe(mb){
+  const l = [];
+  if (!mb.staff){
+    const j = parId(mb.pid);
+    if (!j) return l;
+    const b = bilanTir(j);
+    l.push(['Challenge de tir', b.tirs ? b.pct + ' % sur ' + b.tirs + ' tirs' : 'aucune session']);
+    if (j.presence) l.push(['Présence à l\'entraînement', j.presence + ' %']);
+    const h = (DB.fatigue || []).filter(f => f.joueur === j.id && ecartJours(f.jour) <= 14);
+    l.push(['Fatigue (14 jours)', h.length ? (h.reduce((a, x) => a + x.note, 0) / h.length).toFixed(1) + '/10 sur ' + h.length + ' relevé(s)' : 'non notée']);
+    const med = (DB.medical || []).find(m => m.joueur === j.id && m.statut !== 'Rétabli');
+    l.push(['Médical', med ? med.statut + (med.type ? ' — ' + med.type : '') : 'rien en cours']);
+    if (j.stats && j.stats.matchs) l.push(['En match', (j.stats.pts / j.stats.matchs).toFixed(1) + ' pts sur ' + j.stats.matchs + ' match(s)']);
+  } else {
+    const e = ECHEANCES.find(x => x.role === mb.role);
+    if (e){
+      let attendus = 0, rendus = 0;
+      for (let i = 1; i <= 28; i++){
+        const d = decaleJour(AUJ(), -i);
+        if (!e.jours.includes(jourSemaine(d))) continue;
+        attendus++;
+        if ((DB.retours || []).some(r => r.type === e.type && r.jour === d && r.auteur === mb.pid)) rendus++;
+      }
+      l.push([e.lib + ' (4 semaines)', rendus + ' rendu(s) sur ' + attendus]);
+    }
+    const m = (DB.staff || []).find(s => (s.staffId || s.id) === mb.pid) || {};
+    const objs = objectifsDe(m);
+    if (objs.length) l.push(['Objectifs du mois', objs.length + ' · avancement moyen ' + Math.round(moy(objs.map(o => o.avancement || 0))) + ' %']);
+  }
+  return l;
+}
+
+/* La fiche, sous forme de données. C'est elle qui est figée à la finalisation :
+   le dirigeant lit exactement ce que le DT a vu en cliquant. */
+function ficheDonnees(mb, periode){
+  const es = evalsDe(mb.pid);
+  const e = es.find(x => x.periode === periode) || null;
+  const i = e ? es.indexOf(e) : -1;
+  const prec = i > 0 ? es[i - 1] : null;
+  const g = grilleDT(mb.role);
+  return {
+    personne: mb.pid, nom: mb.nom, sous: mb.sous, role: mb.role,
+    equipe: (e && e.equipe) || mb.equipe || null, periode,
+    grille: g, notes: e ? e.notes : [], notesPrec: prec ? prec.notes : null,
+    periodePrec: prec ? prec.periode : null,
+    score: scoreEval(e), scorePrec: scoreEval(prec),
+    serie: es.map(x => ({periode: x.periode, score: scoreEval(x)})),
+    forts: e ? e.forts : '', axes: e ? e.axes : '', commentaire: e ? e.commentaire : '',
+    activite: activiteDe(mb), dateEval: e ? e.date : '',
+    dt: (E.moi && E.moi.nom) || ''
+  };
+}
+
+/* ─────────────────────────── l'onglet Rapports (DT et dirigeants) */
+
+let EVAL = {filtre: 'tous', pid: null, periode: null};
+
+function vueRapports(){
+  if (E.sous === 'fiche') return vueFicheMembre();
+  const mode = E.rapVue || 'fiches';
+  const ong = `<div class="ong" style="margin-bottom:14px">
+    <button class="ong-b ${mode === 'fiches' ? 'actif' : ''}" onclick="E.rapVue='fiches';rendVue()">Fiches individuelles</button>
+    <button class="ong-b ${mode === 'president' ? 'actif' : ''}" onclick="E.rapVue='president';rendVue()">${E.role === 'dg' ? 'Rapports mensuels' : 'Rapport au président'}</button>
+  </div>`;
+  if (mode === 'president') return ong + (E.role === 'dg' ? vueRapportLecture() : vueRapport());
+  return ong + (E.role === 'dg' ? vueFichesFinalisees() : vueFichesDT());
+}
+
+function vueFichesDT(){
+  const p = periodeDuJour();
+  const tous = membresEvaluables();
+  const f = EVAL.filtre;
+  const liste = tous.filter(m => f === 'tous' || (f === 'staff' ? m.staff : (!m.staff && m.equipe === f)));
+  const notes = tous.filter(m => evalsDe(m.pid).some(e => e.periode === p)).length;
+  const finals = (DB.rapportsMembres || []).filter(r => r.periode === p).length;
+  const filtres = [['tous', 'Tous'], ['staff', 'Staff']].concat(
+    (DB.equipes || []).filter(e => equipeOuverte(e.id)).map(e => [e.id, e.nom]));
+
+  return `<h1 class="vue-titre">Fiches individuelles</h1>
+  <p class="vue-sous">Une fiche par membre du club, construite à partir de tes notes du classeur et de ce que la
+  plateforme relève. Finalisée, elle part chez les dirigeants.</p>
+
+  <div class="g3">
+    <div class="tuile"><div class="tuile-val">${notes}<small style="font-size:13px">/${tous.length}</small></div><div class="tuile-lib">Notés en<br>${esc(libPeriode(p).split(' ')[0].toLowerCase())}</div></div>
+    <div class="tuile vert"><div class="tuile-val">${finals}</div><div class="tuile-lib">Fiches<br>transmises</div></div>
+    <div class="tuile blanc"><div class="tuile-val">${tous.length - notes}</div><div class="tuile-lib">Restent<br>à noter</div></div>
+  </div>
+
+  <div class="carte" style="margin-top:12px">
+    <div class="carte-tete"><div class="carte-titre">Noter dans le classeur</div>
+      <span class="etiq pousse" style="color:var(--or)">pour toi seul</span></div>
+    <p class="msg-txt">Onglet <b>EVALUATIONS</b> : une ligne par personne et par mois, huit critères de 1 à 5,
+    points forts, axes et commentaire. Puis <b>ASA → Envoyer vers la plateforme</b>.</p>
+    <button class="bouton plein" style="margin-top:11px" onclick="ouvreClasseurEval()">Ouvrir le classeur ↗</button>
+  </div>
+
+  <div class="ong" style="margin-top:12px">${filtres.map(([k, l]) =>
+    `<button class="ong-b ${f === k ? 'actif' : ''}" onclick="EVAL.filtre='${k}';rendVue()">${esc(l)}</button>`).join('')}</div>
+
+  <div class="jl">${liste.map(m => {
+    const e = evalsDe(m.pid).find(x => x.periode === p);
+    const s = scoreEval(e);
+    const fin = (DB.rapportsMembres || []).some(r => r.personne === m.pid && r.periode === p);
+    const r = ROLES[m.role] || ROLES.as;
+    return `<button class="jl-item" onclick="ouvreFiche('${m.pid}')">
+      <span class="cx-pastille" style="width:32px;height:32px;flex:0 0 32px;border-radius:9px;font-size:12px;background:${r.couleur}">${r.court}</span>
+      <span class="jl-bloc"><span class="jl-nom">${esc(m.nom)}</span>
+        <span class="jl-meta">${esc(m.sous)}${fin ? ' · transmise' : e ? ' · notée' : ' · à noter'}</span></span>
+      <span class="jl-note" style="color:${couleurScore(s)}">${s == null ? '—' : s}</span>
+      <span class="jl-fleche">›</span></button>`;
+  }).join('') || '<div class="vide">Personne dans ce groupe.</div>'}</div>`;
+}
+
+function ouvreFiche(pid, periode){
+  EVAL.pid = pid;
+  const es = evalsDe(pid);
+  EVAL.periode = periode || (es.length ? es[es.length - 1].periode : periodeDuJour());
+  ouvreSous('fiche');
+}
+function ouvreClasseurEval(){
+  if (!URL_CLASSEUR_EVAL) return toast('Adresse du classeur à renseigner');
+  window.open(URL_CLASSEUR_EVAL, '_blank', 'noopener');
+}
+
+function vueFicheMembre(){
+  let d;
+  if (E.role === 'dg'){
+    const r = (DB.rapportsMembres || []).find(x => x.personne === EVAL.pid && x.periode === EVAL.periode);
+    if (!r) return `${retour('Rapports', 'fermeSous()')}<div class="vide">Cette fiche n'a pas été transmise.</div>`;
+    d = Object.assign({}, r.contenu, {finaliseLe: r.finaliseLe});
+  } else {
+    const mb = membresEvaluables().find(m => m.pid === EVAL.pid);
+    if (!mb) return `${retour('Rapports', 'fermeSous()')}<div class="vide">Membre introuvable.</div>`;
+    d = ficheDonnees(mb, EVAL.periode);
+  }
+  const fin = (DB.rapportsMembres || []).find(x => x.personne === EVAL.pid && x.periode === EVAL.periode);
+  const periodes = E.role === 'dg'
+    ? (DB.rapportsMembres || []).filter(x => x.personne === EVAL.pid).map(x => x.periode)
+    : Array.from(new Set(evalsDe(EVAL.pid).map(e => e.periode).concat([periodeDuJour()])));
+  periodes.sort();
+  return `${retour('Rapports', 'fermeSous()')}
+  ${ficheEcran(d)}
+  ${periodes.length > 1 ? `<div class="ong" style="margin-top:12px">${periodes.map(p =>
+    `<button class="ong-b ${p === EVAL.periode ? 'actif' : ''}" onclick="EVAL.periode='${p}';rendVue()">${esc(libPeriode(p))}</button>`).join('')}</div>` : ''}
+  <div class="g2" style="margin-top:12px">
+    <button class="bouton fant" onclick="imprimeFicheMembre()">Imprimer la fiche</button>
+    ${E.role === 'dt' ? (d.score == null
+      ? `<button class="bouton" onclick="ouvreClasseurEval()">Noter au classeur ↗</button>`
+      : `<button class="bouton" onclick="finaliseFiche()">${fin ? 'Mettre à jour la version transmise' : 'Finaliser et transmettre'}</button>`) : ''}
+  </div>
+  ${E.role === 'dt' && fin ? `<p class="carte-note" style="margin-top:8px;text-align:center">Transmise aux dirigeants le ${esc(fin.finaliseLe || '')}.</p>` : ''}
+  ${E.role === 'dg' && d.finaliseLe ? `<p class="carte-note" style="margin-top:8px;text-align:center">Fiche finalisée par le directeur technique le ${esc(d.finaliseLe)}.</p>` : ''}`;
+}
+
+/* La fiche à l'écran — « comme une fiche éval stats coach ». */
+function ficheEcran(d){
+  const g = d.grille || {criteres: []};
+  const r = ROLES[d.role] || ROLES.as;
+  const esp = d.equipe === 'espoirs';
+  const ecart = (d.score != null && d.scorePrec != null) ? d.score - d.scorePrec : null;
+  let bas = -1;
+  (d.notes || []).forEach((n, i) => { if (Number(n) > 0 && (bas < 0 || Number(n) < Number(d.notes[bas]))) bas = i; });
+  const serie = (d.serie || []).filter(s => s.score != null);
+  return `<div class="carte fiche-ev">
+    <div class="carte-tete">
+      <span class="cx-pastille" style="width:40px;height:40px;flex:0 0 40px;border-radius:11px;font-size:14px;background:${r.couleur}">${r.court}</span>
+      <div style="min-width:0"><div class="carte-titre" style="font-size:17px">${esc(d.nom)}</div>
+        <div class="carte-note">${esc(d.sous || '')} · ${esc(libPeriode(d.periode))}</div></div>
+    </div>
+    <div class="g3" style="margin-top:6px">
+      <div class="tuile"><div class="tuile-val" style="color:${couleurScore(d.score)}">${d.score == null ? '—' : d.score}<small style="font-size:13px">/100</small></div><div class="tuile-lib">Score<br>pondéré</div></div>
+      <div class="tuile blanc"><div class="tuile-val" style="color:${ecart == null ? 'var(--gris)' : ecart >= 0 ? 'var(--physique)' : 'var(--danger)'}">${ecart == null ? '—' : (ecart > 0 ? '+' : '') + ecart}</div><div class="tuile-lib">${d.periodePrec ? 'vs ' + esc(libPeriode(d.periodePrec).split(' ')[0].toLowerCase()) : 'Première<br>évaluation'}</div></div>
+      <div class="tuile ${bas >= 0 ? 'rouge' : ''}"><div class="tuile-val" style="font-size:14px;line-height:1.2">${bas >= 0 ? esc(g.criteres[bas][1]) : '—'}</div><div class="tuile-lib">Point de<br>vigilance</div></div>
+    </div>
+  </div>
+
+  ${d.score == null ? `<div class="vide">Pas encore noté pour ${esc(libPeriode(d.periode).toLowerCase())}. Les notes s'écrivent
+    dans le classeur du DT, onglet EVALUATIONS.</div>` : `<div class="section-titre">Critère par critère — pondération ${esp ? 'espoirs' : 'pro'}</div>
+  <div class="carte">${g.criteres.map((c, i) => {
+    const n = Number((d.notes || [])[i]) || 0, p = d.notesPrec ? Number(d.notesPrec[i]) || 0 : null;
+    return `<div class="ev-l">
+      <div class="ev-t"><span>${esc(c[0])}</span><span class="mono">${Math.round((esp ? c[3] : c[2]) * 100)} %</span></div>
+      <div class="rang"><div class="jauge" style="flex:1"><i style="width:${n / 5 * 100}%;background:${couleurScore(n * 20)}"></i></div>
+        <b class="mono" style="font-size:13px;min-width:30px;text-align:right">${n || '—'}<small style="color:var(--gris)">/5</small></b>
+        ${p ? `<span class="mono" style="font-size:10.5px;min-width:26px;color:${n > p ? 'var(--physique)' : n < p ? 'var(--danger)' : 'var(--gris)'}">${n > p ? '+' : ''}${n - p}</span>` : ''}</div>
+    </div>`;
+  }).join('')}</div>
+
+  ${serie.length > 1 ? `<div class="section-titre">Évolution du score</div>
+  <div class="carte">${courbe([serie.map(s => s.score)], ['Score'], ['#FFB246'], serie.map(s => libPeriode(s.periode).slice(0, 3)), 100)}</div>` : ''}
+
+  <div class="section-titre">L'avis du directeur technique</div>
+  <div class="carte">
+    <div class="dom-nom">Points forts</div><p class="msg-txt">${esc(d.forts || '—')}</p>
+    <div class="dom-nom" style="margin-top:10px">Axes de travail</div><p class="msg-txt">${esc(d.axes || '—')}</p>
+    ${d.commentaire ? `<div class="dom-nom" style="margin-top:10px">Commentaire</div><p class="msg-txt">${esc(d.commentaire)}</p>` : ''}
+  </div>`}
+
+  ${(d.activite || []).length ? `<div class="section-titre">Relevé par la plateforme</div>
+  <div class="carte" style="padding:6px 14px">${d.activite.map(a => `<div class="dom-ligne" style="grid-template-columns:minmax(0,1fr) auto">
+    <div class="dom-nom">${esc(a[0])}</div><span class="mono" style="font-size:12px">${esc(a[1])}</span></div>`).join('')}
+    <p class="carte-note" style="padding:6px 0">Ces chiffres ne comptent que ce qui passe par la plateforme.</p></div>` : ''}`;
+}
+
+function finaliseFiche(){
+  if (E.role !== 'dt') return toast('Réservé au directeur technique');
+  const mb = membresEvaluables().find(m => m.pid === EVAL.pid);
+  if (!mb) return;
+  const d = ficheDonnees(mb, EVAL.periode);
+  if (d.score == null) return toast('Note d\'abord ce membre au classeur');
+  const le = AUJ_FR() + ' à ' + heureClub();
+  DB.rapportsMembres = (DB.rapportsMembres || []).filter(r => !(r.personne === mb.pid && r.periode === EVAL.periode));
+  DB.rapportsMembres.push({personne: mb.pid, periode: EVAL.periode, contenu: d, finaliseLe: le});
+  enregistrer('rapports_membres', {personne_id: mb.pid, periode: EVAL.periode, contenu: d,
+                                   auteur_id: monIdEffectif(), finalise_le: maintenant().toISOString()},
+              'club_id,personne_id,periode');
+  toast('Fiche transmise aux dirigeants');
+  rendVue();
+}
+
+function imprimeFicheMembre(){
+  let d;
+  if (E.role === 'dg'){
+    const r = (DB.rapportsMembres || []).find(x => x.personne === EVAL.pid && x.periode === EVAL.periode);
+    if (!r) return; d = r.contenu;
+  } else {
+    const mb = membresEvaluables().find(m => m.pid === EVAL.pid);
+    if (!mb) return; d = ficheDonnees(mb, EVAL.periode);
+  }
+  ouvreImpression('Fiche — ' + d.nom, ficheA4(d),
+    'Document de la direction technique. Il se remet en entretien.');
+}
+
+function ficheA4(d){
+  const g = d.grille || {criteres: []};
+  const esp = d.equipe === 'espoirs';
+  const A = (d.notes || []).map(n => Number(n) || 0), B = d.notesPrec ? d.notesPrec.map(n => Number(n) || 0) : null;
+  const ecart = (d.score != null && d.scorePrec != null) ? d.score - d.scorePrec : null;
+  return `<div class="a4">
+    <div class="a4-tete">
+      <div class="a4-g">
+        <div class="a4-logo"><img src="${logoSrc()}" alt="Association Sportive Adjamé"></div>
+        <div style="min-width:0"><h1>${esc(d.nom)}</h1>
+          <div style="margin-top:2mm"><span class="a4-chip">${esc(g.lib || '')}</span>
+            ${d.equipe ? `<span class="a4-chip">${esc(nomEq(d.equipe))}</span>` : ''}</div></div>
+      </div>
+      <div class="a4-meta"><b>${esc(libPeriode(d.periode))}</b>Fiche d'évaluation<br>Directeur technique : ${esc(d.dt || '')}</div>
+    </div>
+    <div class="a4-tuiles">
+      <div class="a4-tuile"><div class="l">Score de la période</div>
+        <div class="v">${d.score == null ? '—' : d.score}<span style="font-size:15px;color:#9C978B"> /100</span></div>
+        <div class="s">moyenne pondérée des ${g.criteres.length} critères</div></div>
+      <div class="a4-tuile"><div class="l">Évolution</div>
+        <div class="v">${ecart == null ? '—' : (ecart > 0 ? '+' : '') + ecart}</div>
+        <div class="s">${d.periodePrec ? 'vs ' + esc(libPeriode(d.periodePrec)) : 'première évaluation'}</div></div>
+      <div class="a4-tuile"><div class="l">Pondération</div>
+        <div class="v" style="font-size:18px">${esp ? 'Espoirs' : 'Pro'}</div><div class="s">notes de 1 à 5</div></div>
+    </div>
+    <div class="a4-duo radar staff">
+      <div class="a4-bloc">${A.length ? a4Radar(g.criteres.map(c => c[1]), A, B, 5) : ''}</div>
+      <div class="a4-bloc"><h3>Critère par critère</h3>
+        <table><thead><tr><th>Critère</th><th class="num">Poids</th><th class="num">Note</th><th class="num">Préc.</th></tr></thead>
+        <tbody>${g.criteres.map((c, i) => `<tr><td>${esc(c[0])}</td>
+          <td class="num" style="color:#94908A">${Math.round((esp ? c[3] : c[2]) * 100)} %</td>
+          <td class="num"><b>${A[i] || '—'}</b><span style="color:#94908A">/5</span></td>
+          <td class="num" style="color:#94908A">${B ? B[i] || '—' : '—'}</td></tr>`).join('')}</tbody></table></div>
+    </div>
+    <div class="a4-duo">
+      <div class="a4-bloc"><h3>Points forts</h3><p>${esc(d.forts || '—')}</p></div>
+      <div class="a4-bloc"><h3>Axes de travail</h3><p>${esc(d.axes || '—')}</p></div>
+    </div>
+    ${d.commentaire ? `<div class="a4-bloc"><h3>Commentaire du directeur technique</h3><p>${esc(d.commentaire)}</p></div>` : ''}
+    ${(d.activite || []).length ? `<div class="a4-bloc"><h3>Relevé par la plateforme</h3>
+      <table><tbody>${d.activite.map(a => `<tr><td>${esc(a[0])}</td><td class="num">${esc(a[1])}</td></tr>`).join('')}</tbody></table></div>` : ''}
+    <div class="a4-sign"><div>L'intéressé — date et signature</div><div>Le directeur technique — date et signature</div></div>
+    <div class="a4-pied"><div>Direction technique — saison ${esc(DB.saison || '')}</div><div>Confidentiel</div></div>
+  </div>`;
+}
+
+/* ═══════════════════════════════════ LES DIRIGEANTS ═══════════════════════════════════ */
+
+function vueFichesFinalisees(){
+  const rs = (DB.rapportsMembres || []).slice().sort((a, b) => a.periode < b.periode ? 1 : a.periode > b.periode ? -1 : 0);
+  const parPeriode = {};
+  rs.forEach(r => { (parPeriode[r.periode] = parPeriode[r.periode] || []).push(r); });
+  return `<h1 class="vue-titre">Fiches transmises</h1>
+  <p class="vue-sous">Les fiches individuelles finalisées par le directeur technique, telles qu'il les a validées.</p>
+  ${Object.keys(parPeriode).map(p => `<div class="section-titre">${esc(libPeriode(p))}</div>
+    <div class="jl">${parPeriode[p].map(r => {
+      const d = r.contenu || {}, ro = ROLES[d.role] || ROLES.as;
+      return `<button class="jl-item" onclick="ouvreFiche('${r.personne}','${r.periode}')">
+        <span class="cx-pastille" style="width:32px;height:32px;flex:0 0 32px;border-radius:9px;font-size:12px;background:${ro.couleur}">${ro.court}</span>
+        <span class="jl-bloc"><span class="jl-nom">${esc(d.nom || r.personne)}</span>
+          <span class="jl-meta">${esc(d.sous || '')} · transmise le ${esc(r.finaliseLe || '')}</span></span>
+        <span class="jl-note" style="color:${couleurScore(d.score)}">${d.score == null ? '—' : d.score}</span>
+        <span class="jl-fleche">›</span></button>`;
+    }).join('')}</div>`).join('') || '<div class="vide">Aucune fiche transmise pour l\'instant.</div>'}`;
+}
+
+/* Le rapport au président, en lecture : seuls les rapports envoyés arrivent
+   jusqu'ici (règle de la base). */
+function vueRapportLecture(){
+  const R = DB.rapport || {};
+  if (R.statut !== 'envoyé') return `<h1 class="vue-titre">Rapports mensuels</h1>
+    <div class="vide">Aucun rapport envoyé pour l'instant.</div>`;
+  return `<h1 class="vue-titre">Rapport — ${esc(R.periode || '')}</h1>
+  <p class="vue-sous">Envoyé le ${esc(R.envoyeLe || '')}${R.auteur ? ' par ' + esc(R.auteur) : ''}.</p>
+  <div class="carte"><p class="msg-txt">${esc(R.synthese || '')}</p></div>
+  ${(R.points || []).map(p => `<div class="carte"><div class="carte-titre">${esc(p.titre)}</div>
+    <p class="msg-txt" style="margin-top:6px">${esc(p.texte)}</p></div>`).join('')}
+  ${R.demandes ? `<div class="carte"><div class="carte-titre">Demandes</div><p class="msg-txt" style="margin-top:6px">${esc(R.demandes)}</p></div>` : ''}`;
+}
+
+/* L'accueil du dirigeant. */
+function blocAccueilDirigeant(){
+  const indispo = (DB.medical || []).filter(m => m.statut === 'Indisponible').length;
+  const pro = parEq('pro'), esp = parEq('espoirs');
+  const fiches = (DB.rapportsMembres || []).length;
+  return `<div class="section-titre">Coup d'œil</div>
+  <div class="g4">
+    <div class="tuile blanc"><div class="tuile-val">${(DB.joueurs || []).length}</div><div class="tuile-lib">Joueurs<br>suivis</div></div>
+    <div class="tuile"><div class="tuile-val">${moyTirGroupe(pro).pct}<small style="font-size:14px">%</small></div><div class="tuile-lib">Tir<br>pro</div></div>
+    <div class="tuile bleu"><div class="tuile-val">${equipeOuverte('espoirs') ? moyTirGroupe(esp).pct + '<small style="font-size:14px">%</small>' : '—'}</div><div class="tuile-lib">Tir<br>espoirs</div></div>
+    <div class="tuile ${indispo ? 'rouge' : 'vert'}"><div class="tuile-val">${indispo}</div><div class="tuile-lib">Indispo-<br>nibles</div></div>
+  </div>
+  ${carteEcheances()}
+  ${carteFatigueStaff()}
+  <div class="carte" style="margin-top:10px">
+    <div class="carte-tete"><div class="carte-titre">Rapports du directeur technique</div>
+      <span class="etiq pousse" style="color:var(--or)">${fiches} fiche${fiches > 1 ? 's' : ''}</span></div>
+    <p class="msg-txt">Les fiches individuelles finalisées et les rapports mensuels envoyés.</p>
+    <button class="bouton fant plein" style="margin-top:11px" onclick="vaVers(indexOnglet('Rapports'))">Ouvrir les rapports</button>
+  </div>
+  <div class="carte" style="margin-top:10px">
+    <div class="carte-tete"><div class="carte-titre">Fil du staff</div>
+      <span class="etiq pousse" style="color:var(--gris)">lecture</span></div>
+    <p class="msg-txt">Ce que le staff se dit, et ce que la plateforme y consigne. Tu le lis, tu n'y écris pas.</p>
+    <button class="bouton fant plein" style="margin-top:11px" onclick="ouvreSous('chat')">Lire le fil</button>
+  </div>
+  <p class="carte-note" style="margin-top:12px;text-align:center">Compte dirigeant : lecture seule.</p>`;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
