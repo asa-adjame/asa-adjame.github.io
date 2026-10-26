@@ -720,6 +720,11 @@ textarea.champ{resize:vertical;min-height:78px;line-height:1.5}
 .cal-titre{font-family:var(--titre);font-size:20px;letter-spacing:.4px;margin:18px 0 4px;font-weight:400}
 .cal-chiffres{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font-size:13px}
 .cal-chiffres b{font-family:var(--mono);font-size:15px;margin-right:3px}
+/* Corriger / supprimer une fiche médicale (26/10/2026) : discret, réservé au
+   kiné — c'est la porte des erreurs, pas celle du suivi. */
+.med-corr{display:flex;gap:16px;margin-top:10px;padding-top:9px;border-top:1px dashed var(--ligne)}
+.med-corr button{background:none;border:0;padding:4px 0;color:var(--gris2);font:inherit;font-size:12.5px;
+  text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .pt-bouton{background:var(--surface2);border:1px solid var(--ligne2);color:var(--texte);
   border-radius:9px;padding:6px 11px;font-size:12px;font-weight:600;white-space:nowrap}
 
@@ -2451,15 +2456,28 @@ function vueClassement(){
   </table></div>`;
 }
 
+/* 26/10/2026 — le DT peut modifier ou supprimer un partenaire. Chaque
+   partenaire porte un identifiant (fabriqué à l'ajout, ou celui de la base) :
+   c'est lui que visent la modification et la suppression. */
+const NIVEAUX_SPO = ['Partenaire principal', 'Partenaire majeur', 'Partenaire officiel', 'Partenaire média'];
+const PEUT_SPONSORS = () => E.role === 'dt';
+
 function vueSponsors(){
+  (DB.sponsors || []).forEach(s => { if (!s.id) s.id = nouvelId(); });
+  const gere = PEUT_SPONSORS();
   return `${retour('Accueil', 'fermeSous()')}
   <h1 class="vue-titre">Partenaires</h1>
   <p class="vue-sous">Partenariats en cours et emplacements publicitaires de la plateforme.</p>
-  ${DB.sponsors.map(s => `<div class="spo" style="--c:${esc(s.couleur)}">
+  ${DB.sponsors.length ? '' : '<div class="vide">Aucun partenaire pour l\'instant.</div>'}
+  ${DB.sponsors.map(s => `<div class="spo" style="--c:${esc(s.couleur || '#FFB246')}">
     <div class="spo-niv">${esc(s.niveau)}</div>
     <div class="spo-nom">${esc(s.nom)}</div>
     <p class="msg-txt">${esc(s.texte)}</p>
     <div class="carte-note mono" style="margin-top:8px;font-size:10.5px">${esc(s.contact)}</div>
+    ${gere ? `<div class="g2" style="margin-top:11px">
+      <button class="bouton fant" onclick="editeSponsor('${esc(s.id)}')">Modifier</button>
+      <button class="bouton fant" style="color:var(--danger)" onclick="demandeSuppressionSponsor('${esc(s.id)}')">Supprimer</button>
+    </div>` : ''}
   </div>`).join('')}
   <div class="section-titre">Emplacements</div>
   <div class="tab-enrob"><table class="tab" style="min-width:0">
@@ -2469,7 +2487,7 @@ function vueSponsors(){
       <td><span class="etiq" style="color:${e.statut==='Libre'?'var(--physique)':'var(--gris2)'}">${esc(e.statut)}</span></td>
       <td>${esc(e.occupant)}</td></tr>`).join('')}</tbody>
   </table></div>
-  <div class="carte">
+  <div class="carte" ${gere ? '' : 'hidden'}>
     <label class="label" for="spoNom">Ajouter un partenaire</label>
     <input class="champ" id="spoNom" placeholder="Nom de l'entreprise">
     <label class="label" for="spoNiv" style="margin-top:12px">Niveau</label>
@@ -2483,12 +2501,63 @@ function vueSponsors(){
   </div>`;
 }
 function ajouteSponsor(){
+  if (!PEUT_SPONSORS()) return toast('Réservé au directeur technique');
   const nom = ($('#spoNom').value || '').trim();
   if (!nom) { toast('Donne un nom au partenaire'); return; }
-  DB.sponsors.push({nom, niveau:$('#spoNiv').value, couleur:'#FFB246',
-                    texte:($('#spoTxt').value || '').trim(), contact:'—', lien:''});
-  enregistrer('sponsors', {nom, niveau:$('#spoNiv').value, texte:($('#spoTxt').value||'').trim()});
+  /* L'identifiant est fabriqué ici, comme pour les fiches médicales : sans
+     lui, le partenaire tout juste ajouté ne pourrait être ni modifié ni
+     supprimé avant le prochain rechargement. */
+  const id = nouvelId(), niveau = $('#spoNiv').value, texte = ($('#spoTxt').value || '').trim();
+  DB.sponsors.push({id, nom, niveau, couleur:'#FFB246', texte, contact:'—', lien:''});
+  enregistrer('sponsors', {id, nom, niveau, texte}, 'id');
   toast('Partenaire ajouté'); rendVue();
+}
+
+function editeSponsor(id){
+  const s = (DB.sponsors || []).find(x => x.id === id);
+  if (!s || !PEUT_SPONSORS()) return;
+  ouvreFeuille(`<div class="feuille-titre">Modifier le partenaire</div>
+    <label class="label" for="spoENom" style="margin-top:6px">Nom</label>
+    <input class="champ" id="spoENom" value="${esc(s.nom)}">
+    <label class="label" for="spoENiv" style="margin-top:12px">Niveau</label>
+    <select class="champ" id="spoENiv">${NIVEAUX_SPO.concat(NIVEAUX_SPO.includes(s.niveau) || !s.niveau ? [] : [s.niveau])
+      .map(n => `<option ${n === s.niveau ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
+    <label class="label" for="spoETxt" style="margin-top:12px">Contrepartie</label>
+    <textarea class="champ" id="spoETxt">${esc(s.texte === '—' ? '' : s.texte)}</textarea>
+    <label class="label" for="spoECon" style="margin-top:12px">Contact</label>
+    <input class="champ" id="spoECon" value="${esc(s.contact === '—' ? '' : s.contact)}" placeholder="Nom, téléphone ou e-mail">
+    <div class="g2" style="margin-top:14px">
+      <button class="bouton fant" onclick="fermeFeuille()">Annuler</button>
+      <button class="bouton plein" onclick="enregistreSponsor('${esc(id)}')">Enregistrer</button>
+    </div>`);
+}
+function enregistreSponsor(id){
+  const s = (DB.sponsors || []).find(x => x.id === id);
+  if (!s || !PEUT_SPONSORS()) return;
+  const nom = ($('#spoENom').value || '').trim();
+  if (!nom) return toast('Le nom ne peut pas être vide');
+  const champs = {nom, niveau: $('#spoENiv').value,
+                  texte: ($('#spoETxt').value || '').trim(),
+                  contact: ($('#spoECon').value || '').trim()};
+  Object.assign(s, champs, {texte: champs.texte || '', contact: champs.contact || '—'});
+  modifier('sponsors', 'id=eq.' + id, champs);
+  fermeFeuille(); toast('Partenaire modifié'); rendVue();
+}
+function demandeSuppressionSponsor(id){
+  const s = (DB.sponsors || []).find(x => x.id === id);
+  if (!s || !PEUT_SPONSORS()) return;
+  ouvreFeuille(`<div class="feuille-titre">Supprimer ${esc(s.nom)} ?</div>
+    <p class="msg-txt" style="margin:6px 0 14px">Le partenaire disparaît de la plateforme pour tout le monde. On ne peut pas l'annuler.</p>
+    <div class="g2">
+      <button class="bouton fant" onclick="fermeFeuille()">Annuler</button>
+      <button class="bouton plein" style="background:var(--danger);border-color:var(--danger)" onclick="supprimeSponsor('${esc(id)}')">Supprimer</button>
+    </div>`);
+}
+function supprimeSponsor(id){
+  if (!PEUT_SPONSORS()) return;
+  DB.sponsors = (DB.sponsors || []).filter(x => x.id !== id);
+  supprimer('sponsors', 'id=eq.' + id);
+  fermeFeuille(); toast('Partenaire supprimé'); rendVue();
 }
 
 function vueRapport(){
@@ -4039,7 +4108,104 @@ function blocMedical(m, actions){
         <button class="bouton fant" onclick="changeStatutMed('${m.id}')">Changer le statut</button>
         <button class="bouton fant" onclick="toast('Le staff a été notifié')">Notifier le staff</button>
       </div>` : ''}
+    ${PEUT_CORRIGER_MED() ? `
+      <div class="med-corr">
+        <button onclick="corrigeMedical('${esc(m.id)}')">Corriger une erreur</button>
+        <button style="color:var(--danger)" onclick="demandeSuppressionMedical('${esc(m.id)}')">Supprimer</button>
+      </div>` : ''}
   </div>`;
+}
+
+/* ─────────────────────────────────────────── corriger, supprimer (26/10/2026)
+
+   Demande de Fathy : « uniquement le kiné peut modifier ou supprimer — c'est
+   en cas d'erreur, sinon on garde le système d'historique ».
+   - Le suivi normal ne change pas : « Changer le statut » (kiné et DT), et la
+     fiche passe dans « Clos récemment » quand le joueur est rétabli.
+   - « Corriger une erreur » : le kiné seul, pour une faute de saisie (mauvais
+     joueur, mauvaise zone, consigne à reprendre). Le statut ne se corrige pas
+     ici : il garde son chemin.
+   - « Supprimer » : le kiné seul, pour une fiche créée par erreur.
+   Chaque correction et chaque suppression laisse une trace dans le fil du
+   staff. La base tient la même règle : p_med_sup_kine (suppression) et le
+   trigger t_medical_correction_kine (contenu). */
+const PEUT_CORRIGER_MED = () => E.role === 'ki';
+
+function corrigeMedical(id){
+  const m = DB.medical.find(x => x.id === id);
+  if (!m || !PEUT_CORRIGER_MED()) return;
+  const sel = (v, liste) => liste.map(o => `<option ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('');
+  ouvreFeuille(`<div class="feuille-titre">Corriger la fiche</div>
+    <div class="feuille-sous">En cas d'erreur de saisie. Pour le suivi, garde « Changer le statut ».</div>
+    <label class="label" for="mcJoueur" style="margin-top:8px">Joueur</label>
+    <select class="champ" id="mcJoueur">
+      ${DB.equipes.filter(e => E.equipes.includes(e.id)).map(e =>
+        `<optgroup label="${esc(e.nom)}">${parEq(e.id).map(j =>
+          `<option value="${esc(j.id)}" ${j.id === m.joueur ? 'selected' : ''}>${esc(j.numero == null ? '—' : j.numero)} · ${esc(j.nom)}</option>`).join('')}</optgroup>`).join('')}
+    </select>
+    <div class="g2" style="margin-top:12px">
+      <div><label class="label" for="mcType">Nature</label>
+        <input class="champ" id="mcType" value="${esc(m.type)}"></div>
+      <div><label class="label" for="mcZone">Zone</label>
+        <input class="champ" id="mcZone" value="${esc(m.zone === '—' ? '' : m.zone)}"></div>
+    </div>
+    <div class="g2" style="margin-top:12px">
+      <div><label class="label" for="mcGravite">Gravité</label>
+        <select class="champ" id="mcGravite">${sel(m.gravite, ['légère', 'modérée', 'sévère'])}</select></div>
+      <div><label class="label" for="mcRetour">Retour prévu</label>
+        <input class="champ" id="mcRetour" value="${esc(m.retour === '—' ? '' : m.retour)}" placeholder="jj/mm/aaaa ou —"></div>
+    </div>
+    <label class="label" for="mcNote" style="margin-top:12px">Consigne au staff</label>
+    <textarea class="champ" id="mcNote">${esc(m.note === '—' ? '' : m.note)}</textarea>
+    <div class="g2" style="margin-top:14px">
+      <button class="bouton fant" onclick="fermeFeuille()">Annuler</button>
+      <button class="bouton plein" onclick="enregistreCorrectionMedical('${esc(id)}')">Enregistrer</button>
+    </div>`);
+}
+
+function enregistreCorrectionMedical(id){
+  const m = DB.medical.find(x => x.id === id);
+  if (!m || !PEUT_CORRIGER_MED()) return;
+  const type = ($('#mcType').value || '').trim();
+  if (!type) return toast('Précise la nature du problème');
+  const v = {
+    joueur: $('#mcJoueur').value, type,
+    zone: ($('#mcZone').value || '').trim() || '—',
+    gravite: $('#mcGravite').value,
+    retour: ($('#mcRetour').value || '').trim() || '—',
+    note: ($('#mcNote').value || '').trim() || '—'
+  };
+  const avant = (parId(m.joueur) || {}).nom || '';
+  Object.assign(m, v);
+  modifier('medical', 'id=eq.' + id, {
+    joueur_id: v.joueur, type: v.type, zone: v.zone, gravite: v.gravite,
+    retour_prevu: v.retour === '—' ? null : v.retour, note: v.note,
+    maj: maintenant().toISOString()
+  });
+  const nom = (parId(v.joueur) || {}).nom || '';
+  journalChat(`a corrigé une fiche médicale — ${nom}${avant && avant !== nom ? ' (saisie d\'abord pour ' + avant + ')' : ''}`);
+  fermeFeuille(); toast('Fiche corrigée'); rendVue();
+}
+
+function demandeSuppressionMedical(id){
+  const m = DB.medical.find(x => x.id === id);
+  if (!m || !PEUT_CORRIGER_MED()) return;
+  ouvreFeuille(`<div class="feuille-titre">Supprimer cette fiche ?</div>
+    <div class="feuille-sous">${esc((parId(m.joueur) || {}).nom || '')} · ${esc(m.type)} · ${esc(m.date)}</div>
+    <p class="msg-txt" style="margin:8px 0 14px">À réserver à une fiche créée par erreur. Pour un joueur rétabli, utilise plutôt « Changer le statut » → Rétabli : la fiche reste dans l'historique. La suppression ne s'annule pas.</p>
+    <div class="g2">
+      <button class="bouton fant" onclick="fermeFeuille()">Annuler</button>
+      <button class="bouton plein" style="background:var(--danger);border-color:var(--danger)" onclick="supprimeMedical('${esc(id)}')">Supprimer</button>
+    </div>`);
+}
+
+function supprimeMedical(id){
+  const m = DB.medical.find(x => x.id === id);
+  if (!m || !PEUT_CORRIGER_MED()) return;
+  DB.medical = DB.medical.filter(x => x.id !== id);
+  supprimer('medical', 'id=eq.' + id);
+  journalChat(`a supprimé une fiche médicale saisie par erreur — ${(parId(m.joueur) || {}).nom || ''} · ${m.type}`);
+  fermeFeuille(); toast('Fiche supprimée'); rendVue(); rendNav();
 }
 
 function vueMedical(){
@@ -7186,6 +7352,25 @@ async function modifier(table, filtre, champs){
   return true;
 }
 
+/* Supprimer une ligne (26/10/2026) — un partenaire retiré par le DT, une fiche
+   médicale saisie par erreur par le kiné. Même file durable que le reste :
+   hors ligne, la suppression attend. Le filtre vise une ligne précise (id) ;
+   le club est ajouté au filtre à l'envoi, comme pour une modification. Les
+   droits sont tenus par la base (p_spo_ecrire, p_med_sup_kine). */
+async function supprimer(table, filtre){
+  if (typeof LECTURE_SEULE === 'function' && LECTURE_SEULE()){ toast('Compte dirigeant : lecture seule'); return false; }
+  await FA.pousser({
+    table, filtre, methode: 'DELETE',
+    corps: null,
+    demo: !enLigne(),
+    quand: maintenant().getTime(),
+    par: (E && E.moi && E.moi.nom) || ''
+  });
+  await majFile();
+  videFile();
+  return true;
+}
+
 /* envoi d'un élément — en démonstration, on simule le trajet réseau pour que
    le comportement hors ligne soit exactement le même que le jour du branchement */
 async function envoyerElement(it){
@@ -7222,6 +7407,16 @@ async function envoyerElement(it){
     await api(it.table + '?' + it.filtre + (sansClub ? '' : '&club_id=eq.' + club), {
       methode: 'PATCH',
       corps: it.corps,
+      entetes: {'Prefer': 'return=minimal'}
+    });
+    return;
+  }
+  /* Une suppression : un filtre obligatoire (jamais une table entière), le
+     club dans le filtre. */
+  if (it.methode === 'DELETE'){
+    if (!it.filtre) throw Object.assign(new Error('suppression sans filtre refusée'), {statut: 400});
+    await api(it.table + '?' + it.filtre + (sansClub ? '' : '&club_id=eq.' + club), {
+      methode: 'DELETE',
       entetes: {'Prefer': 'return=minimal'}
     });
     return;
