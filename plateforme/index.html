@@ -686,6 +686,15 @@ textarea.champ{resize:vertical;min-height:78px;line-height:1.5}
 .pt-h.ok{color:var(--ok)}
 .pt-h.retard{color:var(--alerte)}
 .pt-h.absent{color:var(--gris2)}
+/* Bilan final d'une séance (26/10/2026) : deux lignes sous le nom, l'arrivée
+   puis le départ — sur un téléphone, une seule ligne ne tient pas les deux. */
+.bl-l{display:flex;align-items:flex-start;gap:10px;padding:9px 0;
+  border-bottom:1px solid var(--ligne)}
+.bl-l:last-child{border-bottom:0}
+.bl-bloc{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.bl-bloc .pt-nom{white-space:normal}
+.bl-det{font-family:var(--mono);font-size:11.5px;color:var(--gris2);line-height:1.45}
+.bl-det b{font-weight:700;color:var(--texte);margin-right:4px}
 .pt-bouton{background:var(--surface2);border:1px solid var(--ligne2);color:var(--texte);
   border-radius:9px;padding:6px 11px;font-size:12px;font-weight:600;white-space:nowrap}
 
@@ -11159,11 +11168,13 @@ const pointeDe   = (s, id) => appelDe(s).find(p => p.joueur === id) || null;
    va de l'arrivée (ou du début, pour celui qui est arrivé avant) au départ, ou
    à la fin de la séance.
 
-   Qui les voit : le DT (dont le président et le secrétaire général), le head
-   coach, les coachs assistants, le kiné et l'assistant. Pas les joueurs, ni
-   l'analyste, ni le préparateur. La base applique la même règle sur la table
-   « departs » : pour les autres, la liste revient vide. */
-const VOIT_DEPARTS = r => ['dt', 'hc', 'ca', 'cd', 'ki', 'as'].indexOf(r) >= 0;
+   Qui les voit : le DT, le head coach, les coachs assistants, le kiné,
+   l'assistant et — depuis le 26/10/2026 — les dirigeants (président et
+   secrétaire général, rôle « dg »), qui lisent le bilan final de chaque
+   séance. Pas les joueurs, ni l'analyste, ni le préparateur. La base applique
+   la même règle sur la table « departs » (p_departs_lire + p_dg_lire) : pour
+   les autres, la liste revient vide. */
+const VOIT_DEPARTS = r => ['dt', 'hc', 'ca', 'cd', 'ki', 'as', 'dg'].indexOf(r) >= 0;
 const departsDe = s => appelDe(s).filter(p => p.present !== false && p.depart).length;
 
 /** Minutes réellement passées à la séance, ou null si on ne peut pas le dire. */
@@ -11466,7 +11477,12 @@ function ligneAppel(j, p, avecBouton, s){
 function blocAppelAccueil(){
   if (['as', 'an', 'ki', 'pp', 'jr'].indexOf(E.role) >= 0) return '';
   const s = seanceOuverte();
-  if (!s) return '';
+  /* 26/10/2026 — demande de Fathy : une fois la séance close, le DT, le head
+     coach et les dirigeants gardent le BILAN FINAL sous la main (qui est
+     arrivé à l'heure ou en retard, qui est parti en avance ou à la fin).
+     Avant, le bloc disparaissait à la clôture et le détail n'était plus
+     joignable depuis l'accueil. */
+  if (!s) return blocDernierAppel();
   const l = parEq(s.equipe);
   const pre = presentsDe(s), ret = retardsDe(s);
   return `<div class="section-titre">Appel du jour</div>
@@ -11507,6 +11523,11 @@ function vuePresences(){
     </div>
     <div class="carte" style="margin-top:10px">
       ${l.map(j => ligneAppel(j, pointeDe(ouverte, j.id), false, ouverte)).join('')}</div>`;
+  } else {
+    /* Pas de séance en cours : le bilan du dernier appel clos vient en tête,
+       avant la liste des séances passées (26/10/2026). */
+    const d = derniersAppels();
+    if (d.length) o += '<div class="section-titre">Dernier appel</div>' + d.map(carteDernierAppel).join('');
   }
 
   return o + blocSeancesPassees();
@@ -11536,25 +11557,158 @@ function blocSeancesPassees(){
   }).join('');
 }
 
+/* ─────────────────────────────────────────── le bilan final d'une séance
+
+   26/10/2026 — « en fin de séance, quand la séance est close, ils voient qui est
+   arrivé à l'heure ou en retard, qui est parti en avance ou à l'heure ».
+   Pour : DT, head coach, kiné, dirigeants (et les coachs assistants, qui
+   avaient déjà l'appel). L'assistant le voit aussi depuis son onglet Appel.
+
+   Chaque joueur de l'équipe tombe dans UN état d'arrivée et UN état de départ :
+     arrivée  : à l'heure · en retard · absent (constaté) · non pointé
+     départ   : en avance (départ autorisé, heure + motif) · à la fin (la
+                clôture) · — quand il n'est pas venu
+   Rien n'est recalculé à part : tout se lit dans le registre de l'appel et
+   la table « departs », exactement ce que l'assistant a saisi. */
+
+function bilanSeance(s){
+  const voitDep = VOIT_DEPARTS(E.role);
+  const lignes = parEq(s.equipe).map(j => {
+    const p = pointeDe(s, j.id);
+    let arrivee, cArr;
+    if (p && p.present === false){ arrivee = 'absent'; cArr = 'absent'; }
+    else if (!p)                  { arrivee = 'non pointé'; cArr = 'nonpointe'; }
+    else if (p.retard)            { arrivee = 'en retard'; cArr = 'retard'; }
+    else                          { arrivee = 'à l\'heure'; cArr = 'heure'; }
+    let depart = '', cDep = '';
+    if (cArr === 'heure' || cArr === 'retard'){
+      if (voitDep && p.depart){ depart = 'en avance'; cDep = 'avance'; }
+      else                    { depart = 'à la fin'; cDep = 'fin'; }
+    }
+    return {j, p, arrivee, cArr, depart, cDep,
+            minutes: (cArr === 'heure' || cArr === 'retard') ? minutesReelles(s, p) : null};
+  });
+  const n = c => lignes.filter(l => l.cArr === c).length;
+  return {lignes, aLHeure: n('heure'), enRetard: n('retard'), absents: n('absent'),
+          nonPointes: n('nonpointe'),
+          enAvance: lignes.filter(l => l.cDep === 'avance').length,
+          aLaFin: lignes.filter(l => l.cDep === 'fin').length,
+          voitDep};
+}
+
+/* L'heure de fin, dite telle qu'elle est : une séance jamais close n'a pas
+   d'heure de sortie, et on ne l'invente pas. */
+const finDe = s => s.fin ? s.fin : null;
+
+function ligneBilan(l, s){
+  const j = l.j, p = l.p;
+  const couleurArr = {heure: 'var(--ok)', retard: 'var(--alerte)',
+                      absent: 'var(--danger)', nonpointe: 'var(--gris2)'}[l.cArr];
+  const arr = l.cArr === 'heure' || l.cArr === 'retard'
+    ? `${esc(l.arrivee)} · ${esc(p.heure || '—')}${p.voie === 'manuel' ? ' · à la main' : ''}`
+    : esc(l.arrivee);
+  let dep = '';
+  if (l.cDep === 'avance')
+    dep = `<span style="color:var(--alerte)">parti en avance · ${esc(p.depart.heure)}</span>${
+      p.depart.motif ? ' · ' + esc(p.depart.motif) : ''}${
+      p.depart.parNom ? ' · autorisé par ' + esc(p.depart.parNom) : ''}`;
+  else if (l.cDep === 'fin')
+    dep = finDe(s) ? 'parti à la fin · ' + esc(finDe(s)) : 'parti à la fin';
+  /* espaces insécables : « 1 h 20 » ne se coupe pas en fin de ligne */
+  const duree = l.minutes != null ? ' · présent ' + enDuree(l.minutes).replace(/ /g, ' ') : '';
+  return `<div class="bl-l">
+    <span class="pt-num">${esc(j.numero == null ? '—' : j.numero)}</span>
+    <span class="bl-bloc"><span class="pt-nom">${esc(j.nom)}</span>
+      <span class="bl-det"><b style="color:${couleurArr}">Arrivée</b> ${arr}</span>${
+      dep ? `<span class="bl-det"><b>Départ</b> ${dep}${esc(duree)}</span>` : ''}</span></div>`;
+}
+
+function vueBilanSeance(s){
+  const b = bilanSeance(s);
+  const tete = `<h1 class="vue-titre">${esc(s.libelle)}</h1>
+    <p class="vue-sous">${esc(s.date)} · ${esc(nomEq(s.equipe))}${
+      s.heure ? ' · début ' + esc(s.heure) : ''}${
+      s.limite ? ' · retard après ' + esc(s.limite) : ''}${
+      s.fin ? ' · fin ' + esc(s.fin) : ' · séance non close'}</p>`;
+  if (!s.appel)
+    return tete + `<div class="carte centre"><p class="carte-note">
+      L'appel n'a pas été tenu pour cette séance.</p></div>`;
+  /* Ordre de lecture : ceux qui posent question d'abord (retard, départ en
+     avance, absent, non pointé), puis ceux à l'heure et restés jusqu'au bout. */
+  const rang = l => l.cArr === 'nonpointe' ? 3 : l.cArr === 'absent' ? 2
+                  : (l.cArr === 'retard' || l.cDep === 'avance') ? 0 : 4;
+  const tri = b.lignes.slice().sort((x, y) => rang(x) - rang(y)
+                || String(x.j.nom).localeCompare(String(y.j.nom), 'fr'));
+  return tete + `
+  <div class="section-titre" style="margin-top:4px">Arrivées</div>
+  <div class="g3">
+    <div class="tuile vert"><div class="tuile-val">${b.aLHeure}</div>
+      <div class="tuile-lib">À<br>l'heure</div></div>
+    <div class="tuile ${b.enRetard ? '' : 'vert'}"><div class="tuile-val">${b.enRetard}</div>
+      <div class="tuile-lib">En<br>retard</div></div>
+    <div class="tuile blanc"><div class="tuile-val">${b.absents + b.nonPointes}</div>
+      <div class="tuile-lib">Absents ou<br>non pointés</div></div>
+  </div>${b.voitDep ? `
+  <div class="section-titre">Départs</div>
+  <div class="g2">
+    <div class="tuile vert"><div class="tuile-val">${b.aLaFin}</div>
+      <div class="tuile-lib">Partis<br>à la fin</div></div>
+    <div class="tuile ${b.enAvance ? '' : 'vert'}"><div class="tuile-val">${b.enAvance}</div>
+      <div class="tuile-lib">Partis<br>en avance</div></div>
+  </div>` : ''}
+  <div class="section-titre">Joueur par joueur</div>
+  <div class="carte">${tri.map(l => ligneBilan(l, s)).join('')}</div>
+  ${s.fin ? '' : `<p class="carte-note" style="margin:10px 0">Cette séance n'a pas été
+    close par l'assistant : l'heure de fin manque, donc « parti à la fin » n'a pas d'heure.</p>`}`;
+}
+
 function ouvreBilanSeance(id){
   const s = seancePar(id);
   if (!s) return;
   $('#vue').innerHTML =
-      `<button class="bouton fant" style="margin-bottom:12px" onclick="rendVue()">‹ Retour</button>
-       <h1 class="vue-titre">${esc(s.libelle)}</h1>
-       <p class="vue-sous">${esc(s.date)} · ${esc(nomEq(s.equipe))}${
-         s.heure ? ' · début ' + esc(s.heure) : ''}${
-         s.limite ? ' · retard après ' + esc(s.limite) : ''}${
-         s.fin ? ' · fin ' + esc(s.fin) : ''}</p>${
-         (VOIT_DEPARTS(E.role) && departsDe(s))
-           ? `<p class="carte-note" style="margin:0 0 10px">${departsDe(s)} départ(s)
-                anticipé(s). Le temps affiché est le temps réel passé à la séance.</p>` : ''}`
-    + (s.appel
-       ? `<div class="carte">${parEq(s.equipe)
-            .map(j => ligneAppel(j, pointeDe(s, j.id), false, s)).join('')}</div>`
-       : `<div class="carte centre"><p class="carte-note">
-            L'appel n'a pas été tenu pour cette séance.</p></div>`);
+      `<button class="bouton fant" style="margin-bottom:12px" onclick="rendVue()">‹ Retour</button>`
+    + vueBilanSeance(s);
   window.scrollTo(0, 0);
+}
+
+/* Le dernier appel clos de chaque équipe de la personne. DB.seances arrive
+   trié du plus récent au plus ancien (order=date_seance.desc). */
+function derniersAppels(){
+  const vus = {}, out = [];
+  (DB.seances || []).forEach(x => {
+    if (x.ouverte || !x.appel || x.type === 'match') return;
+    if (E.equipes && E.equipes.length && E.equipes.indexOf(x.equipe) < 0) return;
+    if (vus[x.equipe]) return;
+    vus[x.equipe] = 1; out.push(x);
+  });
+  return out;
+}
+
+function carteDernierAppel(x){
+  const b = bilanSeance(x);
+  const tot = b.lignes.length;
+  return `<div class="carte">
+    <div class="carte-titre" style="font-size:15px">${esc(x.libelle)}</div>
+    <p class="carte-note" style="margin-top:4px">${esc(x.date)} · ${esc(nomEq(x.equipe))}${
+      x.fin ? ' · close à ' + esc(x.fin) : ''}</p>
+    <p class="carte-note" style="margin-top:6px">
+      ${b.aLHeure + b.enRetard}/${tot} présents · ${b.aLHeure} à l'heure · ${b.enRetard} en retard${
+      b.voitDep ? ' · ' + b.enAvance + ' parti(s) en avance' : ''}</p>
+    <button class="bouton fant plein" style="margin-top:10px"
+            onclick="ouvreBilanSeance('${esc(x.id)}')">Voir le bilan</button>
+  </div>`;
+}
+
+/* Sur l'accueil du DT, du head coach, des coachs et des dirigeants, quand
+   aucune séance n'est ouverte : le dernier appel clos, avec l'accès à toutes
+   les séances passées. */
+function blocDernierAppel(){
+  const l = derniersAppels();
+  if (!l.length) return '';
+  return `<div class="section-titre">Dernier appel</div>
+    ${l.map(carteDernierAppel).join('')}
+    <button class="bouton fant plein" style="margin:2px 0 6px"
+            onclick="ouvreSous('presences')">Toutes les séances passées</button>`;
 }
 
 /* ─────────────────────────────────────────── le scanner */
