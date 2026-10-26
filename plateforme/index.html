@@ -8136,6 +8136,8 @@ async function chargerSupabase(){
       auteur: r.auteur_id, contenu: r.contenu || {}, renduLe: r.rendu_le ? dateClubFr(r.rendu_le) + ' ' + heureClub(new Date(r.rendu_le)) : ''})),
     evalsDT: (evalsDTBase || []).map(e => ({id: e.id, personne: e.personne_id, role: e.role,
       equipe: e.equipe || null, periode: e.periode, date: e.date_eval ? fr(e.date_eval) : '',
+      /* 26/10/2026 : 2 à 4 évaluations par mois, datées, avec un thème. */
+      jour: e.date_eval ? String(e.date_eval).slice(0, 10) : '', theme: e.theme || '',
       notes: Array.isArray(e.notes) ? e.notes : [], forts: e.forts || '', axes: e.axes || '',
       commentaire: e.commentaire || ''})),
     /* Les grilles du classeur, si le DT en a envoyé ; sinon celles de la page. */
@@ -9890,8 +9892,28 @@ function membresEvaluables(){
   return staff.concat(js);
 }
 
+/* Les évaluations d'une personne, de la plus ancienne à la plus récente. */
 const evalsDe = pid => (DB.evalsDT || []).filter(e => e.personne === pid)
-  .sort((a, b) => a.periode < b.periode ? -1 : a.periode > b.periode ? 1 : 0);
+  .sort((a, b) => ((a.jour || a.periode) < (b.jour || b.periode) ? -1 : (a.jour || a.periode) > (b.jour || b.periode) ? 1 : 0));
+
+/* LE MOIS, COMME À L'ÉCOLE (26/10/2026). Le DT évalue 2 à 4 fois par mois,
+   toujours sur les mêmes 8 critères. Le mois d'une personne = la moyenne de
+   ses évaluations du mois, critère par critère ; une note absente ne compte
+   pas dans la moyenne de son critère. */
+const arrondi1 = x => Math.round(x * 10) / 10;
+function moisDe(pid){
+  const parMois = {};
+  evalsDe(pid).forEach(e => { (parMois[e.periode] = parMois[e.periode] || []).push(e); });
+  return Object.keys(parMois).sort().map(periode => {
+    const es = parMois[periode], der = es[es.length - 1];
+    const notes = Array.from({length: 8}, (_, k) => {
+      const v = es.map(e => Number((e.notes || [])[k])).filter(n => n > 0);
+      return v.length ? arrondi1(v.reduce((a, b) => a + b, 0) / v.length) : null;
+    });
+    return {periode, role: der.role, equipe: der.equipe, notes, evals: es};
+  });
+}
+const noteFr = n => n == null || n === '' ? '—' : (Math.round(n) === n ? String(n) : String(n).replace('.', ','));
 
 function scoreEval(e){
   const g = e && grilleDT(e.role);
@@ -9942,11 +9964,14 @@ function activiteDe(mb){
 /* La fiche, sous forme de données. C'est elle qui est figée à la finalisation :
    le dirigeant lit exactement ce que le DT a vu en cliquant. */
 function ficheDonnees(mb, periode){
-  const es = evalsDe(mb.pid);
+  const es = moisDe(mb.pid);
   const e = es.find(x => x.periode === periode) || null;
   const i = e ? es.indexOf(e) : -1;
   const prec = i > 0 ? es[i - 1] : null;
   const g = grilleDT(mb.role);
+  /* Les textes de chaque évaluation, datés, la plus récente d'abord. */
+  const textes = cle => (e ? e.evals.slice().reverse() : []).filter(x => (x[cle] || '').trim())
+    .map(x => (e.evals.length > 1 ? (x.date || '').slice(0, 5) + ' — ' : '') + x[cle].trim()).join('\n');
   return {
     personne: mb.pid, nom: mb.nom, sous: mb.sous, role: mb.role,
     equipe: (e && e.equipe) || mb.equipe || null, periode,
@@ -9954,8 +9979,9 @@ function ficheDonnees(mb, periode){
     periodePrec: prec ? prec.periode : null,
     score: scoreEval(e), scorePrec: scoreEval(prec),
     serie: es.map(x => ({periode: x.periode, score: scoreEval(x)})),
-    forts: e ? e.forts : '', axes: e ? e.axes : '', commentaire: e ? e.commentaire : '',
-    activite: activiteDe(mb), dateEval: e ? e.date : '',
+    forts: textes('forts'), axes: textes('axes'), commentaire: textes('commentaire'),
+    evals: e ? e.evals.map(x => ({date: x.date, theme: x.theme || '', notes: x.notes, score: scoreEval(x)})) : [],
+    activite: activiteDe(mb), dateEval: e ? e.evals[e.evals.length - 1].date : '',
     dt: (E.moi && E.moi.nom) || ''
   };
 }
@@ -9980,7 +10006,7 @@ function vueFichesDT(){
   const tous = membresEvaluables();
   const f = EVAL.filtre;
   const liste = tous.filter(m => f === 'tous' || (f === 'staff' ? m.staff : (!m.staff && m.equipe === f)));
-  const notes = tous.filter(m => evalsDe(m.pid).some(e => e.periode === p)).length;
+  const notes = tous.filter(m => moisDe(m.pid).some(e => e.periode === p)).length;
   const finals = (DB.rapportsMembres || []).filter(r => r.periode === p).length;
   const filtres = [['tous', 'Tous'], ['staff', 'Staff']].concat(
     (DB.equipes || []).filter(e => equipeOuverte(e.id)).map(e => [e.id, e.nom]));
@@ -10007,14 +10033,15 @@ function vueFichesDT(){
     `<button class="ong-b ${f === k ? 'actif' : ''}" onclick="EVAL.filtre='${k}';rendVue()">${esc(l)}</button>`).join('')}</div>
 
   <div class="jl">${liste.map(m => {
-    const e = evalsDe(m.pid).find(x => x.periode === p);
+    const e = moisDe(m.pid).find(x => x.periode === p);
     const s = scoreEval(e);
+    const nbE = e ? e.evals.length : 0;
     const fin = (DB.rapportsMembres || []).some(r => r.personne === m.pid && r.periode === p);
     const r = ROLES[m.role] || ROLES.as;
     return `<button class="jl-item" onclick="ouvreFiche('${m.pid}')">
       <span class="cx-pastille" style="width:32px;height:32px;flex:0 0 32px;border-radius:9px;font-size:12px;background:${r.couleur}">${r.court}</span>
       <span class="jl-bloc"><span class="jl-nom">${esc(m.nom)}</span>
-        <span class="jl-meta">${esc(m.sous)}${fin ? ' · transmise' : e ? ' · notée' : ' · à noter'}</span></span>
+        <span class="jl-meta">${esc(m.sous)}${fin ? ' · transmise' : e ? ' · ' + nbE + ' évaluation' + (nbE > 1 ? 's' : '') : ' · à noter'}</span></span>
       <span class="jl-note" style="color:${couleurScore(s)}">${s == null ? '—' : s}</span>
       <span class="jl-fleche">›</span></button>`;
   }).join('') || '<div class="vide">Personne dans ce groupe.</div>'}</div>`;
@@ -10086,23 +10113,30 @@ function ficheEcran(d){
   ${d.score == null ? `<div class="vide">Pas encore noté pour ${esc(libPeriode(d.periode).toLowerCase())}. Les notes s'écrivent
     dans le classeur du DT, onglet EVALUATIONS.</div>` : `<div class="section-titre">Critère par critère — pondération ${esp ? 'espoirs' : 'pro'}</div>
   <div class="carte">${g.criteres.map((c, i) => {
-    const n = Number((d.notes || [])[i]) || 0, p = d.notesPrec ? Number(d.notesPrec[i]) || 0 : null;
+    const n = Number((d.notes || [])[i]) || 0, p = d.notesPrec ? Number(d.notesPrec[i]) || 0 : null, dn = arrondi1(n - (p || 0));
     return `<div class="ev-l">
       <div class="ev-t"><span>${esc(c[0])}</span><span class="mono">${Math.round((esp ? c[3] : c[2]) * 100)} %</span></div>
       <div class="rang"><div class="jauge" style="flex:1"><i style="width:${n / 5 * 100}%;background:${couleurScore(n * 20)}"></i></div>
-        <b class="mono" style="font-size:13px;min-width:30px;text-align:right">${n || '—'}<small style="color:var(--gris)">/5</small></b>
-        ${p ? `<span class="mono" style="font-size:10.5px;min-width:26px;color:${n > p ? 'var(--physique)' : n < p ? 'var(--danger)' : 'var(--gris)'}">${n > p ? '+' : ''}${n - p}</span>` : ''}</div>
+        <b class="mono" style="font-size:13px;min-width:34px;text-align:right">${noteFr(n || null)}<small style="color:var(--gris)">/5</small></b>
+        ${p ? `<span class="mono" style="font-size:10.5px;min-width:30px;color:${dn > 0 ? 'var(--physique)' : dn < 0 ? 'var(--danger)' : 'var(--gris)'}">${dn > 0 ? '+' : ''}${noteFr(dn)}</span>` : ''}</div>
     </div>`;
   }).join('')}</div>
+
+  ${(d.evals || []).length ? `<div class="section-titre">Les évaluations du mois — ${d.evals.length}</div>
+  <div class="carte" style="padding:6px 14px">${d.evals.map(x => `<div class="dom-ligne" style="grid-template-columns:minmax(0,1fr) auto">
+    <div><div class="dom-nom">${esc(x.date || '')}${x.theme ? ' · ' + esc(x.theme) : ''}</div>
+      <div class="mono" style="font-size:11px;color:var(--gris)">${(x.notes || []).map(v => v == null || v === '' ? '·' : v).join('  ')}</div></div>
+    <span class="mono" style="font-weight:700;color:${couleurScore(x.score)}">${x.score == null ? '—' : x.score}</span></div>`).join('')}
+    <p class="carte-note" style="padding:6px 0">Le mois = la moyenne de ces évaluations, critère par critère.</p></div>` : ''}
 
   ${serie.length > 1 ? `<div class="section-titre">Évolution du score</div>
   <div class="carte">${courbe([serie.map(s => s.score)], ['Score'], ['#FFB246'], serie.map(s => libPeriode(s.periode).slice(0, 3)), 100)}</div>` : ''}
 
   <div class="section-titre">L'avis du directeur technique</div>
   <div class="carte">
-    <div class="dom-nom">Points forts</div><p class="msg-txt">${esc(d.forts || '—')}</p>
-    <div class="dom-nom" style="margin-top:10px">Axes de travail</div><p class="msg-txt">${esc(d.axes || '—')}</p>
-    ${d.commentaire ? `<div class="dom-nom" style="margin-top:10px">Commentaire</div><p class="msg-txt">${esc(d.commentaire)}</p>` : ''}
+    <div class="dom-nom">Points forts</div><p class="msg-txt" style="white-space:pre-line">${esc(d.forts || '—')}</p>
+    <div class="dom-nom" style="margin-top:10px">Axes de travail</div><p class="msg-txt" style="white-space:pre-line">${esc(d.axes || '—')}</p>
+    ${d.commentaire ? `<div class="dom-nom" style="margin-top:10px">Commentaire</div><p class="msg-txt" style="white-space:pre-line">${esc(d.commentaire)}</p>` : ''}
   </div>`}
 
   ${(d.activite || []).length ? `<div class="section-titre">Relevé par la plateforme</div>
@@ -10171,14 +10205,18 @@ function ficheA4(d){
         <table><thead><tr><th>Critère</th><th class="num">Poids</th><th class="num">Note</th><th class="num">Préc.</th></tr></thead>
         <tbody>${g.criteres.map((c, i) => `<tr><td>${esc(c[0])}</td>
           <td class="num" style="color:#94908A">${Math.round((esp ? c[3] : c[2]) * 100)} %</td>
-          <td class="num"><b>${A[i] || '—'}</b><span style="color:#94908A">/5</span></td>
-          <td class="num" style="color:#94908A">${B ? B[i] || '—' : '—'}</td></tr>`).join('')}</tbody></table></div>
+          <td class="num"><b>${noteFr(A[i] || null)}</b><span style="color:#94908A">/5</span></td>
+          <td class="num" style="color:#94908A">${B ? noteFr(B[i] || null) : '—'}</td></tr>`).join('')}</tbody></table></div>
     </div>
+    ${(d.evals || []).length > 1 ? `<div class="a4-bloc"><h3>Les ${d.evals.length} évaluations du mois — le mois en est la moyenne</h3>
+      <table><thead><tr><th>Date</th><th>Thème</th>${g.criteres.map((c, i) => `<th class="num">C${i + 1}</th>`).join('')}<th class="num">Score</th></tr></thead>
+      <tbody>${d.evals.map(x => `<tr><td>${esc(x.date || '')}</td><td>${esc(x.theme || '')}</td>${g.criteres.map((c, i) =>
+        `<td class="num">${(x.notes || [])[i] || '—'}</td>`).join('')}<td class="num"><b>${x.score == null ? '—' : x.score}</b></td></tr>`).join('')}</tbody></table></div>` : ''}
     <div class="a4-duo">
-      <div class="a4-bloc"><h3>Points forts</h3><p>${esc(d.forts || '—')}</p></div>
-      <div class="a4-bloc"><h3>Axes de travail</h3><p>${esc(d.axes || '—')}</p></div>
+      <div class="a4-bloc"><h3>Points forts</h3><p style="white-space:pre-line">${esc(d.forts || '—')}</p></div>
+      <div class="a4-bloc"><h3>Axes de travail</h3><p style="white-space:pre-line">${esc(d.axes || '—')}</p></div>
     </div>
-    ${d.commentaire ? `<div class="a4-bloc"><h3>Commentaire du directeur technique</h3><p>${esc(d.commentaire)}</p></div>` : ''}
+    ${d.commentaire ? `<div class="a4-bloc"><h3>Commentaire du directeur technique</h3><p style="white-space:pre-line">${esc(d.commentaire)}</p></div>` : ''}
     ${(d.activite || []).length ? `<div class="a4-bloc"><h3>Relevé par la plateforme</h3>
       <table><tbody>${d.activite.map(a => `<tr><td>${esc(a[0])}</td><td class="num">${esc(a[1])}</td></tr>`).join('')}</tbody></table></div>` : ''}
     <div class="a4-sign"><div>L'intéressé — date et signature</div><div>Le directeur technique — date et signature</div></div>
