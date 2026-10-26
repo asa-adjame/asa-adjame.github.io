@@ -695,6 +695,31 @@ textarea.champ{resize:vertical;min-height:78px;line-height:1.5}
 .bl-bloc .pt-nom{white-space:normal}
 .bl-det{font-family:var(--mono);font-size:11.5px;color:var(--gris2);line-height:1.45}
 .bl-det b{font-weight:700;color:var(--texte);margin-right:4px}
+/* Calendrier du staff (26/10/2026) : sept colonnes, une case touchable de
+   44 px au moins sur un téléphone de 360 px, des pastilles sous le chiffre. */
+.cal-tete{display:grid;grid-template-columns:48px minmax(0,1fr) 48px;align-items:center;gap:8px;margin:4px 0 8px}
+.cal-tete .bouton{padding:8px 0;font-size:18px}
+.cal-mois{text-align:center;font-family:var(--titre);font-size:22px;letter-spacing:.5px}
+.carte.cal{padding:10px 8px}
+.cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal-js span{text-align:center;font-family:var(--mono);font-size:10.5px;color:var(--gris2);padding-bottom:4px}
+.cal-c{min-height:46px;border-radius:10px;border:1px solid transparent;background:var(--surface2);
+  color:var(--texte);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  padding:6px 0 4px;cursor:pointer;font:inherit}
+.cal-v{min-height:46px}
+.cal-c.auj{border-color:var(--or)}
+.cal-c.choisi{background:var(--or);color:#051630}
+.cal-c.choisi .cal-n{font-weight:700}
+.cal-n{font-family:var(--mono);font-size:13px;line-height:1}
+.cal-p{display:flex;gap:3px;margin-top:6px;min-height:6px}
+.cal-p i{width:6px;height:6px;border-radius:50%;display:block}
+.cal-c.choisi .cal-p i{box-shadow:0 0 0 1.5px #051630}
+.cal-leg{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;padding:0 4px;font-size:11px;color:var(--gris2)}
+.cal-leg span{display:inline-flex;align-items:center;gap:5px}
+.cal-leg i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.cal-titre{font-family:var(--titre);font-size:20px;letter-spacing:.4px;margin:18px 0 4px;font-weight:400}
+.cal-chiffres{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font-size:13px}
+.cal-chiffres b{font-family:var(--mono);font-size:15px;margin-right:3px}
 .pt-bouton{background:var(--surface2);border:1px solid var(--ligne2);color:var(--texte);
   border-radius:9px;padding:6px 11px;font-size:12px;font-weight:600;white-space:nowrap}
 
@@ -1641,6 +1666,8 @@ const ICO = {
   /* L'appareil photo de l'onglet Match : on y photographie la feuille du marqueur. */
   photo:'<path d="M4 7h3l2-3h6l2 3h3a1 1 0 011 1v11a1 1 0 01-1 1H4a1 1 0 01-1-1V8a1 1 0 011-1z"/><circle cx="12" cy="13" r="4"/>',
   cadenas:'<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/>',
+  /* Le calendrier du staff (26/10/2026) : appel, échéances, fatigue, planning, matchs. */
+  calendrier:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="8" cy="15" r="1.2"/><circle cx="12" cy="15" r="1.2"/><circle cx="16" cy="15" r="1.2"/>',
 };
 const ico = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICO[k] || ICO.bord}</svg>`;
 
@@ -1676,8 +1703,10 @@ const PLAN = {
        ['video','Vidéos',vueVideos],['message','Chat',vueChat]],
   /* Le kiné lit l'appel, et ce n'est pas un détail : la charge d'entraînement
      se lit d'abord dans qui était là. */
+  /* 26/10/2026 : « Présences » devient « Calendrier » — l'appel, les échéances,
+     la fatigue, le planning et les matchs, jour par jour (vueCalendrier). */
   ki: [['maison','Accueil',vueAccueil],['coeur','Médical',vueMedical],
-       ['gens','Présences',vuePresences],
+       ['calendrier','Calendrier',vueCalendrier],
        ['gens','Effectif',vueJoueurs],['message','Chat',vueChat]],
   /* L'assistant : l'appel est son premier onglet après l'accueil, parce que
      c'est l'écran qu'il ouvre debout, à l'entrée du gymnase. Le tir vient
@@ -1688,7 +1717,7 @@ const PLAN = {
   as: [['maison','Accueil',vueAccueil],['qr','Appel',vueAppel],
        ['cible','Tir',vueTirAnalyste],['photo','Match',vueMatch],
        ['coeur','Médical',vueMedical],['message','Chat',vueChat]],
-  pp: [['maison','Accueil',vueAccueil],['gens','Présences',vuePresences],
+  pp: [['maison','Accueil',vueAccueil],['calendrier','Calendrier',vueCalendrier],
        ['coeur','Médical',vueMedical],['message','Chat',vueChat]],
   /* Le dirigeant (25/10/2026) : il lit tout et n'écrit rien. Le fil du staff
      s'ouvre depuis son accueil, en lecture : six onglets est le plafond. */
@@ -2035,6 +2064,8 @@ function vueAccueil(){
      coachs. Six onglets est un plafond tenu par un harnais, pas une préférence :
      au-delà, les libellés deviennent illisibles sur un téléphone. */
   if (E.sous === 'presences')  return vuePresences();
+  /* 26/10/2026 — le calendrier du staff, tout en un. */
+  if (E.sous === 'calendrier') return vueCalendrier();
   /* Les badges, pour la même raison : le directeur technique et l'assistant
      ont déjà six onglets, et six est un plafond tenu par un harnais.
      L'impression se fait donc depuis l'accueil, comme l'appel. */
@@ -2089,6 +2120,8 @@ function vueAccueil(){
   </div>
 
   ${blocAppelAccueil()}
+
+  ${blocCalendrierAccueil()}
 
   ${blocAccueilRole()}
 
@@ -7839,7 +7872,9 @@ async function chargerSupabase(){
      un joueur ne reçoit que sa fatigue, les évaluations ne vont qu'au DT, les
      fiches finalisées au DT et aux dirigeants. Huit semaines suffisent aux
      écrans ; les plus anciennes restent en base. */
-  const depuis = (() => { try { return decaleJour(AUJ(), -56); } catch (e){ return '2000-01-01'; } })();
+  /* 26/10/2026 : 124 jours au lieu de 56 — le calendrier du staff remonte
+     jusqu'à trois mois en arrière, et un mois entier doit y être complet. */
+  const depuis = (() => { try { return decaleJour(AUJ(), -124); } catch (e){ return '2000-01-01'; } })();
   const [fatigueBase, retoursBase, evalsDTBase, grillesDTBase, rapmBase] = await Promise.all([
     sansEchec(api('fatigue?select=joueur_id,jour,note&club_id=eq.' + club.id + '&jour=gte.' + depuis)),
     sansEchec(api('retours?select=type,jour,auteur_id,contenu,rendu_le&club_id=eq.' + club.id + '&jour=gte.' + depuis)),
@@ -9553,7 +9588,7 @@ function carteEcheances(){
       <i class="puce" style="background:${COUL_ETAT[o.s.etat]}"></i>
       ${esc(libJour(o.x.jour))} · ${esc(o.x.e.lib)}${o.s.detail ? ' · ' + esc(o.s.detail) : ''}</div>`).join('')
       || '<p class="msg-txt">Tout ce qui était attendu cette semaine a été rendu.</p>'}
-    <button class="bouton fant plein" style="margin-top:11px" onclick="ouvreSous('echeances')">Voir le tableau de la semaine</button>
+    <button class="bouton fant plein" style="margin-top:11px" onclick="CAL.mois=null;CAL.jour=null;ouvreSous('calendrier')">Ouvrir le calendrier</button>
   </div>`;
 }
 
@@ -10294,6 +10329,296 @@ function blocAccueilDirigeant(){
     <button class="bouton fant plein" style="margin-top:11px" onclick="ouvreSous('chat')">Lire le fil</button>
   </div>
   <p class="carte-note" style="margin-top:12px;text-align:center">Compte dirigeant : lecture seule.</p>`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CALENDRIER — l'appel, les échéances, la fatigue, le planning et les matchs,
+   jour par jour                                                   (26/10/2026)
+
+   Demande de Fathy : « un calendrier mensuel où, lorsqu'ils cliquent sur les
+   dates, ils ont accès aux deadlines et aux présences — un tout en un ».
+   Ses choix :
+   - pour TOUT le staff et les dirigeants, chacun selon ses droits ;
+   - un jour montre le bilan de l'appel, les échéances, la fatigue des
+     joueurs, le planning et les matchs ;
+   - sur la grille, des pastilles de couleur ;
+   - il REMPLACE l'écran Présences (onglet du kiné et du préparateur) ; les
+     autres l'ouvrent depuis l'accueil.
+
+   Rien n'est stocké ici : le calendrier relit ce que les autres écrans
+   écrivent déjà (registre de l'appel, retours, fatigue, planning, championnat).
+
+   Ce que chacun voit, calé sur les règles de la base (vérifiées le 26/10) :
+   - l'appel : tout le staff (presences : mon_staff() is not null) ;
+     les départs anticipés : pas le préparateur ni l'analyste (VOIT_DEPARTS) ;
+   - les échéances : DT, head coach et dirigeants les voient toutes (ils
+     lisent tous les retours). Les autres ne lisent que LEURS retours : leur
+     montrer l'échéance d'un collègue l'afficherait « en retard » à tort.
+     Donc kiné → la sienne, préparateur → la sienne ; et la fatigue pour ceux
+     qui la lisent ;
+   - la fatigue : DT, coachs, préparateur, kiné, dirigeants (PEUT_FATIGUE) ;
+   - le planning et les matchs : tout le staff.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const CAL_ROLES = ['dt', 'hc', 'ca', 'cd', 'an', 'ki', 'as', 'pp', 'dg'];
+const CAL = {mois: null, jour: null};          // « 2026-10 », « 2026-10-26 »
+
+const ECH_VISIBLES = {
+  dt: ['kine', 'hc', 'physique', 'fatigue'], dg: ['kine', 'hc', 'physique', 'fatigue'],
+  hc: ['kine', 'hc', 'physique', 'fatigue'],
+  ki: ['kine', 'fatigue'], pp: ['physique', 'fatigue'],
+  ca: ['fatigue'], cd: ['fatigue'], as: [], an: []
+};
+const echeancesVisibles = () => (ECH_VISIBLES[E.role] || [])
+  .filter(t => t !== 'fatigue' || PEUT_FATIGUE(E.role));
+
+const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet',
+                    'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+
+/* Une séance créée dans la session porte « jj/mm/aaaa », une séance relue
+   de la base « aaaa-mm-jj » : on ramène tout à la seconde forme. */
+const isoDe = d => /^\d{2}\/\d{2}\/\d{4}$/.test(String(d || '')) ? jourIso(d) : String(d || '').slice(0, 10);
+
+const moisDeIso = iso => iso.slice(0, 7);
+function decaleMois(m, n){
+  const [a, mm] = m.split('-').map(Number);
+  const d = new Date(Date.UTC(a, mm - 1 + n, 1, 12));
+  return d.toISOString().slice(0, 7);
+}
+const libMois = m => { const [a, mm] = m.split('-').map(Number);
+  const s = MOIS_LONGS[mm - 1]; return s.charAt(0).toUpperCase() + s.slice(1) + ' ' + a; };
+
+/* Les bornes : trois mois en arrière (ce que la page charge : 124 jours de
+   fatigue et de retours), deux mois en avant (planning et matchs à venir). */
+const calMin = () => decaleMois(moisDeIso(AUJ()), -3);
+const calMax = () => decaleMois(moisDeIso(AUJ()), 2);
+
+/* Les équipes de la personne, sans celles masquées (FOCUS_PRO). */
+const calEquipes = () => (E.equipes || []).filter(equipeOuverte);
+
+/* ─────────────────────────────────────────── ce qui se passe un jour */
+
+function seancesDu(jour){
+  const eqs = calEquipes();
+  return (DB.seances || []).filter(s => isoDe(s.date) === jour && (!eqs.length || eqs.includes(s.equipe)));
+}
+
+function matchsDu(jour){
+  const C = DB.championnat || {};
+  const l = [];
+  (C.resultats || []).forEach(r => { if (isoDe(r.date) === jour) l.push(Object.assign({joue: true}, r)); });
+  (C.aVenir || []).concat(C.prochain ? [C.prochain] : []).forEach(r => {
+    if (r && r.adversaire && isoDe(r.date) === jour
+        && !l.some(x => x.adversaire === r.adversaire)) l.push(Object.assign({joue: false}, r));
+  });
+  return l;
+}
+
+function creneauxDu(jour){
+  if (typeof creneauxDe !== 'function') return [];
+  const lundi = lundiDe(jour);
+  return calEquipes().map(eq => ({eq, l: creneauxDe(eq, lundi).filter(c => c.jour === jour)}))
+                     .filter(x => x.l.length);
+}
+
+/* Les échéances existent depuis le lundi 26/10/2026 (mises en ligne ce
+   jour-là). Avant, rien n'était attendu : sans cette date, tout septembre et
+   octobre s'afficheraient « en retard ». */
+const ECH_DEBUT = '2026-10-26';
+
+function echeancesDu(jour){
+  if (jour < ECH_DEBUT) return [];
+  const js = jourSemaine(jour), vis = echeancesVisibles();
+  return ECHEANCES.filter(e => vis.includes(e.type) && e.jours.includes(js))
+                  .map(e => Object.assign({e}, etatEcheance(e.type, jour)));
+}
+
+/* Les pastilles d'une case : appel, échéances (pire état), match. */
+function pastillesDu(jour){
+  const p = [];
+  const ss = seancesDu(jour);
+  if (ss.some(s => s.ouverte)) p.push({c: 'var(--or)', t: 'appel en cours'});
+  else if (ss.some(s => s.appel)) p.push({c: 'var(--defense)', t: 'appel tenu'});
+  const ech = echeancesDu(jour);
+  if (ech.length){
+    const pire = ech.some(x => x.etat === 'retard') ? 'retard'
+               : ech.some(x => x.etat === 'jour') ? 'jour'
+               : ech.every(x => x.etat === 'rendu') ? 'rendu' : 'avenir';
+    p.push({c: COUL_ETAT[pire], t: 'échéances : ' + LIB_ETAT[pire]});
+  }
+  if (matchsDu(jour).length) p.push({c: 'var(--attaque)', t: 'match'});
+  return p;
+}
+
+/* ─────────────────────────────────────────── l'écran */
+
+function vueCalendrier(){
+  /* Depuis l'onglet du kiné et du préparateur : l'appel en direct s'ouvre
+     en sous-écran, comme depuis l'accueil des autres. */
+  if (E.sous === 'presences') return vuePresences();
+
+  const auj = AUJ();
+  if (!CAL.mois) CAL.mois = moisDeIso(auj);
+  if (!CAL.jour || moisDeIso(CAL.jour) !== CAL.mois)
+    CAL.jour = CAL.mois === moisDeIso(auj) ? auj : CAL.mois + '-01';
+
+  const depuisAccueil = E.sous === 'calendrier';
+  const premier = CAL.mois + '-01';
+  const decal = (jourSemaine(premier) + 6) % 7;                // 0 = lundi
+  const [a, m] = CAL.mois.split('-').map(Number);
+  const nbJours = new Date(Date.UTC(a, m, 0)).getUTCDate();
+
+  const cases = [];
+  for (let i = 0; i < decal; i++) cases.push('<span class="cal-v"></span>');
+  for (let d = 1; d <= nbJours; d++){
+    const jour = CAL.mois + '-' + String(d).padStart(2, '0');
+    const p = pastillesDu(jour);
+    cases.push(`<button class="cal-c${jour === auj ? ' auj' : ''}${jour === CAL.jour ? ' choisi' : ''}"
+        onclick="choisitJourCal('${jour}')" aria-label="${esc(libJour(jour))}${p.length ? ' — ' + esc(p.map(x => x.t).join(', ')) : ''}">
+      <span class="cal-n">${d}</span>
+      <span class="cal-p">${p.map(x => `<i style="background:${x.c}"></i>`).join('')}</span></button>`);
+  }
+
+  const prec = CAL.mois > calMin(), suiv = CAL.mois < calMax();
+  const legende = [['var(--defense)', 'appel tenu'], ['var(--or)', 'appel en cours']]
+    .concat(echeancesVisibles().length ? [['var(--physique)', 'échéances rendues'], ['var(--danger)', 'échéance en retard']] : [])
+    .concat([['var(--attaque)', 'match']]);
+
+  return `${depuisAccueil ? retour('Accueil', 'fermeSous()') : ''}
+  <h1 class="vue-titre">Calendrier</h1>
+  <p class="vue-sous">L'appel, ${echeancesVisibles().length ? 'les échéances, ' : ''}${PEUT_FATIGUE(E.role) ? 'la fatigue, ' : ''}le planning et les matchs, jour par jour. Touche une date.</p>
+
+  <div class="cal-tete">
+    <button class="bouton fant" ${prec ? '' : 'disabled'} onclick="changeMoisCal(-1)" aria-label="Mois précédent">‹</button>
+    <div class="cal-mois">${esc(libMois(CAL.mois))}</div>
+    <button class="bouton fant" ${suiv ? '' : 'disabled'} onclick="changeMoisCal(1)" aria-label="Mois suivant">›</button>
+  </div>
+  <div class="carte cal">
+    <div class="cal-g cal-js">${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(x => `<span>${x}</span>`).join('')}</div>
+    <div class="cal-g">${cases.join('')}</div>
+    <div class="cal-leg">${legende.map(([c, t]) => `<span><i style="background:${c}"></i>${esc(t)}</span>`).join('')}</div>
+  </div>
+  ${CAL.mois !== moisDeIso(auj) ? `<button class="bouton fant plein" style="margin-top:8px"
+     onclick="CAL.mois=null;CAL.jour=null;rendVue()">Revenir à aujourd'hui</button>` : ''}
+
+  <div id="cal-jour">${vueJourCal(CAL.jour)}</div>`;
+}
+
+function choisitJourCal(jour){
+  CAL.jour = jour;
+  rendVue();
+  const el = document.getElementById('cal-jour');
+  if (el && el.scrollIntoView) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+function changeMoisCal(n){
+  const m = decaleMois(CAL.mois || moisDeIso(AUJ()), n);
+  if (m < calMin() || m > calMax()) return;
+  CAL.mois = m; CAL.jour = null;
+  rendVue();
+}
+
+/* ─────────────────────────────────────────── le détail d'un jour */
+
+function vueJourCal(jour){
+  const auj = AUJ();
+  const blocs = [];
+
+  /* 1. L'appel */
+  const ss = seancesDu(jour);
+  if (ss.length) blocs.push(`<div class="section-titre">Appel</div>` + ss.map(s => {
+    if (s.ouverte){
+      const l = parEq(s.equipe);
+      return `<div class="carte" style="border-color:var(--or)">
+        <div class="carte-tete"><div class="carte-titre" style="font-size:15px">${esc(s.libelle)}</div>
+          <span class="etiq pousse" style="color:var(--or)">en cours</span></div>
+        <p class="carte-note">${esc(nomEq(s.equipe))} · ${presentsDe(s)}/${l.length} présents · ${retardsDe(s)} en retard</p>
+        <button class="bouton fant plein" style="margin-top:10px" onclick="${E.role === 'as'
+          ? `vaVers(PLAN.as.findIndex(o => o[1] === 'Appel'))` : `ouvreSous('presences')`}">Suivre l'appel</button>
+      </div>`;
+    }
+    if (!s.appel) return `<div class="carte"><div class="carte-titre" style="font-size:15px">${esc(s.libelle)}</div>
+      <p class="carte-note">${esc(nomEq(s.equipe))} · appel non tenu</p></div>`;
+    const b = bilanSeance(s);
+    return `<div class="carte">
+      <div class="carte-tete"><div class="carte-titre" style="font-size:15px">${esc(s.libelle)}</div>
+        <span class="carte-note pousse mono">${esc(s.heure || '')}${s.fin ? '–' + esc(s.fin) : ''}</span></div>
+      <p class="carte-note">${esc(nomEq(s.equipe))} · ${b.aLHeure + b.enRetard}/${b.lignes.length} présents</p>
+      <div class="cal-chiffres">
+        <span style="color:var(--ok)"><b>${b.aLHeure}</b> à l'heure</span>
+        <span style="color:${b.enRetard ? 'var(--alerte)' : 'var(--gris2)'}"><b>${b.enRetard}</b> en retard</span>
+        ${b.voitDep ? `<span style="color:${b.enAvance ? 'var(--alerte)' : 'var(--gris2)'}"><b>${b.enAvance}</b> parti(s) en avance</span>` : ''}
+        <span style="color:var(--gris2)"><b>${b.absents + b.nonPointes}</b> absent(s) ou non pointé(s)</span>
+      </div>
+      <button class="bouton fant plein" style="margin-top:10px" onclick="ouvreBilanSeance('${esc(s.id)}')">Voir le bilan joueur par joueur</button>
+    </div>`;
+  }).join(''));
+
+  /* 2. Les échéances */
+  const ech = echeancesDu(jour);
+  if (ech.length) blocs.push(`<div class="section-titre">Échéances</div>
+    <div class="carte" style="padding:6px 14px">${ech.map(x => `<button class="ech-l" onclick="ouvreRetour('${x.e.type}','${jour}')">
+        <span class="ech-q"><b>${esc(x.e.lib)}</b>${x.detail ? `<small>${esc(x.detail)}</small>` : ''}</span>
+        <span class="etiq" style="color:${COUL_ETAT[x.etat]}"><i class="puce" style="background:${COUL_ETAT[x.etat]}"></i>${LIB_ETAT[x.etat]}</span>
+      </button>`).join('')}</div>`);
+
+  /* 3. La fatigue des joueurs */
+  if (PEUT_FATIGUE(E.role)){
+    const f = fatigueDu(jour), n = joueursAttendus().length;
+    if (f.length){
+      const moy = f.reduce((s, x) => s + x.note, 0) / f.length;
+      const hauts = f.filter(x => x.note >= 7).length;
+      blocs.push(`<div class="section-titre">Fatigue des joueurs</div>
+      <div class="carte">
+        <p class="msg-txt">Moyenne <b style="color:${couleurFatigue(Math.round(moy))}">${moy.toFixed(1).replace('.', ',')}/10</b>
+          · ${f.length}/${n} ont noté${hauts ? ` · <b style="color:var(--danger)">${hauts}</b> à 7 ou plus` : ''}</p>
+        <button class="bouton fant plein" style="margin-top:10px" onclick="ouvreRetour('fatigue','${jour}')">Voir les notes</button>
+      </div>`);
+    }
+  }
+
+  /* 4. Le planning */
+  const cr = creneauxDu(jour);
+  if (cr.length){
+    const plusieurs = cr.length > 1 || calEquipes().length > 1;
+    blocs.push(`<div class="section-titre">Planning</div>` + cr.map(x => `<div class="carte">
+      ${plusieurs ? `<div class="carte-note" style="margin-bottom:4px">${esc(nomEq(x.eq))}</div>` : ''}
+      ${x.l.map(c => ligneCreneau(c, false, false)).join('')}</div>`).join(''));
+  }
+
+  /* 5. Les matchs */
+  const ms = matchsDu(jour);
+  if (ms.length) blocs.push(`<div class="section-titre">Match</div>` + ms.map(r => {
+    const g = r.joue && r.pour > r.contre;
+    return `<div class="carte">
+      <div class="carte-tete"><div class="carte-titre" style="font-size:15px">ASA – ${esc(r.adversaire)}</div>
+        ${r.joue ? `<span class="pousse mono" style="font-size:15px;font-weight:700;color:${g ? 'var(--physique)' : 'var(--danger)'}">${r.pour}–${r.contre}</span>`
+                 : `<span class="etiq pousse" style="color:var(--attaque)">à venir</span>`}</div>
+      <p class="carte-note">${r.domicile === false ? 'extérieur' : r.domicile ? 'domicile' : ''}${r.heure ? ' · ' + esc(r.heure) : ''}${r.lieu ? ' · ' + esc(r.lieu) : ''}</p>
+      ${typeof etiqCompetition === 'function' && etiqCompetition(r) ? `<div style="margin-top:4px">${etiqCompetition(r)}</div>` : ''}
+    </div>`;
+  }).join(''));
+
+  const titre = `<h2 class="cal-titre">${esc(libJour(jour))}${jour === auj ? ' · aujourd\'hui' : ''}</h2>`;
+  if (!blocs.length) return titre + `<div class="carte centre"><p class="carte-note">${
+    jour > auj ? 'Rien de prévu ce jour-là pour l\'instant.' : 'Rien d\'enregistré ce jour-là.'}</p></div>`;
+  return titre + blocs.join('');
+}
+
+/* ─────────────────────────────────────────── l'entrée sur l'accueil
+
+   Le kiné et le préparateur ont le calendrier en onglet. Les autres membres
+   du staff et les dirigeants l'ouvrent d'ici : leur barre a déjà six onglets. */
+function blocCalendrierAccueil(){
+  if (!CAL_ROLES.includes(E.role) || E.role === 'ki' || E.role === 'pp') return '';
+  const auj = AUJ(), p = pastillesDu(auj);
+  return `<div class="section-titre">Calendrier</div>
+  <div class="carte">
+    <p class="msg-txt">L'appel, ${echeancesVisibles().length ? 'les échéances, ' : ''}${PEUT_FATIGUE(E.role) ? 'la fatigue, ' : ''}le planning
+      et les matchs, jour par jour.</p>
+    ${p.length ? `<p class="carte-note" style="margin-top:6px">Aujourd'hui : ${p.map(x =>
+      `<i class="puce" style="background:${x.c}"></i>${esc(x.t)}`).join(' · ')}</p>` : ''}
+    <button class="bouton fant plein" style="margin-top:10px" onclick="CAL.mois=null;CAL.jour=null;ouvreSous('calendrier')">Ouvrir le calendrier</button>
+  </div>`;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -11705,10 +12030,10 @@ function carteDernierAppel(x){
 function blocDernierAppel(){
   const l = derniersAppels();
   if (!l.length) return '';
+  /* Les séances passées se retrouvent désormais dans le calendrier, juste
+     en dessous sur l'accueil (blocCalendrierAccueil). */
   return `<div class="section-titre">Dernier appel</div>
-    ${l.map(carteDernierAppel).join('')}
-    <button class="bouton fant plein" style="margin:2px 0 6px"
-            onclick="ouvreSous('presences')">Toutes les séances passées</button>`;
+    ${l.map(carteDernierAppel).join('')}`;
 }
 
 /* ─────────────────────────────────────────── le scanner */
