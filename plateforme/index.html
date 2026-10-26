@@ -1125,7 +1125,18 @@ function focusEquipes(){
   }
 }
 const parId = id => DB.joueurs.find(j => j.id === id);
-const membre = id => DB.staff.find(s => s.id === id) || {};
+/* 26/10/2026 — on cherche d'abord par l'identifiant PERSONNEL (« st05 »),
+   puis par l'identifiant d'écran. Une fois les données du club chargées, le
+   staff est rangé sous son RÔLE (« ca ») : deux coachs assistants, deux
+   préparateurs, deux dirigeants partagent donc le même « id ». Chercher
+   seulement par lui rendait toujours le PREMIER — dans le fil, tout message
+   « dt » s'affichait « Williams Zonzon », même envoyé par le président. */
+const membre = id => (DB.staff || []).find(s => s.staffId && s.staffId === id)
+                  || (DB.staff || []).find(s => s.id === id) || {};
+/* Qui je suis, pour signer une écriture : l'identifiant personnel. */
+const auteurMoi = () => (E.moi && (E.moi.staffId || E.moi.id)) || null;
+/* Est-ce moi ? Accepte la nouvelle signature (personnelle) et l'ancienne (rôle). */
+const estMoi = a => !!a && !!E.moi && (a === E.moi.staffId || a === E.moi.id);
 const nomEq = e => (DB.equipes.find(x => x.id === e) || {}).nom || e;
 /* Les objectifs du mois sont posés par personne quand elle en a de propres
    (les deux assistants n'ont pas les mêmes), sinon par rôle. */
@@ -1973,7 +1984,7 @@ function marqueChatLu(){
 /* Ses propres écritures ne comptent jamais comme non lues : elles sont filtrées
    par auteur, ce qui évite d'avoir à déplacer le repère à chaque envoi. */
 function nonLusChat(){
-  const moi = (E.moi || {}).id, fil = DB.chat || [], lu = chatLu();
+  const fil = DB.chat || [], lu = chatLu();
   let apres;
   if (lu.startsWith('id:')){
     const i = fil.findIndex(c => c.id === lu.slice(3));
@@ -1982,7 +1993,7 @@ function nonLusChat(){
   } else {
     apres = fil.slice(+lu || 0);           // ancien repère (un nombre)
   }
-  return apres.filter(c => c.auteur !== moi).length;
+  return apres.filter(c => !estMoi(c.auteur)).length;
 }
 
 /* PASTILLES DE NAVIGATION RETIRÉES (12/10/2026, demande de Fathy).
@@ -4024,8 +4035,10 @@ function vueChat(){
   <div class="chat">
     ${DB.chat.map(c => {
       const m = membre(c.auteur);
-      const r = ROLES[m.role || c.auteur] || ROLES.as;
-      const moi = E.moi && (m.id === E.moi.id);
+      /* La couleur vient du code de rôle (« ca »), pas de la fonction
+         (« Coach assistant ») que porte m.role une fois le club chargé. */
+      const r = ROLES[m.roleCode] || ROLES[m.id] || ROLES[c.auteur] || ROLES.as;
+      const moi = estMoi(c.auteur);
       if (c.systeme) return `<div class="chat-sys">
         <i class="puce" style="background:${r.couleur}"></i>
         <span style="min-width:0"><b>${esc((m.nom || '').split(' ')[0] || r.court)}</b> ${esc(c.texte)}</span>
@@ -4053,9 +4066,12 @@ function envoieChat(){
   if (!t) { toast('Écris ton message'); return; }
   // L'uuid naît ici : c'est le même en base, ce qui garde le repère « lu » valable au rechargement.
   const id = nouvelId();
-  DB.chat.push({id, auteur:(E.moi||{}).id || E.role,
+  /* Signé de l'identifiant PERSONNEL (« st05 »), plus du rôle : deux personnes
+     peuvent partager un rôle. La base le pose d'ailleurs elle-même
+     (trigger t_messages_auteur), d'après le compte connecté. */
+  DB.chat.push({id, auteur:auteurMoi() || E.role,
                 date:AUJ_FR(), heure:heureCourante(), texte:t});
-  enregistrer('messages', {id, auteur_id:(E.moi||{}).id || null, texte:t});
+  enregistrer('messages', {id, auteur_id:auteurMoi(), texte:t});
   $('#chatTexte').value = '';
   toast('Message envoyé au staff');
   rendVue(); rendNav();
@@ -4071,9 +4087,9 @@ function heureCourante(){ return heureClub(); }
 function journalChat(texte){
   DB.chat = DB.chat || [];
   const id = nouvelId();
-  DB.chat.push({id, auteur:(E.moi||{}).id || E.role,
+  DB.chat.push({id, auteur:auteurMoi() || E.role,
                 date:AUJ_FR(), heure:heureCourante(), texte, systeme:true});
-  enregistrer('messages', {id, auteur_id:(E.moi||{}).id || null, texte, systeme:true});
+  enregistrer('messages', {id, auteur_id:auteurMoi(), texte, systeme:true});
 }
 
 /* ═══════════════════════════════════ SECTEUR MÉDICAL ═══════════════════════════════════
