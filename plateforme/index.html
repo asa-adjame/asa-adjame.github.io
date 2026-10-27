@@ -961,6 +961,26 @@ table.tab tr.nous{background:rgba(255,178,70,.12)}
 .ev-t{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;margin-bottom:6px}
 .ev-t .mono{font-size:10.5px;color:var(--gris2)}
 @media (max-width:380px){.fat-g{grid-template-columns:repeat(6,minmax(0,1fr))}.ech-l{grid-template-columns:72px minmax(0,1fr) auto}}
+/* 27/10/2026 — accueil allégé (DT, dirigeants, head coach) */
+.acc-faire{border-color:var(--or-l,var(--or));margin-bottom:14px}
+.acc-l{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:10px;align-items:center;width:100%;
+  background:none;border:0;border-top:1px solid var(--ligne);padding:10px 0;color:var(--texte);font:inherit;font-size:13.5px;text-align:left;cursor:pointer}
+.acc-l:first-of-type{border-top:0}
+.acc-l i{width:8px;height:8px;border-radius:50%}
+.acc-l b{color:var(--or);font-size:12.5px;white-space:nowrap}
+.acc-der{margin-top:10px}
+.acc-j{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;padding:8px 0;border-top:1px solid var(--ligne);font-size:13.5px;line-height:1.4}
+.acc-j:first-child{border-top:0;padding-top:2px}
+.acc-j>.mono{font-size:10.5px;color:var(--gris);text-transform:uppercase;letter-spacing:.05em;padding-top:2px}
+.acc-lien{background:none;border:0;color:var(--or);font:inherit;font-size:12.5px;padding:0 0 0 6px;cursor:pointer}
+.acc-racc{display:flex;flex-wrap:wrap;gap:8px}
+.acc-racc button{background:var(--surface);border:1px solid var(--ligne);color:var(--texte);border-radius:999px;
+  padding:9px 14px;font:inherit;font-size:13px;cursor:pointer}
+.acc-racc button:active{border-color:var(--or)}
+.acc-spo{display:flex;gap:10px;align-items:baseline;margin-top:22px;padding:10px 14px;border-left:3px solid var(--c,var(--or));
+  background:var(--surface);border-radius:var(--r)}
+.acc-spo span{font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--gris)}
+.acc-spo b{font-size:14px}
 </style>
 </head>
 <body>
@@ -1130,7 +1150,7 @@ const parId = id => DB.joueurs.find(j => j.id === id);
    staff est rangé sous son RÔLE (« ca ») : deux coachs assistants, deux
    préparateurs, deux dirigeants partagent donc le même « id ». Chercher
    seulement par lui rendait toujours le PREMIER — dans le fil, tout message
-   « dt » s'affichait « Williams Zonzon », même envoyé par le président. */
+   « dt » s'affichait au nom du premier DT, même envoyé par le président. */
 const membre = id => (DB.staff || []).find(s => s.staffId && s.staffId === id)
                   || (DB.staff || []).find(s => s.id === id) || {};
 /* Qui je suis, pour signer une écriture : l'identifiant personnel. */
@@ -2091,6 +2111,9 @@ function vueAccueil(){
   if (E.sous === 'fatigue')    return vueFatigue();
   if (E.sous === 'chat')       return retour('Accueil', 'fermeSous()') + vueChat();
 
+  /* 27/10/2026 — DT, dirigeants, head coach : l'accueil allégé (p3o_accueil.js). */
+  if (ACCUEIL_LEGER(E.role)) return vueAccueilLeger();
+
   const C = DB.championnat;
   const nous = C.classement.find(l => l.nous) || {};
   const rang = C.classement.findIndex(l => l.nous) + 1;
@@ -2452,7 +2475,7 @@ function relanceQuestionnaire(){
 function vueClassement(){
   const C = DB.championnat;
   return `${retour('Accueil', 'fermeSous()')}
-  <h1 class="vue-titre">Classement</h1>
+  <h1 class="vue-titre">Classement et résultats</h1>
   <p class="vue-sous">${esc(C.nom)} · ${esc(C.instance)} · après ${C.journee} journées.</p>
   <div class="tab-enrob"><table class="tab">
     <thead><tr><th>#</th><th>Équipe</th><th class="num">J</th><th class="num">V</th><th class="num">D</th>
@@ -2464,7 +2487,28 @@ function vueClassement(){
       <td class="num">${l.pp}</td><td class="num">${l.pc}</td>
       <td class="num" style="color:${(l.pp-l.pc)>=0?'var(--physique)':'var(--danger)'}">${(l.pp-l.pc)>=0?'+':''}${l.pp-l.pc}</td>
     </tr>`).join('')}</tbody>
-  </table></div>`;
+  </table></div>
+  ${listeResultats()}`;
+}
+
+/* Les résultats, sortis de l'accueil le 27/10/2026 : ils vivent avec le classement. */
+function listeResultats(){
+  const R = DB.championnat.resultats || [];
+  if (!R.length) return '';
+  return `<div class="section-titre">Derniers résultats</div>
+  <div class="carte" style="padding:6px 14px">
+    ${R.map(r => {
+      const g = r.pour > r.contre;
+      return `<div class="dom-ligne" style="grid-template-columns:minmax(0,1fr) auto">
+        <div><div class="dom-nom">${esc(r.adversaire)}</div>
+          <div class="carte-note mono" style="font-size:10.5px">${esc(r.date)} · ${r.domicile?'domicile':'extérieur'}</div>
+          ${etiqCompetition(r) ? `<div style="margin-top:4px">${etiqCompetition(r)}</div>` : ''}</div>
+        <div class="rang" style="gap:8px">
+          <span class="etiq" style="color:${g?'var(--physique)':'var(--danger)'}">${g?'V':'D'}</span>
+          <span class="mono" style="font-size:15px;font-weight:700">${r.pour}–${r.contre}</span>
+        </div></div>`;
+    }).join('')}
+  </div>`;
 }
 
 /* 26/10/2026 — le DT peut modifier ou supprimer un partenaire. Chaque
@@ -10852,6 +10896,206 @@ function blocCalendrierAccueil(){
       `<i class="puce" style="background:${x.c}"></i>${esc(x.t)}`).join(' · ')}</p>` : ''}
     <button class="bouton fant plein" style="margin-top:10px" onclick="CAL.mois=null;CAL.jour=null;ouvreSous('calendrier')">Ouvrir le calendrier</button>
   </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ACCUEIL ALLÉGÉ — directeur technique, dirigeants, head coach   (27/10/2026)
+
+   Demande de Fathy : « rends l'écran d'accueil du DT, des dirigeants et du
+   head coach plus léger, il y a trop de catégories au même endroit et même
+   des doublons ».
+
+   Avant : 15 à 18 blocs. Les doublons relevés :
+   - le planning (« Cette semaine ») ET le calendrier ;
+   - « Échéances de la semaine », dont le bouton ouvrait… le calendrier ;
+   - « Fatigue du jour », déjà dans le calendrier ;
+   - l'appel (« Appel du jour » / « Dernier appel ») ET le calendrier ;
+   - les résultats dans la bannière, dans « Derniers résultats » et au classement ;
+   - chez le dirigeant, « lecture seule » — faux depuis le 26/10 (il écrit dans le fil).
+
+   Après, dans cet ordre :
+   1. À traiter    — seulement s'il y a quelque chose à faire (rien = rien) ;
+   2. la bannière  — rang, bilan, dernier résultat ; classement et résultats en un bouton ;
+   3. le prochain match (inchangé) ;
+   4. Aujourd'hui  — UNE carte : planning, appel, échéances, fatigue → calendrier ;
+   5. les tuiles ;
+   6. Raccourcis   — les écrans du rôle, en petits boutons ;
+   7. le partenaire principal, sur une ligne (sa visibilité reste due).
+
+   Les autres rôles gardent leur accueil. Rien n'est recalculé ici : tout
+   vient des fonctions du calendrier, de l'appel et des échéances.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const ACCUEIL_LEGER = r => ['dt', 'dg', 'hc'].includes(r);
+
+/* 1. Ce qui attend quelqu'un. Chaque ligne mène à l'écran où on le règle. */
+function blocATraiter(){
+  const auj = AUJ(), l = [];
+
+  const ouverte = seanceOuverte();
+  if (ouverte){
+    const r = retardsDe(ouverte);
+    l.push({c: 'var(--or)', a: `ouvreSous('presences')`, b: 'Suivre',
+            t: `Appel en cours · ${presentsDe(ouverte)}/${parEq(ouverte.equipe).length} présents${r ? ' · ' + r + ' en retard' : ''}`});
+  }
+
+  // les échéances de la semaine passées sans retour (DT, dirigeants)
+  if (VOIT_ECHEANCES(E.role)){
+    const lundi = lundiDe(auj), retards = [];
+    for (let d = lundi; d < auj; d = decaleJour(d, 1))
+      echeancesDu(d).filter(x => x.etat === 'retard').forEach(x => retards.push(Object.assign({jour: d}, x)));
+    if (retards.length){
+      const noms = retards.slice(0, 2).map(x => x.e.lib.replace(/^(Retour|Avis) (du |de la )?/, '')).join(', ');
+      l.push({c: 'var(--danger)', b: 'Voir',
+              a: `CAL.mois='${moisDeIso(retards[0].jour)}';CAL.jour='${retards[0].jour}';ouvreSous('calendrier')`,
+              t: `${retards.length} échéance${retards.length > 1 ? 's' : ''} en retard · ${noms}${retards.length > 2 ? '…' : ''}`});
+    }
+  }
+
+  // les relances (DT, head coach)
+  if (E.role === 'dt' || E.role === 'hc'){
+    const r = relances();
+    if (r.total) l.push({c: 'var(--alerte)', a: `ouvreSous('relances')`, b: 'Voir',
+                         t: `${r.total} chose${r.total > 1 ? 's' : ''} à relancer`});
+  }
+
+  if (!l.length) return '';
+  return `<div class="carte acc-faire">
+    <div class="carte-titre" style="font-size:15px;margin-bottom:4px">À traiter</div>
+    ${l.map(x => `<button class="acc-l" onclick="${x.a}"><i style="background:${x.c}"></i><span>${esc(x.t)}</span><b>${esc(x.b)} ›</b></button>`).join('')}
+  </div>`;
+}
+
+/* 2. La bannière, sans la liste des résultats : le dernier suffit ici. */
+function banniereLegere(){
+  const C = DB.championnat;
+  const nous = C.classement.find(x => x.nous) || {};
+  const rang = C.classement.findIndex(x => x.nous) + 1;
+  const der = (C.resultats || [])[0];
+  const g = der && der.pour > der.contre;
+  return `<div class="banniere">
+    <div class="ban-sur">${esc(C.instance)}</div>
+    <div class="ban-titre">${esc(C.nom)}</div>
+    <div class="ban-rang">
+      <div><div class="ban-chiffre">${rang}<sup style="font-size:14px">${rang == 1 ? 'er' : 'e'}</sup></div><div class="ban-lib">au classement</div></div>
+      <div><div class="ban-chiffre">${nous.v || 0}–${nous.d || 0}</div><div class="ban-lib">bilan</div></div>
+      <div><div class="ban-chiffre">${C.journee}<span style="font-size:15px;color:var(--gris)">/${C.journees}</span></div><div class="ban-lib">journées</div></div>
+    </div>
+    ${der ? `<p class="ban-txt acc-der">Dernier match · <b style="color:${g ? 'var(--physique)' : 'var(--danger)'}">${g ? 'V' : 'D'} ${der.pour}–${der.contre}</b> contre ${esc(der.adversaire)} · ${esc(der.date)}</p>` : ''}
+    <button class="bouton fant plein" style="margin-top:10px" onclick="ouvreSous('classement')">Classement et résultats</button>
+  </div>`;
+}
+
+/* 4. Aujourd'hui : ce que le calendrier montre pour ce jour, en une carte. */
+function carteAujourdhui(){
+  const auj = AUJ(), l = [];
+  const ligne = (tag, html) => `<div class="acc-j"><span class="mono">${tag}</span><div>${html}</div></div>`;
+
+  // le planning du jour
+  // toutes équipes confondues, dans l'ordre de l'heure
+  const cr = creneauxDu(auj), plusieurs = calEquipes().length > 1;
+  cr.flatMap(x => x.l.map(c => ({c, eq: x.eq})))
+    .sort((a, b) => String(a.c.debut || '').localeCompare(String(b.c.debut || '')))
+    .forEach(({c, eq}) => l.push(ligne(esc(c.debut || '—'),
+      `<b style="color:${TYPES_CRENEAU[c.type] || 'var(--gris)'}">${esc(c.type)}</b>${plusieurs ? ' · ' + esc(nomEq(eq)) : ''}${c.lieu ? ' · ' + esc(c.lieu) : ''}`)));
+  if (!cr.length) l.push(ligne('—', `<span style="color:var(--gris2)">Rien au planning aujourd'hui</span>`));
+
+  // l'appel du jour ; à défaut, le dernier appel clos
+  let ss = seancesDu(auj).filter(s => s.appel || s.ouverte);
+  if (!ss.length && derniersAppels()[0]) ss = [derniersAppels()[0]];
+  ss.forEach(s => {
+    if (s.ouverte){
+      l.push(ligne('appel', `En cours · ${presentsDe(s)}/${parEq(s.equipe).length} présents`));
+      return;
+    }
+    const b = bilanSeance(s), d = isoDe(s.date);
+    l.push(ligne('appel', `${b.aLHeure + b.enRetard}/${b.lignes.length} présents · ${b.enRetard} en retard${b.voitDep && b.enAvance ? ' · ' + b.enAvance + ' parti' + (b.enAvance > 1 ? 's' : '') + ' en avance' : ''}${d !== auj ? ' <span style="color:var(--gris2)">(' + esc(libJour(d).toLowerCase()) + ')</span>' : ''}
+      <button class="acc-lien" onclick="ouvreBilanSeance('${esc(s.id)}')">bilan ›</button>`));
+  });
+
+  // les échéances du jour
+  echeancesDu(auj).forEach(x => l.push(ligne('échéance',
+    `${esc(x.e.lib)} · <b style="color:${COUL_ETAT[x.etat]}">${LIB_ETAT[x.etat]}</b>${x.e.type === 'fatigue' && x.detail ? ' · ' + esc(x.detail) : ''}`)));
+
+  // la fatigue notée aujourd'hui
+  if (PEUT_FATIGUE(E.role)){
+    const f = fatigueDu(auj);
+    if (f.length){
+      const m = f.reduce((a, x) => a + x.note, 0) / f.length, hauts = f.filter(x => x.note >= 7).length;
+      l.push(ligne('fatigue', `Moyenne <b style="color:${couleurFatigue(Math.round(m))}">${m.toFixed(1).replace('.', ',')}/10</b> · ${f.length}/${joueursAttendus().length} ont noté${hauts ? ' · ' + hauts + ' à 7 ou plus' : ''}`));
+    }
+  }
+
+  const planning = PEUT_PLANNING(E.role);
+  return `<div class="section-titre">Aujourd'hui · ${esc(libJour(auj))}</div>
+  <div class="carte acc-auj">
+    ${l.join('')}
+    <div class="${planning ? 'g2' : ''}" style="margin-top:11px">
+      <button class="bouton fant plein" onclick="CAL.mois=null;CAL.jour=null;ouvreSous('calendrier')">Ouvrir le calendrier</button>
+      ${planning ? `<button class="bouton fant plein" onclick="PL.lundi=null;ouvreSous('planning')">Modifier le planning</button>` : ''}
+    </div>
+  </div>`;
+}
+
+/* 5. Les tuiles du rôle. */
+function tuilesAccueil(){
+  const indispo = DB.medical.filter(m => m.statut === 'Indisponible').length;
+  if (E.role === 'hc'){
+    const js = parEq(E.equipe);
+    return `<div class="section-titre">${esc(nomEq(E.equipe))}</div>
+    <div class="g3">
+      <div class="tuile"><div class="tuile-val">${moyTirGroupe(js).pct}<small style="font-size:14px">%</small></div><div class="tuile-lib">Challenge<br>de tir</div></div>
+      <div class="tuile bleu"><div class="tuile-val">${js.length ? moy(js.map(note1)).toFixed(1) : '—'}</div><div class="tuile-lib">Niveau<br>moyen</div></div>
+      <div class="tuile ${indispo ? 'rouge' : 'vert'}"><div class="tuile-val">${indispo}</div><div class="tuile-lib">Indispo-<br>nibles</div></div>
+    </div>`;
+  }
+  const adapte = DB.medical.filter(m => m.statut === 'Reprise adaptée').length;
+  return `<div class="section-titre">Coup d'œil</div>
+  <div class="g4">
+    <div class="tuile blanc"><div class="tuile-val">${DB.joueurs.length}</div><div class="tuile-lib">Joueurs<br>suivis</div></div>
+    <div class="tuile"><div class="tuile-val">${moyTirGroupe(parEq('pro')).pct}<small style="font-size:14px">%</small></div><div class="tuile-lib">Tir<br>pro</div></div>
+    ${equipeOuverte('espoirs')
+      ? `<div class="tuile bleu"><div class="tuile-val">${moyTirGroupe(parEq('espoirs')).pct}<small style="font-size:14px">%</small></div><div class="tuile-lib">Tir<br>espoirs</div></div>`
+      : `<div class="tuile bleu"><div class="tuile-val">${adapte}</div><div class="tuile-lib">Reprise<br>adaptée</div></div>`}
+    <div class="tuile ${indispo ? 'rouge' : 'vert'}"><div class="tuile-val">${indispo}</div><div class="tuile-lib">Indispo-<br>nibles</div></div>
+  </div>`;
+}
+
+/* 6. Les écrans du rôle, en raccourcis. */
+function raccourcisAccueil(){
+  const b = [];
+  if (E.role === 'dt'){
+    b.push(['Staff', `ouvreSous('staff')`]);
+    b.push(['Rapport au président', `E.rapVue='president';vaVers(indexOnglet('Rapports'))`]);
+    if (peutImprimerBadges()) b.push(['Badges', `ouvreSous('badges')`]);
+    b.push(['Partenaires', `ouvreSous('sponsors')`]);
+  }
+  if (E.role === 'dg'){
+    b.push(['Rapports du DT', `E.rapVue='fiches';vaVers(indexOnglet('Rapports'))`]);
+    b.push(['Fil du staff', `ouvreSous('chat')`]);
+  }
+  /* Le head coach : ses relances sont dans « À traiter », pas en double ici. */
+  b.push(['Fatigue, 7 jours', `ouvreSous('fatigue')`]);
+  return `<div class="section-titre">Raccourcis</div>
+  <div class="acc-racc">${b.map(([t, a]) => `<button onclick="${a}">${esc(t)}</button>`).join('')}</div>`;
+}
+
+/* 7. Le partenaire principal, sur une ligne. */
+function lignePartenaire(){
+  const p = (DB.sponsors || [])[0];
+  if (!p) return '';
+  return `<div class="acc-spo" style="--c:${esc(p.couleur || 'var(--or)')}"><span>${esc(p.niveau || 'Partenaire')}</span><b>${esc(p.nom || '')}</b></div>`;
+}
+
+function vueAccueilLeger(){
+  return `${carteMonEcheance()}
+  ${blocATraiter()}
+  ${banniereLegere()}
+  ${carteProchainMatch(DB.championnat.prochain)}
+  ${carteAujourdhui()}
+  ${tuilesAccueil()}
+  ${raccourcisAccueil()}
+  ${lignePartenaire()}`;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
