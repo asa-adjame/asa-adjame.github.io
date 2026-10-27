@@ -3174,8 +3174,26 @@ function blocEvaluations(){
 
 /* ═══════════════════════════════════ PRÉPA PHYSIQUE (joueur) ═══════════════════════════════════ */
 
+/* 27/10/2026 — le lien donné par Fathy : il mène à la page de téléchargement
+   de l'application du préparateur physique (Mywellness). Avant, la carte
+   venait du jeu de démonstration (« Julien Ferrand », adresse vide) et le
+   bouton n'ouvrait rien. Les noms viennent maintenant du staff réel (rôle pp). */
+const PREPA_APPLI = 'https://tgapp-link.mywellness.com/312d8d8076f1b1b29c8601ae3bdadbd68c1108c9e464eb83e789ea2b56b5f763';
+
+function prepaPhysique(){
+  const noms = (DB.staff || []).filter(s => (s.roleCode || s.id) === 'pp').map(s => s.nom).filter(Boolean);
+  return {
+    nom: noms.length ? noms.join(' et ') : 'le préparateur physique',
+    titre: noms.length ? noms.join(' et ') : 'Préparateur physique',
+    structure: 'Préparation physique',
+    note: 'Ton programme de préparation physique est dans l\'application du préparateur. '
+        + 'Le bouton ouvre la page pour la télécharger ; ensuite, ton programme s\'ouvre directement dedans.',
+    application: PREPA_APPLI
+  };
+}
+
 function vuePrepa(){
-  const P = DB.prepaExterne;
+  const P = prepaPhysique();
   const j = E.joueur;
   const med = DB.medical.filter(x => x.joueur === j.id && x.statut !== 'Rétabli');
   return `<h1 class="vue-titre">Ma prépa physique</h1>
@@ -3192,15 +3210,14 @@ function vuePrepa(){
   <div class="carte">
     <div class="carte-tete">
       <span class="cx-pastille" style="width:38px;height:38px;flex:0 0 38px;border-radius:11px;font-size:15px;background:var(--physique)">PP</span>
-      <div><div class="carte-titre">${esc(P.nom)}</div>
+      <div><div class="carte-titre">${esc(P.titre)}</div>
         <div class="carte-note">${esc(P.structure)}</div></div>
     </div>
     <p class="msg-txt">${esc(P.note)}</p>
     <button class="bouton plein" style="margin-top:13px" onclick="ouvrePrepa()">
       Ouvrir mon programme ↗</button>
     <p class="carte-note" style="margin-top:9px;text-align:center">
-      ${P.application && P.application.length > 8
-        ? esc(P.application) : 'Adresse de l\'application à renseigner.'}</p>
+      Première fois : télécharge l'application Mywellness depuis la page qui s'ouvre.</p>
   </div>
 
   <div class="carte">
@@ -3213,7 +3230,7 @@ function vuePrepa(){
   </div>`;
 }
 function ouvrePrepa(){
-  const url = DB.prepaExterne.application || '';
+  const url = prepaPhysique().application || '';
   if (url.length > 8) window.open(url, '_blank', 'noopener');
   else toast('Adresse de l\'application du préparateur à renseigner');
 }
