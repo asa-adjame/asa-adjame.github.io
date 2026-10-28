@@ -10627,7 +10627,7 @@ function blocAccueilDirigeant(){
 
    Ce que chacun voit, calé sur les règles de la base (vérifiées le 26/10) :
    - l'appel : tout le staff (presences : mon_staff() is not null) ;
-     les départs anticipés : pas le préparateur ni l'analyste (VOIT_DEPARTS) ;
+     les départs anticipés : tous sauf l'analyste (VOIT_DEPARTS ; préparateur ajouté le 28/10) ;
    - les échéances : DT, head coach et dirigeants les voient toutes (ils
      lisent tous les retours). Les autres ne lisent que LEURS retours : leur
      montrer l'échéance d'un collègue l'afficherait « en retard » à tort.
@@ -11976,7 +11976,8 @@ const pointeDe   = (s, id) => appelDe(s).find(p => p.joueur === id) || null;
    séance. Pas les joueurs, ni l'analyste, ni le préparateur. La base applique
    la même règle sur la table « departs » (p_departs_lire + p_dg_lire) : pour
    les autres, la liste revient vide. */
-const VOIT_DEPARTS = r => ['dt', 'hc', 'ca', 'cd', 'ki', 'as', 'dg'].indexOf(r) >= 0;
+/* 28/10/2026 : le préparateur physique aussi (« doit pouvoir voir qui part en avance »). */
+const VOIT_DEPARTS = r => ['dt', 'hc', 'ca', 'cd', 'ki', 'as', 'dg', 'pp'].indexOf(r) >= 0;
 const departsDe = s => appelDe(s).filter(p => p.present !== false && p.depart).length;
 
 /** Minutes réellement passées à la séance, ou null si on ne peut pas le dire. */
