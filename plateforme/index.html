@@ -981,6 +981,21 @@ table.tab tr.nous{background:rgba(255,178,70,.12)}
   background:var(--surface);border-radius:var(--r)}
 .acc-spo span{font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--gris)}
 .acc-spo b{font-size:14px}
+.acc-spo.clic,.acc-spo[role=button]{cursor:pointer}
+.acc-spo i{margin-left:auto;font-style:normal;color:var(--or);font-size:12.5px;white-space:nowrap}
+/* 28/10/2026 — chat : contacts */
+.ct-liste{padding:4px 14px}
+.ct-l{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:11px;align-items:center;width:100%;
+  background:none;border:0;border-top:1px solid var(--ligne);padding:11px 0;color:var(--texte);font:inherit;text-align:left;cursor:pointer}
+.ct-l:first-child{border-top:0}
+.ct-l .chat-av{width:38px;height:38px;font-size:11px}
+.ct-m{min-width:0;display:flex;flex-direction:column;gap:2px}
+.ct-m b{font-size:14.5px;font-weight:600}
+.ct-m small{color:var(--gris);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ct-d{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.ct-d small{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--gris)}
+.ct-n{font-style:normal;background:var(--or);color:#16150F;border-radius:999px;min-width:19px;height:19px;
+  padding:0 5px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
 </style>
 </head>
 <body>
@@ -1101,7 +1116,7 @@ const EST_COACH = r => ['dt','hc','ca','cd'].includes(r);
 const EST_STAFF = r => r !== 'jr';
 
 /* ─────────────────────────────────────────── état */
-let E = {role:null, moi:null, onglet:0, equipe:'pro', joueur:null,
+let E = {role:null, moi:null, onglet:0, equipe:'pro', joueur:null, chatAvec:null,
          equipes:['pro','espoirs'], fiche:null, quiz:null};
 
 /* ─────────────────────────────────────────── helpers */
@@ -1996,15 +2011,19 @@ const cleLu = () => 'asa.lu.' + (E.role || '?') + '.' + ((E.moi || {}).id || '')
 
    Un repère d'avant (un nombre) est encore lu à l'ancienne, une fois : le
    prochain passage dans le fil le remplace. */
-function chatLu(){ try { return localStorage.getItem(cleLu()) || ''; } catch(e){ return ''; } }
-function marqueChatLu(){
-  const c = DB.chat || [];
-  try { localStorage.setItem(cleLu(), c.length ? 'id:' + c[c.length - 1].id : ''); } catch(e){}
+/* 28/10/2026 — un repère PAR CONVERSATION (groupe, ou une personne). Le groupe
+   garde l'ancienne clé : les messages déjà vus ne reviennent pas en non lus. */
+const cleLuConv = conv => (!conv || conv === 'groupe') ? cleLu() : cleLu() + '.' + conv;
+const filConv = conv => (typeof filDe === 'function') ? filDe(conv || 'groupe') : (DB.chat || []);
+function chatLu(conv){ try { return localStorage.getItem(cleLuConv(conv)) || ''; } catch(e){ return ''; } }
+function marqueChatLu(conv){
+  const c = filConv(conv);
+  try { localStorage.setItem(cleLuConv(conv), c.length ? 'id:' + c[c.length - 1].id : ''); } catch(e){}
 }
 /* Ses propres écritures ne comptent jamais comme non lues : elles sont filtrées
    par auteur, ce qui évite d'avoir à déplacer le repère à chaque envoi. */
-function nonLusChat(){
-  const fil = DB.chat || [], lu = chatLu();
+function nonLusChat(conv){
+  const fil = filConv(conv), lu = chatLu(conv);
   let apres;
   if (lu.startsWith('id:')){
     const i = fil.findIndex(c => c.id === lu.slice(3));
@@ -2013,7 +2032,11 @@ function nonLusChat(){
   } else {
     apres = fil.slice(+lu || 0);           // ancien repère (un nombre)
   }
-  return apres.filter(c => !estMoi(c.auteur)).length;
+  /* 28/10/2026 : répondre, c'est avoir lu. Ce qui précède mon dernier message
+     (envoyé depuis cet appareil ou un autre) ne compte plus comme non lu. */
+  let dernierMien = -1;
+  apres.forEach((c, k) => { if (estMoi(c.auteur) && !c.systeme) dernierMien = k; });
+  return apres.slice(dernierMien + 1).filter(c => !estMoi(c.auteur)).length;
 }
 
 /* PASTILLES DE NAVIGATION RETIRÉES (12/10/2026, demande de Fathy).
@@ -2030,7 +2053,8 @@ function rendNav(){
 function vaVers(i){
   E.onglet = i; E.fiche = null; E.quiz = null; E.sous = null;
   const lib = (PLAN[E.role][i] || [])[1];
-  if (lib === 'Chat') marqueChatLu();
+  // 28/10/2026 : l'onglet Chat s'ouvre sur la liste des contacts ; une conversation se marque lue quand on l'ouvre.
+  if (lib === 'Chat') E.chatAvec = null;
   if (lib === 'Ma fiche') marqueConsignesLues();
   rendVue(); rendNav(); window.scrollTo(0,0);
 }
@@ -2200,7 +2224,7 @@ function carteProchainMatch(p){
   const adversaire = m ? m.adversaire : p.adversaire;
   const dom = m ? (m.lieu === 'domicile') : p.domicile;
   const quand = m ? `${m.date}${m.heure ? ' · ' + m.heure : ''}${m.salle ? ' · ' + m.salle : ''}`
-                  : `${p.date} · ${p.heure} · ${p.lieu}`;
+                  : [p.date, p.heure, p.lieu].filter(Boolean).join(' · ');
   const j = m ? joursAvant(m.date) : null;
   const c = m && PEUT_CLASSEUR(E.role) ? completudePrepa(m) : null;
   /* La compétition vient du calendrier : on ne la prête à la fiche de
@@ -4077,24 +4101,107 @@ rendVue = function(){
    Y participent : le DT, les coachs, l'analyste, le kiné, les deux assistants et
    le préparateur physique prestataire. Les joueurs n'y sont pas. */
 
-function vueChat(){
-  const participants = DB.staff;
-  return `<h1 class="vue-titre">Fil du staff</h1>
-  <p class="vue-sous">${participants.length} participants — staff technique, kiné, assistants et préparateur physique.</p>
+/* 28/10/2026 — DES CONTACTS, ET LE GROUPE.
 
-  <div class="carte" style="margin-bottom:14px">
-    <div class="carte-tete"><div class="carte-titre">Participants</div></div>
-    <div class="rang" style="flex-wrap:wrap;gap:6px">
-      ${participants.map(m => {
-        const r = ROLES[m.role] || ROLES.as;
-        return `<span class="etiq" style="color:${r.couleur}">
-          <i class="puce" style="background:${r.couleur}"></i>${esc(m.nom.split(' ')[0])} · ${esc(r.court)}</span>`;
-      }).join('')}
-    </div>
-  </div>
+   Fathy : « que chacun y retrouve une sorte de contact à choisir leur offrant
+   la possibilité de parler en privé, et aussi un contact "groupe" pour écrire
+   à tout le staff comme c'est le cas actuellement ».
+
+   - L'onglet s'ouvre sur la liste : « Groupe staff » en tête, puis chaque
+     membre du staff, les conversations les plus récentes d'abord.
+   - Un message privé porte un destinataire (messages.destinataire_id). La base
+     ne le rend qu'à ses deux personnes (règle p_msg_lire) : un tiers ne le
+     reçoit même pas.
+   - Le groupe, c'est destinataire vide : tout ce qui existait avant, et le
+     journal de la plateforme (appel clos, etc.).
+   - « Le premier message qu'on voit soit le plus récent » : une conversation
+     s'ouvre en bas, sur le dernier message, saisie juste dessous. */
+
+const GROUPE = 'groupe';
+const cleContact = m => m.staffId || m.id;
+
+/* Les autres membres du staff, une fois chacun. */
+function contactsChat(){
+  const vus = new Set(), moi = auteurMoi();
+  return (DB.staff || []).filter(m => {
+    const k = cleContact(m);
+    if (!k || vus.has(k) || k === moi || estMoi(k)) return false;
+    vus.add(k); return true;
+  });
+}
+
+/* Les messages d'une conversation, dans l'ordre du temps. */
+function filDe(conv){
+  const fil = DB.chat || [];
+  if (conv === GROUPE) return fil.filter(c => !c.dest);
+  const moi = auteurMoi();
+  return fil.filter(c => c.dest && (
+    (estMoi(c.auteur) && c.dest === conv) || (c.auteur === conv && (c.dest === moi || estMoi(c.dest)))));
+}
+
+function ouvreConv(conv){
+  E.chatAvec = conv;
+  marqueChatLu(conv);
+  rendVue(); rendNav();
+  // Le plus récent d'abord : on arrive en bas de la conversation.
+  setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 0);
+}
+function fermeConv(){ E.chatAvec = null; rendVue(); window.scrollTo(0, 0); }
+
+function vueChat(){
+  if (E.chatAvec) return vueConversation(E.chatAvec);
+
+  const ligne = (conv, titre, sous, couleur, court) => {
+    const f = filDe(conv), der = f[f.length - 1], n = nonLusChat(conv);
+    return {quand: der ? (der.date + ' ' + der.heure) : '',
+      html: `<button class="ct-l" onclick="ouvreConv('${esc(conv)}')">
+        <span class="chat-av" style="background:${couleur}">${esc(court)}</span>
+        <span class="ct-m">
+          <b>${esc(titre)}</b>
+          <small>${der ? esc(((estMoi(der.auteur) ? 'Toi : ' : '') + der.texte).slice(0, 70)) : esc(sous)}</small>
+        </span>
+        <span class="ct-d">${der ? `<small>${esc(der.date === AUJ_FR() ? der.heure : String(der.date).slice(0, 5))}</small>` : ''}
+          ${n ? `<i class="ct-n">${n > 9 ? '9+' : n}</i>` : ''}</span>
+      </button>`};
+  };
+
+  const groupe = ligne(GROUPE, 'Groupe staff', 'Tout le staff', 'var(--or)', 'ASA');
+  const privees = contactsChat().map(m => {
+    const r = ROLES[m.roleCode] || ROLES[m.id] || ROLES.as;
+    return ligne(cleContact(m), m.nom || 'Membre du staff', m.fonction || m.role || r.court, r.couleur, r.court);
+  });
+  // Les conversations actives d'abord, la plus récente en tête ; puis les autres, dans l'ordre du staff.
+  const actives = privees.filter(x => x.quand).sort((a, b) => trieQuand(b.quand) - trieQuand(a.quand));
+  const autres = privees.filter(x => !x.quand);
+
+  return `<h1 class="vue-titre">Chat</h1>
+  <p class="vue-sous">Le groupe pour tout le staff, ou un message privé à une seule personne.</p>
+  <div class="carte ct-liste">${groupe.html}</div>
+  <div class="section-titre">Messages privés</div>
+  <div class="carte ct-liste">${actives.concat(autres).map(x => x.html).join('') || '<p class="carte-note">Aucun autre membre du staff.</p>'}</div>`;
+}
+
+/* Un repère de tri pour « jj/mm/aaaa hh:mm ». */
+function trieQuand(q){
+  const m = String(q || '').match(/^(\d{2})\/(\d{2})\/(\d{4})\s*(\d{2})?:?(\d{2})?/);
+  return m ? Date.parse(`${m[3]}-${m[2]}-${m[1]}T${m[4] || '00'}:${m[5] || '00'}:00`) : 0;
+}
+
+function vueConversation(conv){
+  const groupe = conv === GROUPE;
+  const m = groupe ? null : ((DB.staff || []).find(x => cleContact(x) === conv) || {});
+  const r = groupe ? null : (ROLES[m.roleCode] || ROLES[m.id] || ROLES.as);
+  const fil = filDe(conv);
+  marqueChatLu(conv);
+
+  return `<button class="bouton fant" style="margin-bottom:12px" onclick="fermeConv()">‹ Contacts</button>
+  <h1 class="vue-titre">${groupe ? 'Groupe staff' : esc(m.nom || 'Message privé')}</h1>
+  <p class="vue-sous">${groupe ? `${(DB.staff || []).length} participants — tout le staff lit ce fil.`
+    : `${esc(m.fonction || m.role || r.court)} · message privé, vous seuls le lisez.`}</p>
 
   <div class="chat">
-    ${DB.chat.map(c => {
+    ${fil.length ? '' : `<p class="carte-note" style="text-align:center;padding:18px 0">${groupe ? 'Aucun message pour l\'instant.' : 'Pas encore de message. Écris le premier.'}</p>`}
+    ${fil.map(c => {
       const m = membre(c.auteur);
       /* La couleur vient du code de rôle (« ca »), pas de la fonction
          (« Coach assistant ») que porte m.role une fois le club chargé. */
@@ -4117,7 +4224,7 @@ function vueChat(){
 
   ${/* Tout le staff écrit, dirigeants compris depuis le 26/10/2026. */ ''}<div class="chat-saisie">
     <textarea class="champ" id="chatTexte" style="min-height:62px"
-      placeholder="Écrire au staff…"></textarea>
+      placeholder="${groupe ? 'Écrire à tout le staff…' : 'Écrire à ' + esc((m.nom || '').split(' ')[0] || 'cette personne') + '…'}"></textarea>
     <button class="bouton plein" style="margin-top:9px" onclick="envoieChat()">Envoyer</button>
   </div>`;
 }
@@ -4125,16 +4232,20 @@ function vueChat(){
 function envoieChat(){
   const t = ($('#chatTexte').value || '').trim();
   if (!t) { toast('Écris ton message'); return; }
+  const conv = E.chatAvec || GROUPE;
+  const dest = conv === GROUPE ? '' : conv;
   // L'uuid naît ici : c'est le même en base, ce qui garde le repère « lu » valable au rechargement.
   const id = nouvelId();
   /* Signé de l'identifiant PERSONNEL (« st05 »), plus du rôle : deux personnes
      peuvent partager un rôle. La base le pose d'ailleurs elle-même
      (trigger t_messages_auteur), d'après le compte connecté. */
-  DB.chat.push({id, auteur:auteurMoi() || E.role,
+  DB.chat.push({id, auteur:auteurMoi() || E.role, dest,
                 date:AUJ_FR(), heure:heureCourante(), texte:t});
-  enregistrer('messages', {id, auteur_id:auteurMoi(), texte:t});
+  // Le destinataire ne part que pour un message privé : le groupe reste tel qu'avant.
+  enregistrer('messages', Object.assign({id, auteur_id:auteurMoi(), texte:t}, dest ? {destinataire_id: dest} : {}));
   $('#chatTexte').value = '';
-  toast('Message envoyé au staff');
+  toast(dest ? 'Message privé envoyé' : 'Message envoyé au staff');
+  marqueChatLu(conv);
   rendVue(); rendNav();
   window.scrollTo(0, document.body.scrollHeight);
 }
@@ -5285,14 +5396,29 @@ function completudePrepa(m){
           pct: Math.round((RUBRIQUES_PREPA.length - manquants.length) / RUBRIQUES_PREPA.length * 100)};
 }
 
-/* La rencontre à venir du groupe : celle marquée « à venir » au classeur, sinon
-   celle dont l'adversaire correspond au prochain match du championnat. */
+/* La fiche de préparation du prochain match du groupe.
+
+   28/10/2026 — Fathy : « des fois elle me propose encore le match passé ».
+   La fiche SOA du 24/10 était restée « à venir » au classeur ; elle passait
+   AVANT le calendrier, qui désignait pourtant JCA le 31/10. Désormais :
+   - une fiche dont la date est passée n'est jamais le prochain match,
+     quel que soit son statut ;
+   - la fiche du prochain match du CALENDRIER passe en premier (même
+     adversaire, même date si elle est connue) ;
+   - à défaut, une fiche « à venir » datée d'aujourd'hui ou plus tard.
+   Sans fiche, la carte de l'accueil affiche le match du calendrier seul. */
 function prochainMatch(equipe){
-  const ms = (DB.prepaMatch || []).filter(m => m.equipe === equipe);
-  const av = ms.find(m => m.statut === 'à venir');
-  if (av) return av;
+  const auj = AUJ();
+  const pasPasse = m => !/^\d{2}\/\d{2}\/\d{4}$/.test(m.date || '') || jourIso(m.date) >= auj;
+  const ms = (DB.prepaMatch || []).filter(m => m.equipe === equipe && pasPasse(m))
+    .sort((a, b) => String(jourIso(a.date)).localeCompare(String(jourIso(b.date))));
   const p = (DB.championnat || {}).prochain || {};
-  return ms.find(m => m.adversaire === p.adversaire) || null;
+  if (p.adversaire){
+    const meme = ms.filter(m => m.adversaire === p.adversaire);
+    const date = meme.find(m => m.date === p.date);
+    if (date || meme.length) return date || meme[0];
+  }
+  return ms.find(m => m.statut === 'à venir') || null;
 }
 
 const joursAvant = dateFr => {
@@ -8004,11 +8130,23 @@ function fusionneChampionnat(gabarit, ligne){
      joué. On le recalcule donc ici, chaque jour : le plus proche à partir
      d'aujourd'hui. Sans liste (ancien envoi), rien ne change. */
   if (Array.isArray(ligne.a_venir)){
-    sortie.aVenir = ligne.a_venir.slice();
+    sortie.aVenir = ligne.a_venir.map(m => Object.assign({}, m, {heure: heureMatch(m && m.heure)}));
     const futurs = matchsAVenirDe(sortie.aVenir);
     if (futurs.length) sortie.prochain = Object.assign({}, base.prochain || {}, futurs[0]);
   }
+  if (sortie.prochain) sortie.prochain = Object.assign({}, sortie.prochain, {heure: heureMatch(sortie.prochain.heure)});
   return sortie;
+}
+
+/* 28/10/2026 — Le classeur envoie l'heure des matchs à venir comme une date
+   de tableur (« Sun Dec 31 1899 03:0… ») : la cellule est au format heure, le
+   script la transforme en texte sans la mettre en forme. On ne garde qu'une
+   heure lisible (« 18:00 », « 18h00 ») ; sinon on n'affiche rien plutôt
+   qu'un texte faux. La vraie correction est dans le script du classeur. */
+function heureMatch(h){
+  const t = String(h || '').trim();
+  const m = t.match(/^(\d{1,2})\s*[:hH]\s*(\d{2})$/);
+  return m ? m[1].padStart(2, '0') + ':' + m[2] : '';
 }
 
 /* Les matchs d'une liste du calendrier qui ne sont pas encore passés, du plus
@@ -8485,7 +8623,8 @@ async function chargerSupabase(){
     // Le fil se lit dans l'ordre du temps ; on l'a demandé à rebours pour n'en prendre que la fin.
     chat: (msgs || []).slice().reverse().map(c => ({
       id: c.id, auteur: c.auteur_id || '', date: dateLocale(c.envoye_le),
-      heure: heure(c.envoye_le), texte: c.texte, systeme: !!c.systeme
+      heure: heure(c.envoye_le), texte: c.texte, systeme: !!c.systeme,
+      dest: c.destinataire_id || ''        // 28/10/2026 : message privé
     })),
     planning: (planningBase || []).map(w => ({
       equipe: w.equipe_code, lundi: String(w.lundi).slice(0, 10),
@@ -8606,7 +8745,27 @@ function poseServiceWorker(){
   try {
     if (!('serviceWorker' in navigator)) return;
     if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    /* 28/10/2026 — « je dois rafraîchir, et ce n'est pas à chaque fois que ça
+       fonctionne ». La page s'ouvre sur sa copie et la nouvelle version ne se
+       range qu'en arrière-plan : il fallait ouvrir deux fois pour la voir. Quand
+       un nouveau service worker prend la main, on recharge donc une fois — sauf
+       pendant un appel ou une saisie, où l'on ne coupe rien : la version
+       attendra la prochaine ouverture. */
+    const avaitUnGardien = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!avaitUnGardien) return;                     // toute première installation
+      try { if (sessionStorage.getItem('asa.maj')) return; sessionStorage.setItem('asa.maj', '1'); } catch (e){}
+      const saisie = [...document.querySelectorAll('textarea, input[type=text]')].some(x => (x.value || '').trim());
+      const appel = typeof seanceOuverte === 'function' && seanceOuverte();
+      if (saisie || appel){ toast('Nouvelle version prête : elle s\'appliquera à la prochaine ouverture.'); return; }
+      location.reload();
+    });
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      // L'application reste souvent ouverte des jours : on revérifie à chaque retour.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update().catch(() => {});
+      });
+    }).catch(() => {});
   } catch (e){}
 }
 
@@ -11068,11 +11227,11 @@ function raccourcisAccueil(){
     b.push(['Staff', `ouvreSous('staff')`]);
     b.push(['Rapport au président', `E.rapVue='president';vaVers(indexOnglet('Rapports'))`]);
     if (peutImprimerBadges()) b.push(['Badges', `ouvreSous('badges')`]);
-    b.push(['Partenaires', `ouvreSous('sponsors')`]);
+    b.push(['Gérer les partenaires', `ouvreSous('sponsors')`]);
   }
   if (E.role === 'dg'){
     b.push(['Rapports du DT', `E.rapVue='fiches';vaVers(indexOnglet('Rapports'))`]);
-    b.push(['Fil du staff', `ouvreSous('chat')`]);
+    b.push(['Chat du staff', `E.chatAvec=null;ouvreSous('chat')`]);
   }
   /* Le head coach : ses relances sont dans « À traiter », pas en double ici. */
   b.push(['Fatigue, 7 jours', `ouvreSous('fatigue')`]);
@@ -11081,10 +11240,17 @@ function raccourcisAccueil(){
 }
 
 /* 7. Le partenaire principal, sur une ligne. */
+/* 28/10/2026 — Fathy : « je ne trouve plus la possibilité de changer ou
+   modifier les sponsors ». Pour le DT, la ligne elle-même ouvre la gestion
+   (modifier, supprimer, ajouter), et elle le dit. */
 function lignePartenaire(){
   const p = (DB.sponsors || [])[0];
-  if (!p) return '';
-  return `<div class="acc-spo" style="--c:${esc(p.couleur || 'var(--or)')}"><span>${esc(p.niveau || 'Partenaire')}</span><b>${esc(p.nom || '')}</b></div>`;
+  const dt = PEUT_SPONSORS();
+  if (!p && !dt) return '';
+  const action = dt ? ` onclick="ouvreSous('sponsors')" role="button"` : '';
+  if (!p) return `<div class="acc-spo"${action}><span>Partenaires</span><b>Aucun partenaire</b><i>Ajouter ›</i></div>`;
+  return `<div class="acc-spo${dt ? ' clic' : ''}" style="--c:${esc(p.couleur || 'var(--or)')}"${action}>
+    <span>${esc(p.niveau || 'Partenaire')}</span><b>${esc(p.nom || '')}</b>${dt ? '<i>Gérer ›</i>' : ''}</div>`;
 }
 
 function vueAccueilLeger(){
