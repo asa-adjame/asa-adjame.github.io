@@ -1141,20 +1141,29 @@ const parEq = e => DB.joueurs.filter(j => j.equipe === e);
    aucune écriture ne part d'ici, rien n'est effacé côté serveur. */
 const EQUIPES_ACTIVES = ['pro', 'espoirs'];
 const equipeOuverte = e => !e || e === '*' || EQUIPES_ACTIVES.includes(e);
+/* 29/10/2026 — Fathy : « la priorité du DT, c'est l'équipe professionnelle :
+   elle doit s'afficher en premier ». La base rend les équipes sans ordre fixe
+   (souvent « espoirs » avant « pro », l'ordre alphabétique) et la plateforme
+   prenait la première. Toute liste d'équipes est donc rangée dans l'ordre
+   d'EQUIPES_ACTIVES : Pro d'abord, partout (accueil, joueurs, planning,
+   calendrier, appel). Un choix fait à la main (onglet Espoirs) est gardé. */
+const rangEquipe = id => { const i = EQUIPES_ACTIVES.indexOf(id); return i < 0 ? 99 : i; };
+const ordreEquipes = ids => (ids || []).slice().sort((a, b) => rangEquipe(a) - rangEquipe(b));
 function focusEquipes(){
   if (typeof DB === 'undefined' || !DB) return;
   const garde = x => equipeOuverte(x && x.equipe);
-  DB.equipes = (DB.equipes || []).filter(e => EQUIPES_ACTIVES.includes(e.id));
+  DB.equipes = (DB.equipes || []).filter(e => EQUIPES_ACTIVES.includes(e.id))
+                                 .sort((a, b) => rangEquipe(a.id) - rangEquipe(b.id));
   if (!DB.equipes.length) DB.equipes = [{id: 'pro', nom: 'Équipe Pro'}];
   ['joueurs', 'quiz', 'seances', 'oppositions', 'prepaMatch', 'systemes',
    'planning', 'comptesDemo'].forEach(k => {
     if (Array.isArray(DB[k])) DB[k] = DB[k].filter(garde);
   });
   (DB.staff || []).forEach(m => {
-    if (Array.isArray(m.equipes)) m.equipes = m.equipes.filter(e => EQUIPES_ACTIVES.includes(e));
+    if (Array.isArray(m.equipes)) m.equipes = ordreEquipes(m.equipes.filter(e => EQUIPES_ACTIVES.includes(e)));
   });
   if (typeof E !== 'undefined' && E){
-    E.equipes = (E.equipes || []).filter(e => EQUIPES_ACTIVES.includes(e));
+    E.equipes = ordreEquipes((E.equipes || []).filter(e => EQUIPES_ACTIVES.includes(e)));
     if (!E.equipes.length) E.equipes = DB.equipes.map(e => e.id);
     if (!E.equipes.includes(E.equipe)) E.equipe = E.equipes[0];
   }
@@ -1957,6 +1966,7 @@ function relieSession(){
                             : (DB.equipes || []).map(e => e.id);
   }
   if (!E.equipes.length) E.equipes = (DB.equipes || []).map(e => e.id);
+  E.equipes = ordreEquipes(E.equipes);                 // Pro d'abord (29/10/2026)
   if (!E.equipes.includes(E.equipe)) E.equipe = E.equipes[0];
   return true;
 }
@@ -1967,9 +1977,9 @@ function connexion(role, id, joueurId){
   E.moi = role === 'jr' ? parId(joueurId) : membre(id);
   E.joueur = role === 'jr' ? parId(joueurId) : null;
   E.equipes = role === 'jr' ? [E.joueur.equipe]
-            : (((E.moi || {}).equipes || []).length ? E.moi.equipes
+            : ordreEquipes(((E.moi || {}).equipes || []).length ? E.moi.equipes
                                                    : (DB.equipes || []).map(e => e.id));
-  E.equipe = E.equipes[0];
+  E.equipe = E.equipes[0];                             // Pro d'abord (29/10/2026)
   // On repart d'un écran propre : sans ça, ouvrir une session avec un autre rôle
   // atterrit sur le sous-écran du précédent, et rien ne garantit qu'il y ait droit.
   E.fiche = null; E.quiz = null; E.onglet = 0; E.sous = null;
