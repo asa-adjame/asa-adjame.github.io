@@ -996,6 +996,18 @@ table.tab tr.nous{background:rgba(255,178,70,.12)}
 .ct-d small{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--gris)}
 .ct-n{font-style:normal;background:var(--or);color:#16150F;border-radius:999px;min-width:19px;height:19px;
   padding:0 5px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+/* 30/10/2026 — cinq adverse : noms et note (« pas de liste ») */
+.cinq-nom{display:inline-flex;align-items:center;height:36px;padding:0 13px;border-radius:999px;
+  background:var(--surface2);border:1px solid var(--ligne);font-weight:600;font-size:13.5px}
+.cinq-note{display:grid;grid-template-columns:36px minmax(0,1fr);gap:12px;align-items:center}
+.cinq-note.avec{margin-top:12px;padding-top:12px;border-top:1px solid var(--ligne)}
+.cinq-ico{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;
+  border:1.5px dashed var(--gris2);color:var(--gris);font-family:'IBM Plex Mono',monospace;font-weight:700}
+.cinq-note b{display:block;font-size:14px;font-weight:600;line-height:1.35}
+.cinq-note small{display:block;color:var(--gris);font-size:12px;margin-top:3px;line-height:1.4}
+.a4-cinq-nom{height:9mm;padding:0 4mm;border:1.5px solid #1A1A18;border-radius:5mm;display:flex;align-items:center;
+  font-weight:700;font-size:11pt}
+.a4-cinq-note{margin:0;padding:2.5mm 3.5mm;border:1px dashed #8A8578;border-radius:2mm;font-style:italic;font-size:10.5pt;color:#3A3832}
 </style>
 </head>
 <body>
@@ -5182,8 +5194,16 @@ function ficheMatchA4(m){
 
     <div class="a4-bloc">
       <h3>Cinq majeur adverse</h3>
-      <div class="a4-cinq">${(m.cinq && m.cinq.length ? m.cinq : ['','','','',''])
-        .map(n => `<div class="a4-maillot">${n ? esc(n) : ''}</div>`).join('')}</div>
+      ${(() => {
+        /* 30/10/2026 : numéros en maillots, noms en étiquettes, une phrase
+           (« pas de liste ») en note — plus jamais une phrase dans un maillot. */
+        const c5 = cinqAdverse(m), vide = !c5.maillots.length && !c5.noms.length && !c5.note.length;
+        const maillots = vide ? ['', '', '', '', ''] : c5.maillots;
+        return `${maillots.length || c5.noms.length ? `<div class="a4-cinq">
+          ${maillots.map(n => `<div class="a4-maillot">${n ? esc(n) : ''}</div>`).join('')}
+          ${c5.noms.map(n => `<div class="a4-cinq-nom">${esc(n)}</div>`).join('')}</div>` : ''}
+          ${c5.note.map(t => `<p class="a4-cinq-note">${esc(t.charAt(0).toUpperCase() + t.slice(1))}</p>`).join('')}`;
+      })()}
     </div>
 
     <div class="a4-duo">
@@ -5399,6 +5419,26 @@ const rempli = v => Array.isArray(v)
   ? v.filter(x => String(x || '').trim()).length > 0
   : String(v || '').trim().length > 0;
 
+/* 30/10/2026 — LE CINQ ADVERSE N'EST PAS TOUJOURS UNE LISTE DE NUMÉROS.
+
+   Fathy : le head coach a écrit « Pas de liste officielle de l'adversaire »
+   (en début de saison, la liste n'est pas connue), et la plateforme essayait
+   de le faire tenir dans un maillot de 40 px. On trie donc ce qui est écrit :
+   - un numéro ou un code court (« 7 », « 10 », « 4A ») → un maillot ;
+   - un nom (« Koné », « Traoré A. ») → une étiquette, assez large pour lui ;
+   - une phrase (« pas de liste », « aucune info », plus de trois mots)
+     → une note, sur toute la largeur. */
+function cinqAdverse(m){
+  const l = (m && m.cinq || []).map(x => String(x || '').trim()).filter(Boolean);
+  const phrase = x => /\b(pas|aucun|aucune|inconnu|inconnue|non|sans|indisponible|à venir)\b/i.test(x)
+                      || x.split(/\s+/).length > 3;
+  return {
+    note:     l.filter(phrase),
+    maillots: l.filter(x => !phrase(x) && x.length <= 3),
+    noms:     l.filter(x => !phrase(x) && x.length > 3)
+  };
+}
+
 function completudePrepa(m){
   const manquants = RUBRIQUES_PREPA.filter(r => !rempli(m[r.cle])).map(r => r.lib);
   return {faits: RUBRIQUES_PREPA.length - manquants.length,
@@ -5493,11 +5533,18 @@ function vueProchainMatch(){
   <div class="med indispo"><p class="msg-txt">${esc(m.neutraliser)}</p></div>` : ''}
 
   ${complet ? `
-  ${rempli(m.cinq) ? `<div class="section-titre">Cinq majeur adverse</div>
-  <div class="carte"><div class="rang" style="gap:8px;flex-wrap:wrap">
-    ${(m.cinq || []).filter(n => String(n || '').trim()).map(n =>
-      `<span class="jl-num" style="width:40px;height:44px;border-radius:8px 8px 14px 14px;font-size:19px">${esc(n)}</span>`).join('')}
-  </div></div>` : ''}
+  ${rempli(m.cinq) ? (() => { const c5 = cinqAdverse(m); return `<div class="section-titre">Cinq majeur adverse</div>
+  <div class="carte">
+    ${c5.maillots.length || c5.noms.length ? `<div class="rang" style="gap:8px;flex-wrap:wrap">
+      ${c5.maillots.map(n => `<span class="jl-num" style="width:40px;height:44px;border-radius:8px 8px 14px 14px;font-size:19px">${esc(n)}</span>`).join('')}
+      ${c5.noms.map(n => `<span class="cinq-nom">${esc(n)}</span>`).join('')}
+    </div>` : ''}
+    ${c5.note.map(t => `<div class="cinq-note${c5.maillots.length || c5.noms.length ? ' avec' : ''}">
+      <span class="cinq-ico" aria-hidden="true">?</span>
+      <div><b>${esc(t.charAt(0).toUpperCase() + t.slice(1))}</b>
+        <small>Le cinq adverse se complétera au classeur dès que la liste sera connue.</small></div>
+    </div>`).join('')}
+  </div>`; })() : ''}
 
   <div class="section-titre">Scouting</div>
   ${bloc2('Leurs forces', m.forces)}
