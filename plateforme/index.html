@@ -1040,6 +1040,15 @@ table.tab tr.nous{background:rgba(255,178,70,.12)}
 .fm-a small{font-size:11.5px;color:var(--gris)}
 .fm-a em{font-style:normal;color:var(--alerte)}
 .fm-s{font-size:14px;font-weight:700}
+/* 01/11/2026 — photo de profil des joueurs */
+.av-j{position:relative;display:inline-block;border-radius:50%;overflow:visible}
+.av-j img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;border:1.5px solid var(--ligne)}
+.av-j i{position:absolute;right:-3px;bottom:-3px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--or);
+  color:#16150F;font-style:normal;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;display:grid;place-items:center;
+  border:1.5px solid var(--nuit)}
+.ph-act{display:flex;gap:10px;align-items:center;margin:10px 0}
+.ph-act .bouton{flex:1}
+.ph-retire{background:none;border:0;color:var(--danger);font:inherit;font-size:13px;cursor:pointer;padding:8px}
 </style>
 </head>
 <body>
@@ -2140,7 +2149,7 @@ function listeJoueurs(js, action, valeur){
     const v = valeur ? valeur(j) : {txt:note1(j).toFixed(1), coul:couleurNote(note1(j))};
     return `<button class="jl-item" onclick="${action}('${j.id}')">
       ${valeur ? `<span class="jl-rang">${i+1}</span>` : ''}
-      <span class="jl-num">${j.numero}</span>
+      ${(typeof avatarJoueur === 'function' && avatarJoueur(j, 38)) || `<span class="jl-num">${j.numero}</span>`}
       <span class="jl-bloc">
         <span class="jl-nom">${esc(j.nom)}</span>
         <span class="jl-meta">${esc(j.poste)} · ${j.taille} cm · ${esc(v.meta || (j.stats.matchs + ' matchs'))}</span>
@@ -2976,7 +2985,7 @@ function ficheJoueur(j, opt){
 
   <div class="carte">
     <div class="rang" style="align-items:flex-start">
-      <div class="jl-num" style="width:46px;height:46px;flex:0 0 46px;font-size:22px">${j.numero}</div>
+      ${avatarJoueur(j, 64) || `<div class="jl-num" style="width:46px;height:46px;flex:0 0 46px;font-size:22px">${j.numero}</div>`}
       <div style="min-width:0;flex:1">
         <div class="titre" style="font-size:22px">${esc(j.nom)}</div>
         <div style="font-size:12px;color:var(--gris)">${esc(j.poste)} · ${j.taille} cm · ${j.age} ans · ${esc(nomEq(j.equipe))}</div>
@@ -2988,6 +2997,8 @@ function ficheJoueur(j, opt){
       </div>
     </div>
   </div>
+
+  ${/* 01/11/2026 : la photo de profil (p3q_photos.js) */ boutonsPhotoJoueur(j)}
 
   ${PEUT_CLASSEUR(E.role) ? `<button class="bouton fant plein" style="margin-bottom:10px"
       onclick="imprimeFicheJoueur('${j.id}')">Imprimer la fiche A4 de ${esc(j.nom.split(' ')[0])}</button>` : ''}
@@ -3656,7 +3667,7 @@ function vueTirAnalyste(){
     return `${retour('Retour', 'E.fiche=null;SAISIE_PARCOURS=null;rendVue()')}
     <div class="carte">
       <div class="rang">
-        <div class="jl-num" style="width:44px;height:44px;flex:0 0 44px;font-size:20px">${j.numero}</div>
+        ${avatarJoueur(j, 44) || `<div class="jl-num" style="width:44px;height:44px;flex:0 0 44px;font-size:20px">${j.numero}</div>`}
         <div><div class="titre" style="font-size:20px">${esc(j.nom)}</div>
           <div class="carte-note">${esc(j.poste)} · ${esc(nomEq(j.equipe))} · ${b.nb} séance${b.nb>1?'s':''} en ${esc(nomParcours(p).toLowerCase())}</div></div>
         <div class="pousse" style="text-align:right">
@@ -8818,6 +8829,8 @@ async function enrichitDepuisPlateforme(){
        et tout le staff se retrouve avec zéro équipe. Voir le commentaire de
        relieSession() dans le noyau. */
     if (typeof relieSession === 'function') relieSession();
+    /* 01/11/2026 : les photos de profil, en arrière-plan (p3q_photos.js). */
+    if (typeof chargePhotos === 'function') setTimeout(chargePhotos, 0);
     return true;
   } catch (e){
     SOURCE.donnees = 'identite';
@@ -11523,6 +11536,121 @@ function blocMatchsJoueur(j){
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
+   PHOTOS DE PROFIL DES JOUEURS                                    (01/11/2026)
+
+   Fathy : « ajouter une photo de profil des joueurs à la place de simplement
+   mettre leur numéro ». Choix : le staff l'ajoute depuis la fiche du joueur
+   (DT, coachs, assistants, analyste), appareil photo ou galerie.
+
+   - La photo est recadrée au carré et réduite à 192 px (JPEG ≈ 10 ko) avant
+     de partir : un forfait mobile à Abidjan ne doit pas porter des photos
+     de 4 Mo.
+   - Elle vit dans sa propre table (photos_joueurs), pas dans « joueurs » que
+     la synchronisation de l'effectif réécrit.
+   - L'appareil garde une copie (asa-photos) : au démarrage, on ne demande à
+     la base que les dates de mise à jour, et on ne télécharge que les photos
+     nouvelles ou changées.
+   - Sans photo, rien ne change : le numéro reste affiché.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const PEUT_PHOTO = r => ['dt', 'hc', 'ca', 'cd', 'as', 'an'].includes(r);
+const CLE_PHOTOS = 'asa-photos';
+let PHOTOS = (() => { try { return JSON.parse(localStorage.getItem(CLE_PHOTOS) || '{}') || {}; } catch (e){ return {}; } })();
+
+const photoDe = id => (PHOTOS[id] && PHOTOS[id].photo) || '';
+function gardePhotos(){ try { localStorage.setItem(CLE_PHOTOS, JSON.stringify(PHOTOS)); } catch (e){} }
+
+/* L'avatar : la photo, avec le numéro en pastille. Sans photo, rien (l'appelant
+   garde son affichage du numéro). */
+function avatarJoueur(j, t){
+  const p = j && photoDe(j.id);
+  if (!p) return '';
+  t = t || 34;
+  return `<span class="av-j" style="width:${t}px;height:${t}px;flex:0 0 ${t}px">
+    <img src="${p}" alt="" loading="lazy">${j.numero != null && j.numero !== '' ? `<i>${esc(String(j.numero))}</i>` : ''}</span>`;
+}
+
+/* Au démarrage, après le chargement des données du club. */
+async function chargePhotos(){
+  if (!enLigne()) return;
+  const club = clubCourant();
+  if (!club) return;
+  try {
+    const liste = await api('photos_joueurs?select=joueur_id,maj&club_id=eq.' + club) || [];
+    const enBase = {};
+    liste.forEach(x => { enBase[x.joueur_id] = x.maj; });
+    // retirées en base : on les retire ici
+    Object.keys(PHOTOS).forEach(id => { if (!(id in enBase)) delete PHOTOS[id]; });
+    const aCharger = Object.keys(enBase).filter(id => !PHOTOS[id] || PHOTOS[id].maj !== enBase[id]);
+    for (let i = 0; i < aCharger.length; i += 20){
+      const lot = aCharger.slice(i, i + 20).map(id => '"' + String(id).replace(/"/g, '') + '"').join(',');
+      const l = await api('photos_joueurs?select=joueur_id,photo,maj&club_id=eq.' + club + '&joueur_id=in.(' + encodeURIComponent(lot) + ')') || [];
+      l.forEach(x => { PHOTOS[x.joueur_id] = {photo: x.photo, maj: x.maj}; });
+    }
+    gardePhotos();
+    if (aCharger.length && typeof rendVue === 'function' && E.role) rendVue();
+  } catch (e){ /* sans photos, la plateforme marche comme avant */ }
+}
+
+/* Recadrer au carré, réduire, compresser. */
+function reduitPortrait(fichier){
+  return new Promise((ok, ko) => {
+    const lecteur = new FileReader();
+    lecteur.onerror = () => ko(new Error('lecture impossible'));
+    lecteur.onload = () => {
+      const img = new Image();
+      img.onerror = () => ko(new Error('image illisible'));
+      img.onload = () => {
+        const cote = Math.min(img.width, img.height), T = 192;
+        const c = document.createElement('canvas'); c.width = T; c.height = T;
+        const x = c.getContext('2d');
+        x.imageSmoothingQuality = 'high';
+        // carré centré, un peu remonté : un portrait garde la tête
+        const sx = (img.width - cote) / 2, sy = Math.max(0, (img.height - cote) / 2 - (img.height - cote) * 0.2);
+        x.drawImage(img, sx, sy, cote, cote, 0, 0, T, T);
+        ok(c.toDataURL('image/jpeg', 0.72));
+      };
+      img.src = lecteur.result;
+    };
+    lecteur.readAsDataURL(fichier);
+  });
+}
+
+async function photoChoisieJoueur(input, id){
+  const f = input.files && input.files[0];
+  input.value = '';
+  if (!f || !PEUT_PHOTO(E.role)) return;
+  try {
+    const photo = await reduitPortrait(f);
+    const maj = new Date().toISOString();
+    PHOTOS[id] = {photo, maj}; gardePhotos();
+    await enregistrer('photos_joueurs', {joueur_id: id, photo, maj, par: auteurMoi() || E.role}, 'joueur_id');
+    toast('Photo enregistrée');
+    rendVue();
+  } catch (e){ toast('Photo illisible : essaie une autre image.'); }
+}
+
+async function retirePhotoJoueur(id){
+  if (!PEUT_PHOTO(E.role) || !PHOTOS[id]) return;
+  if (!confirm('Retirer la photo de ce joueur ? Son numéro s\'affichera à la place.')) return;
+  delete PHOTOS[id]; gardePhotos();
+  await supprimer('photos_joueurs', 'joueur_id=eq.' + encodeURIComponent(id));
+  toast('Photo retirée');
+  rendVue();
+}
+
+/* Les boutons de la fiche, pour le staff autorisé. */
+function boutonsPhotoJoueur(j){
+  if (!PEUT_PHOTO(E.role)) return '';
+  const a = !!photoDe(j.id);
+  return `<input id="ph-${esc(j.id)}" type="file" accept="image/*" hidden onchange="photoChoisieJoueur(this,'${esc(j.id)}')">
+  <div class="ph-act">
+    <button class="bouton fant" onclick="document.getElementById('ph-${esc(j.id)}').click()">${ico('photo')} ${a ? 'Changer la photo' : 'Ajouter une photo'}</button>
+    ${a ? `<button class="ph-retire" onclick="retirePhotoJoueur('${esc(j.id)}')">Retirer</button>` : ''}
+  </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
    ENCODEUR QR — mode octet, correction M, versions 1 à 10
 
    Écrit ici plutôt qu'appelé depuis un CDN : le QR s'affiche sur l'écran du
@@ -12675,7 +12803,7 @@ function ligneAppel(j, p, avecBouton, s){
   const peutPartir = avecBouton && voit && p && p.present !== false && !p.depart;
   const formOuvert = peutPartir && E.departEnCours === j.id;
   return `<div class="pt-l">
-    <span class="pt-num">${esc(j.numero == null ? '—' : j.numero)}</span>
+    ${avatarJoueur(j, 32) || `<span class="pt-num">${esc(j.numero == null ? '—' : j.numero)}</span>`}
     <span class="pt-nom">${esc(j.nom)}</span>
     <span class="pt-h ${dep ? 'retard' : cl}">${esc(tx)}</span>
     ${(avecBouton && !p)
@@ -12844,7 +12972,7 @@ function ligneBilan(l, s){
   /* espaces insécables : « 1 h 20 » ne se coupe pas en fin de ligne */
   const duree = l.minutes != null ? ' · présent ' + enDuree(l.minutes).replace(/ /g, ' ') : '';
   return `<div class="bl-l">
-    <span class="pt-num">${esc(j.numero == null ? '—' : j.numero)}</span>
+    ${avatarJoueur(j, 32) || `<span class="pt-num">${esc(j.numero == null ? '—' : j.numero)}</span>`}
     <span class="bl-bloc"><span class="pt-nom">${esc(j.nom)}</span>
       <span class="bl-det"><b style="color:${couleurArr}">Arrivée</b> ${arr}</span>${
       dep ? `<span class="bl-det"><b>Départ</b> ${dep}${esc(duree)}</span>` : ''}</span></div>`;
