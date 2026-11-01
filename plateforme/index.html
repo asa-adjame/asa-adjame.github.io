@@ -1008,6 +1008,38 @@ table.tab tr.nous{background:rgba(255,178,70,.12)}
 .a4-cinq-nom{height:9mm;padding:0 4mm;border:1.5px solid #1A1A18;border-radius:5mm;display:flex;align-items:center;
   font-weight:700;font-size:11pt}
 .a4-cinq-note{margin:0;padding:2.5mm 3.5mm;border:1px dashed #8A8578;border-radius:2mm;font-style:italic;font-size:10.5pt;color:#3A3832}
+/* 01/11/2026 — stats de match : moyennes, historique façon Flashscore, feuilles */
+.moy-l{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:8px;background:var(--surface);
+  border:1px solid var(--ligne);border-radius:var(--r);padding:10px 4px}
+.moy-l div{display:flex;flex-direction:column;align-items:center;gap:2px}
+.moy-l b{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700}
+.moy-l span{font-size:10.5px;color:var(--gris);text-transform:uppercase;letter-spacing:.04em}
+.hm{padding:4px 10px}
+.hm-l{display:grid;grid-template-columns:minmax(0,1fr) repeat(6,26px) 22px;gap:3px;align-items:center;
+  padding:9px 0;border-top:1px solid var(--ligne);font-size:12.5px;text-align:center}
+.hm-l[role=button]{cursor:pointer}
+.hm-l:first-child,.hm-t+.hm-l{border-top:0}
+.hm-t{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--gris);padding:6px 0;border-bottom:1px solid var(--ligne)}
+.hm-t span:first-child{text-align:left}
+.hm-m{display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0}
+.hm-m small{font-size:10px;color:var(--gris)}
+.hm-m>span{display:flex;justify-content:space-between;gap:6px;color:var(--gris);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-m>span i{font-style:normal;font-family:'IBM Plex Mono',monospace;padding-right:6px}
+.hm-m>span.gagne{color:var(--texte);font-weight:700}
+.hm-l b.mono{font-weight:700;color:var(--or)}
+.hm-banc{grid-column:span 6;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--gris);letter-spacing:.05em;text-transform:uppercase}
+.vd{width:20px;height:20px;border-radius:5px;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff}
+.vd.v{background:var(--physique)}
+.vd.d{background:var(--danger)}
+.fm-l{display:grid;grid-template-columns:58px minmax(0,1fr) auto 22px;gap:9px;align-items:center;width:100%;
+  background:none;border:0;border-top:1px solid var(--ligne);padding:11px 0;color:var(--texte);font:inherit;text-align:left;cursor:pointer}
+.fm-l:first-child{border-top:0}
+.fm-d{font-size:11px;color:var(--gris)}
+.fm-a{min-width:0;display:flex;flex-direction:column;gap:2px}
+.fm-a b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fm-a small{font-size:11.5px;color:var(--gris)}
+.fm-a em{font-style:normal;color:var(--alerte)}
+.fm-s{font-size:14px;font-weight:700}
 </style>
 </head>
 <body>
@@ -2534,6 +2566,7 @@ function vueClassement(){
       <td class="num" style="color:${(l.pp-l.pc)>=0?'var(--physique)':'var(--danger)'}">${(l.pp-l.pc)>=0?'+':''}${l.pp-l.pc}</td>
     </tr>`).join('')}</tbody>
   </table></div>
+  ${listeFeuillesMatch()}
   ${listeResultats()}`;
 }
 
@@ -2983,6 +3016,9 @@ function ficheJoueur(j, opt){
     <div class="carte-note pousse">moyenne générale</div></div>
     ${courbe([j.moyennes], ['Moyenne'], ['#FFB246'], j.moyennes.map((_, i) => moisCourt(i, j)))}</div>` : ''}
 
+  ${/* 01/11/2026 : pourcentages + historique des matchs (p3p_stats.js), d'après
+       les feuilles de match. L'ancien bloc ne sert plus que sans feuille. */
+    blocMatchsJoueur(j) || `
   <div class="section-titre">Statistiques de match</div>
   <div class="g4">
     <div class="tuile"><div class="tuile-val">${m(s.pts)}</div><div class="tuile-lib">Points<br>par match</div></div>
@@ -2997,7 +3033,7 @@ function ficheJoueur(j, opt){
       <div class="tuile-lib">3 pts<br>${s.m3}/${s.a3}</div></div>
     <div class="tuile blanc"><div class="tuile-val">${s.lfa ? pct(s.lfm,s.lfa) + '<small style="font-size:14px">%</small>' : '—'}</div>
       <div class="tuile-lib">Lancers<br>${s.lfm}/${s.lfa}</div></div>
-  </div>
+  </div>`}
 
   ${(EST_COACH(E.role) || E.role === 'jr') ? blocClips(j, EST_COACH(E.role)) : ''}
 
@@ -9271,8 +9307,14 @@ function ouvreRencontre(id){
   if (!r) return;
   const v = x => x == null ? '—' : x;
   const tir = (m, a) => m + (a != null ? '/' + a : '');
+  /* 01/11/2026 : l'écart entre les points des joueurs et le score se dit ici aussi. */
+  const ctl = typeof controleFeuille === 'function' ? controleFeuille(r) : null;
   ouvreFeuille(`<div class="feuille-titre">${esc(r.adversaire)} · ${r.pour} – ${r.contre}</div>
     <div class="feuille-sous">${esc(nomEq(r.equipe))} · ${esc(jourFr(r.date))}</div>
+    ${ctl ? `<div class="msg" style="margin-top:10px;border-left-color:var(--alerte)"><div class="msg-txt">
+      Les stats des joueurs totalisent <b>${ctl.pts} points</b> pour <b>${ctl.score} marqués</b> :
+      ${ctl.ecart > 0 ? `il manque ${ctl.ecart} point${ctl.ecart > 1 ? 's' : ''}` : `${-ctl.ecart} point${ctl.ecart < -1 ? 's' : ''} de trop`}.
+      À vérifier sur la feuille papier.</div></div>` : ''}
     <div class="tab-enrob" style="margin-top:12px"><table class="tab">
       <thead><tr><th>Joueur</th><th class="num">Min</th><th class="num">Pts</th><th class="num">LF</th><th class="num">2 pts</th>
         <th class="num">3 pts</th><th class="num">F</th><th class="num">Reb</th><th class="num">PD</th></tr></thead>
@@ -11187,7 +11229,10 @@ function banniereLegere(){
   const C = DB.championnat;
   const nous = C.classement.find(x => x.nous) || {};
   const rang = C.classement.findIndex(x => x.nous) + 1;
-  const der = (C.resultats || [])[0];
+  /* 01/11/2026 : le plus récent entre la feuille de match et le classeur
+     (p3p_stats.js). Le classeur seul montrait encore le 20/10 après le 31/10. */
+  const dm = dernierMatch(E.equipe);
+  const der = dm ? {pour: dm.pour, contre: dm.contre, adversaire: dm.adversaire, date: jourFr(dm.iso), id: dm.id} : null;
   const g = der && der.pour > der.contre;
   return `<div class="banniere">
     <div class="ban-sur">${esc(C.instance)}</div>
@@ -11197,7 +11242,7 @@ function banniereLegere(){
       <div><div class="ban-chiffre">${nous.v || 0}–${nous.d || 0}</div><div class="ban-lib">bilan</div></div>
       <div><div class="ban-chiffre">${C.journee}<span style="font-size:15px;color:var(--gris)">/${C.journees}</span></div><div class="ban-lib">journées</div></div>
     </div>
-    ${der ? `<p class="ban-txt acc-der">Dernier match · <b style="color:${g ? 'var(--physique)' : 'var(--danger)'}">${g ? 'V' : 'D'} ${der.pour}–${der.contre}</b> contre ${esc(der.adversaire)} · ${esc(der.date)}</p>` : ''}
+    ${der ? `<p class="ban-txt acc-der"${der.id ? ` onclick="ouvreRencontre('${esc(der.id)}')" role="button" style="cursor:pointer"` : ''}>Dernier match · <b style="color:${g ? 'var(--physique)' : 'var(--danger)'}">${g ? 'V' : 'D'} ${der.pour}–${der.contre}</b> contre ${esc(der.adversaire)} · ${esc(der.date)}${der.id ? ' <span style="color:var(--or)">· stats ›</span>' : ''}</p>` : ''}
     <button class="bouton fant plein" style="margin-top:10px" onclick="ouvreSous('classement')">Classement et résultats</button>
   </div>`;
 }
@@ -11319,6 +11364,162 @@ function vueAccueilLeger(){
   ${tuilesAccueil()}
   ${raccourcisAccueil()}
   ${lignePartenaire()}`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   STATS DE MATCH — historique du joueur, dernier match, feuilles   (01/11/2026)
+
+   Demandes de Fathy :
+   - « En fonction des stats entrées par Oumar, je veux que le joueur ait un
+     historique de ses matchs comme celui de la capture (Flashscore), et tout
+     en haut des statistiques en pourcentage. »
+   - « Dans le bloc Dernier match, le DT voit encore le match du 20/10 alors
+     qu'il y a eu un match le 31/10. »
+   - Les feuilles de match saisies doivent se voir hors de l'onglet Match
+     (le DT, le head coach et les dirigeants ne l'ont pas), avec un
+     avertissement quand les stats ne collent pas au score.
+
+   Source unique : les feuilles de match enregistrées par l'onglet Match
+   (tables rencontres + stats_match, relues dans DB.rencontres). Rien n'est
+   recalculé ailleurs ; rien n'est écrit d'ici.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const isoMatch = d => /^\d{2}\/\d{2}\/\d{4}$/.test(String(d || '')) ? jourIso(d) : String(d || '').slice(0, 10);
+const dateCourte = iso => { const [a, m, j] = String(iso || '').split('-'); return j ? `${j}.${m}.${a.slice(2)}` : esc(iso); };
+const aJoue = l => !!l && ((+l.min || 0) > 0 || (+l.pts || 0) > 0);
+const pctDe = (m, a) => a ? Math.round(m / a * 100) : null;
+
+/* La feuille complète (tous les joueurs) ne s'ouvre que pour le staff : un
+   joueur ne reçoit de la base que sa propre ligne. */
+const EST_STAFF_STATS = () => E.role !== 'jr';
+
+/* ─────────────────────────────────────────── 1. le dernier match du club */
+
+/* Le plus récent, toutes sources confondues : la feuille de match d'Oumar
+   (arrive le soir même) ou le résultat du classeur du championnat (arrive
+   quand le classeur est renvoyé). Le classeur n'avait pas été renvoyé depuis
+   le 23/10 : l'accueil montrait encore un match du 20/10. */
+function dernierMatch(eq){
+  const l = [];
+  (DB.rencontres || []).filter(r => !eq || r.equipe === eq).forEach(r =>
+    l.push({iso: isoMatch(r.date), adversaire: r.adversaire, pour: +r.pour || 0, contre: +r.contre || 0, id: r.id}));
+  ((DB.championnat || {}).resultats || []).forEach(r =>
+    l.push({iso: isoMatch(r.date), adversaire: r.adversaire, pour: +r.pour || 0, contre: +r.contre || 0}));
+  return l.filter(x => x.iso && x.adversaire)
+          .sort((a, b) => b.iso.localeCompare(a.iso) || (b.id ? 1 : 0) - (a.id ? 1 : 0))[0] || null;
+}
+
+/* ─────────────────────────────────────────── 2. les feuilles de match */
+
+/* Les points des joueurs contre le score : l'écart dit qu'une feuille est
+   incomplète (31/10 : 58 points de stats pour 73 marqués). */
+function controleFeuille(r){
+  const lg = r.lignes || [];
+  if (!lg.length) return null;
+  const pts = lg.reduce((a, l) => a + (+l.pts || 0), 0);
+  return pts === (+r.pour || 0) ? null : {pts, score: +r.pour || 0, ecart: (+r.pour || 0) - pts};
+}
+
+function listeFeuillesMatch(){
+  const eqs = (E.equipes && E.equipes.length) ? E.equipes : null;
+  const rs = (DB.rencontres || []).filter(r => !eqs || eqs.includes(r.equipe))
+    .slice().sort((a, b) => isoMatch(b.date).localeCompare(isoMatch(a.date)));
+  if (!rs.length) return '';
+  const plusieurs = eqs && eqs.length > 1;
+  return `<div class="section-titre">Feuilles de match</div>
+  <p class="carte-note" style="margin:-4px 0 10px">Saisies par l'onglet Match. Touche un match pour voir les stats joueur par joueur.</p>
+  <div class="carte" style="padding:4px 14px">
+    ${rs.map(r => {
+      const g = (+r.pour || 0) > (+r.contre || 0), c = controleFeuille(r), n = (r.lignes || []).length;
+      return `<button class="fm-l" onclick="ouvreRencontre('${esc(r.id)}')">
+        <span class="mono fm-d">${dateCourte(isoMatch(r.date))}</span>
+        <span class="fm-a"><b>${esc(r.adversaire)}</b>
+          <small>${plusieurs ? esc(nomEq(r.equipe)) + ' · ' : ''}${n} joueur${n > 1 ? 's' : ''}${c ? ` · <em>stats : ${c.pts} pts sur ${c.score} marqués</em>` : ''}</small></span>
+        <span class="mono fm-s">${r.pour}–${r.contre}</span>
+        <span class="vd ${g ? 'v' : 'd'}">${g ? 'V' : 'D'}</span>
+      </button>`;
+    }).join('')}
+  </div>`;
+}
+
+/* ─────────────────────────────────────────── 3. le joueur : pourcentages + historique */
+
+/* Les matchs de son équipe (et ceux où il figure), du plus récent au plus
+   ancien. Sans ligne à son nom : il n'était pas sur la feuille. */
+function matchsDuJoueur(j){
+  return (DB.rencontres || [])
+    .filter(r => r.equipe === j.equipe || (r.lignes || []).some(l => l.joueur === j.id))
+    .map(r => ({r, l: (r.lignes || []).find(l => l.joueur === j.id) || null}))
+    .sort((a, b) => isoMatch(b.r.date).localeCompare(isoMatch(a.r.date)));
+}
+
+/* Les totaux, sur les matchs joués. Un tir n'entre dans un pourcentage que
+   si ses tentatives ont été relevées (case laissée vide = pas mesuré). */
+function totauxJoueur(liste){
+  const t = {joues: 0, min: 0, pts: 0, reb: 0, pd: 0, int: 0, bp: 0,
+             m2: 0, a2: 0, m3: 0, a3: 0, lfm: 0, lfa: 0, nReb: 0, nPd: 0, nInt: 0, nBp: 0};
+  liste.forEach(({l}) => {
+    if (!aJoue(l)) return;
+    t.joues++; t.min += +l.min || 0; t.pts += +l.pts || 0;
+    [['reb', 'nReb'], ['pd', 'nPd'], ['int', 'nInt'], ['bp', 'nBp']].forEach(([k, n]) => {
+      if (l[k] != null){ t[k] += +l[k] || 0; t[n]++; }
+    });
+    if (l.a2 != null){ t.m2 += +l.m2 || 0; t.a2 += +l.a2 || 0; }
+    if (l.a3 != null){ t.m3 += +l.m3 || 0; t.a3 += +l.a3 || 0; }
+    if (l.lfa != null){ t.lfm += +l.lfm || 0; t.lfa += +l.lfa || 0; }
+  });
+  return t;
+}
+
+function blocMatchsJoueur(j){
+  const liste = matchsDuJoueur(j);
+  if (!liste.length) return '';
+  const t = totauxJoueur(liste);
+  const moy = (v, n) => n ? (v / n).toFixed(1).replace('.', ',') : '—';
+  const tuilePct = (lib, m, a, cls) => {
+    const p = pctDe(m, a);
+    return `<div class="tuile ${cls}"><div class="tuile-val" style="${p != null ? 'color:' + couleurPct(p) : ''}">${p != null ? p + '<small style="font-size:13px">%</small>' : '—'}</div>
+      <div class="tuile-lib">${lib}<br><span class="mono">${a ? m + '/' + a : 'pas relevé'}</span></div></div>`;
+  };
+
+  return `<div class="section-titre">Statistiques de match</div>
+  <p class="carte-note" style="margin:-4px 0 10px">${t.joues} match${t.joues > 1 ? 's' : ''} joué${t.joues > 1 ? 's' : ''} sur ${liste.length} · d'après les feuilles de match.</p>
+  <div class="g4">
+    ${tuilePct('Tirs', t.m2 + t.m3, t.a2 + t.a3, '')}
+    ${tuilePct('2 pts', t.m2, t.a2, 'bleu')}
+    ${tuilePct('3 pts', t.m3, t.a3, 'blanc')}
+    ${tuilePct('Lancers', t.lfm, t.lfa, 'vert')}
+  </div>
+  <div class="moy-l">
+    <div><b>${moy(t.pts, t.joues)}</b><span>pts</span></div>
+    <div><b>${moy(t.reb, t.nReb)}</b><span>reb</span></div>
+    <div><b>${moy(t.pd, t.nPd)}</b><span>passes</span></div>
+    <div><b>${moy(t.int, t.nInt)}</b><span>int</span></div>
+    <div><b>${moy(t.bp, t.nBp)}</b><span>bp</span></div>
+    <div><b>${moy(t.min, t.joues)}</b><span>min</span></div>
+  </div>
+  <p class="carte-note" style="margin:6px 0 0;text-align:center">moyennes par match joué</p>
+
+  <div class="section-titre">Derniers matchs</div>
+  <div class="carte hm">
+    <div class="hm-l hm-t"><span>Match</span><span>MIN</span><span>PTS</span><span>R</span><span>P</span><span>IN</span><span>BP</span><span></span></div>
+    ${liste.map(({r, l}) => {
+      const g = (+r.pour || 0) > (+r.contre || 0);
+      const v = x => x == null ? '—' : x;
+      const club = esc((DB.club || {}).sigle || 'ASA');
+      const tete = `<span class="hm-m"><small class="mono">${dateCourte(isoMatch(r.date))}</small>
+          <span class="${g ? 'gagne' : ''}">${club}<i>${r.pour}</i></span>
+          <span class="${g ? '' : 'gagne'}">${esc(r.adversaire)}<i>${r.contre}</i></span></span>`;
+      const fin = `<span class="vd ${g ? 'v' : 'd'}">${g ? 'V' : 'D'}</span>`;
+      const ouvre = EST_STAFF_STATS() ? ` onclick="ouvreRencontre('${esc(r.id)}')" role="button"` : '';
+      if (!aJoue(l)) return `<div class="hm-l"${ouvre}>${tete}
+        <span class="hm-banc">${l ? 'Sur le banc' : 'Pas sur la feuille'}</span>${fin}</div>`;
+      return `<div class="hm-l"${ouvre}>${tete}
+        <span class="mono">${Math.round(+l.min || 0)}</span><b class="mono">${l.pts}</b>
+        <span class="mono">${v(l.reb)}</span><span class="mono">${v(l.pd)}</span>
+        <span class="mono">${v(l.int)}</span><span class="mono">${v(l.bp)}</span>${fin}</div>`;
+    }).join('')}
+  </div>`;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
