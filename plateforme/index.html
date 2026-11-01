@@ -1049,6 +1049,32 @@ table.tab tr.nous{background:rgba(255,178,70,.12)}
 .ph-act{display:flex;gap:10px;align-items:center;margin:10px 0}
 .ph-act .bouton{flex:1}
 .ph-retire{background:none;border:0;color:var(--danger);font:inherit;font-size:13px;cursor:pointer;padding:8px}
+/* 01/11/2026 — ORDINATEUR : moins de vide (Fathy : « il y a trop de place libre »).
+   La zone de contenu se rétrécissait à la taille de ce qu'elle contenait
+   (marges auto dans une colonne flex) : 860 px sur l'accueil, 615 px sur une
+   fiche, sur 1190 disponibles. Elle prend désormais toute la largeur ; les
+   écrans principaux passent sur deux colonnes, les autres restent sur une
+   colonne de 1000 px centrée. Sur téléphone, rien ne change. */
+.dsk2>.dsk-g>:first-child,.dsk2>.dsk-d>:first-child{margin-top:0}
+@media screen and (min-width:1100px){
+  #app.on>.vue{margin:0 0 0 248px;width:auto;align-self:stretch;max-width:none;
+    padding:28px max(32px, calc((100vw - 248px - 1280px) / 2)) 48px}
+  #app.on>.vue>*{max-width:1000px;margin-left:0;margin-right:auto}
+  #app.on>.vue>.dsk2,#app.on>.vue>.chat2,#app.on>.vue>.jl{max-width:none}
+  .dsk2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
+  .dsk2>.dsk-g>.section-titre:first-child,.dsk2>.dsk-d>.section-titre:first-child{margin-top:4px}
+  .jl{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .chat2{display:grid;grid-template-columns:340px minmax(0,1fr);gap:22px;align-items:start}
+  .chat2-l{position:sticky;top:84px;max-height:calc(100vh - 110px);overflow:auto;padding-right:4px}
+  .chat2-c{background:var(--surface);border:1px solid var(--ligne);border-radius:var(--r);padding:18px 20px 0;
+    max-height:calc(100vh - 200px);overflow:auto;position:sticky;top:84px}
+  .chat2-c .chat-saisie{position:sticky;bottom:0;background:var(--surface);padding:10px 0 16px;margin-top:8px;z-index:2}
+  .chat2-titre{font-size:26px !important;margin-bottom:2px}
+  .ct-l.actif{background:rgba(255,178,70,.10);border-radius:12px;margin:0 -8px;padding-left:8px;padding-right:8px;width:calc(100% + 16px)}
+}
+@media screen and (min-width:1500px){
+  .jl{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 </style>
 </head>
 <body>
@@ -2210,7 +2236,8 @@ function vueAccueil(){
   /* Ce que la personne doit faire aujourd'hui passe avant le championnat : la
      fatigue pour le joueur, son retour de la semaine pour le kiné, le
      préparateur physique et le head coach. */
-  return `${carteFatigueJoueur()}${carteMonEcheance()}
+  /* 01/11/2026 : sur ordinateur, deux colonnes (.dsk2) ; empilées sur téléphone. */
+  return `<div class="dsk2"><div class="dsk-g">${carteFatigueJoueur()}${carteMonEcheance()}
   <div class="banniere">
     <div class="ban-sur">${esc(C.instance)}</div>
     <div class="ban-titre">${esc(C.nom)}</div>
@@ -2227,6 +2254,7 @@ function vueAccueil(){
 
   ${blocPlanningAccueil()}
 
+  </div><div class="dsk-d">
   <div class="section-titre">Derniers résultats</div>
   <div class="carte" style="padding:6px 14px">
     ${C.resultats.map(r => {
@@ -2257,7 +2285,7 @@ function vueAccueil(){
     <div class="spo-nom">${esc(principal.nom||'')}</div>
     <p class="msg-txt">${esc(principal.texte||'')}</p>
     ${E.role === 'dt' ? `<button class="bouton fant" style="margin-top:11px" onclick="ouvreSous('sponsors')">Gérer les partenaires</button>` : ''}
-  </div>`;
+  </div></div></div>`;
 }
 
 /* Le prochain match du groupe de la personne, pas celui du club : un espoir n'a
@@ -2564,6 +2592,7 @@ function vueClassement(){
   return `${retour('Accueil', 'fermeSous()')}
   <h1 class="vue-titre">Classement et résultats</h1>
   <p class="vue-sous">${esc(C.nom)} · ${esc(C.instance)} · après ${C.journee} journées.</p>
+  <div class="dsk2"><div class="dsk-g">
   <div class="tab-enrob"><table class="tab">
     <thead><tr><th>#</th><th>Équipe</th><th class="num">J</th><th class="num">V</th><th class="num">D</th>
       <th class="num">Marqués</th><th class="num">Encaissés</th><th class="num">Diff.</th></tr></thead>
@@ -2575,8 +2604,10 @@ function vueClassement(){
       <td class="num" style="color:${(l.pp-l.pc)>=0?'var(--physique)':'var(--danger)'}">${(l.pp-l.pc)>=0?'+':''}${l.pp-l.pc}</td>
     </tr>`).join('')}</tbody>
   </table></div>
+  </div><div class="dsk-d">
   ${listeFeuillesMatch()}
-  ${listeResultats()}`;
+  ${listeResultats()}
+  </div></div>`;
 }
 
 /* Les résultats, sortis de l'accueil le 27/10/2026 : ils vivent avec le classement. */
@@ -2982,6 +3013,7 @@ function ficheJoueur(j, opt){
 
   return `
   ${opt.retour ? retour('Retour', opt.retour) : ''}
+  <div class="dsk2"><div class="dsk-g">
 
   <div class="carte">
     <div class="rang" style="align-items:flex-start">
@@ -3027,6 +3059,7 @@ function ficheJoueur(j, opt){
     <div class="carte-note pousse">moyenne générale</div></div>
     ${courbe([j.moyennes], ['Moyenne'], ['#FFB246'], j.moyennes.map((_, i) => moisCourt(i, j)))}</div>` : ''}
 
+  </div><div class="dsk-d">
   ${/* 01/11/2026 : pourcentages + historique des matchs (p3p_stats.js), d'après
        les feuilles de match. L'ancien bloc ne sert plus que sans feuille. */
     blocMatchsJoueur(j) || `
@@ -3109,7 +3142,7 @@ function ficheJoueur(j, opt){
     <textarea class="champ" id="dirTexte" placeholder="Une phrase applicable, pas un discours."></textarea>
     <button class="bouton plein" style="margin-top:10px" onclick="envoieDirective('${j.id}')">Envoyer à ${esc(j.nom.split(' ')[0])}</button>
   </div>` : ''}
-  `;
+  </div></div>`;
 }
 
 function enregistreMotCoach(id){
@@ -4213,17 +4246,31 @@ function ouvreConv(conv){
   marqueChatLu(conv);
   rendVue(); rendNav();
   // Le plus récent d'abord : on arrive en bas de la conversation.
-  setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 0);
+  setTimeout(basChat, 0);
 }
+/* 01/11/2026 — sur ordinateur, contacts à gauche et conversation à droite :
+   c'est le panneau de droite qui défile, pas la page. */
+const chatLarge = () => !!(window.matchMedia && matchMedia('(min-width:1100px)').matches);
+function basChat(){
+  const p = document.getElementById('chatPane');
+  if (p) p.scrollTop = p.scrollHeight; else window.scrollTo(0, document.body.scrollHeight);
+}
+try {
+  matchMedia('(min-width:1100px)').addEventListener('change', () => {
+    if (E.role && (PLAN[E.role][E.onglet] || [])[1] === 'Chat') { rendVue(); setTimeout(basChat, 0); }
+  });
+} catch (e){}
 function fermeConv(){ E.chatAvec = null; rendVue(); window.scrollTo(0, 0); }
 
 function vueChat(){
-  if (E.chatAvec) return vueConversation(E.chatAvec);
+  const large = chatLarge(), actif = E.chatAvec || GROUPE;
+  if (E.chatAvec && !large) return vueConversation(E.chatAvec);
+  if (large) marqueChatLu(actif);       // la conversation ouverte à droite est lue
 
   const ligne = (conv, titre, sous, couleur, court) => {
     const f = filDe(conv), der = f[f.length - 1], n = nonLusChat(conv);
     return {quand: der ? (der.date + ' ' + der.heure) : '',
-      html: `<button class="ct-l" onclick="ouvreConv('${esc(conv)}')">
+      html: `<button class="ct-l${large && conv === actif ? ' actif' : ''}" onclick="ouvreConv('${esc(conv)}')">
         <span class="chat-av" style="background:${couleur}">${esc(court)}</span>
         <span class="ct-m">
           <b>${esc(titre)}</b>
@@ -4243,11 +4290,15 @@ function vueChat(){
   const actives = privees.filter(x => x.quand).sort((a, b) => trieQuand(b.quand) - trieQuand(a.quand));
   const autres = privees.filter(x => !x.quand);
 
-  return `<h1 class="vue-titre">Chat</h1>
-  <p class="vue-sous">Le groupe pour tout le staff, ou un message privé à une seule personne.</p>
-  <div class="carte ct-liste">${groupe.html}</div>
+  const liste = `<div class="carte ct-liste">${groupe.html}</div>
   <div class="section-titre">Messages privés</div>
   <div class="carte ct-liste">${actives.concat(autres).map(x => x.html).join('') || '<p class="carte-note">Aucun autre membre du staff.</p>'}</div>`;
+  const tete = `<h1 class="vue-titre">Chat</h1>
+  <p class="vue-sous">Le groupe pour tout le staff, ou un message privé à une seule personne.</p>`;
+  if (!large) return tete + liste;
+  setTimeout(basChat, 0);
+  return `${tete}<div class="chat2"><div class="chat2-l">${liste}</div>
+    <div class="chat2-c" id="chatPane">${vueConversation(actif, true)}</div></div>`;
 }
 
 /* Un repère de tri pour « jj/mm/aaaa hh:mm ». */
@@ -4256,15 +4307,15 @@ function trieQuand(q){
   return m ? Date.parse(`${m[3]}-${m[2]}-${m[1]}T${m[4] || '00'}:${m[5] || '00'}:00`) : 0;
 }
 
-function vueConversation(conv){
+function vueConversation(conv, large){
   const groupe = conv === GROUPE;
   const m = groupe ? null : ((DB.staff || []).find(x => cleContact(x) === conv) || {});
   const r = groupe ? null : (ROLES[m.roleCode] || ROLES[m.id] || ROLES.as);
   const fil = filDe(conv);
   marqueChatLu(conv);
 
-  return `<button class="bouton fant" style="margin-bottom:12px" onclick="fermeConv()">‹ Contacts</button>
-  <h1 class="vue-titre">${groupe ? 'Groupe staff' : esc(m.nom || 'Message privé')}</h1>
+  return `${large ? '' : `<button class="bouton fant" style="margin-bottom:12px" onclick="fermeConv()">‹ Contacts</button>`}
+  <h1 class="vue-titre${large ? ' chat2-titre' : ''}">${groupe ? 'Groupe staff' : esc(m.nom || 'Message privé')}</h1>
   <p class="vue-sous">${groupe ? `${(DB.staff || []).length} participants — tout le staff lit ce fil.`
     : `${esc(m.fonction || m.role || r.court)} · message privé, vous seuls le lisez.`}</p>
 
@@ -11369,14 +11420,19 @@ function lignePartenaire(){
 }
 
 function vueAccueilLeger(){
-  return `${carteMonEcheance()}
+  /* 01/11/2026 : sur ordinateur, deux colonnes (.dsk2) — ce qui attend et le
+     championnat à gauche, la journée et les raccourcis à droite. */
+  return `<div class="dsk2"><div class="dsk-g">
+  ${carteMonEcheance()}
   ${blocATraiter()}
   ${banniereLegere()}
   ${carteProchainMatch(DB.championnat.prochain)}
+  </div><div class="dsk-d">
   ${carteAujourdhui()}
   ${tuilesAccueil()}
   ${raccourcisAccueil()}
-  ${lignePartenaire()}`;
+  ${lignePartenaire()}
+  </div></div>`;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
