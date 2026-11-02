@@ -9389,7 +9389,34 @@ function ouvreRencontre(id){
         <td class="num">${v(l.fte)}</td><td class="num">${v(l.reb)}</td><td class="num">${v(l.pd)}</td>
       </tr>`).join('') || '<tr><td colspan="9">Détail pas encore arrivé.</td></tr>'}</tbody>
     </table></div>
-    <button class="bouton fant plein" style="margin-top:14px" onclick="fermeFeuille()">Fermer</button>`);
+    <button class="bouton fant plein" style="margin-top:14px" onclick="fermeFeuille()">Fermer</button>
+    ${PEUT_SUPPR_MATCH() ? `<button class="bouton fant plein" style="margin-top:8px;color:var(--danger);border-color:var(--danger)" onclick="demandeSuppressionMatch('${esc(r.id)}')">Supprimer ce match</button>` : ''}`);
+}
+
+/* Supprimer un match (02/11/2026) — demande de Fathy : le match de la JCA
+   saisi deux fois, le match WARRIORS saisi pour tester. Réservé au DT.
+   Une seule ligne à effacer : en base, les stats des joueurs (stats_match) et
+   les tirs du demi-terrain (tirs) partent avec le match (ON DELETE CASCADE).
+   Le droit est tenu par la base (p_rencontres_ecrire). */
+const PEUT_SUPPR_MATCH = () => E.role === 'dt';
+function demandeSuppressionMatch(id){
+  const r = (DB.rencontres || []).find(x => x.id === id);
+  if (!r || !PEUT_SUPPR_MATCH()) return;
+  const n = (r.lignes || []).length;
+  ouvreFeuille(`<div class="feuille-titre">Supprimer ce match ?</div>
+    <div class="feuille-sous">${esc(r.adversaire)} · ${r.pour} – ${r.contre} · ${esc(jourFr(r.date))}</div>
+    <p class="msg-txt" style="margin:10px 0 14px">Le match disparaît pour tout le monde, avec les stats de ${n} joueur${n > 1 ? 's' : ''} et ses tirs.
+      Les moyennes et l'historique des joueurs sont recalculés sans lui. On ne peut pas l'annuler.</p>
+    <div class="g2">
+      <button class="bouton fant" onclick="ouvreRencontre('${esc(id)}')">Annuler</button>
+      <button class="bouton plein" style="background:var(--danger);border-color:var(--danger)" onclick="supprimeMatch('${esc(id)}')">Supprimer</button>
+    </div>`);
+}
+function supprimeMatch(id){
+  if (!PEUT_SUPPR_MATCH()) return;
+  DB.rencontres = (DB.rencontres || []).filter(x => x.id !== id);
+  supprimer('rencontres', 'id=eq.' + encodeURIComponent(id));
+  fermeFeuille(); toast('Match supprimé'); rendVue();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -11495,15 +11522,19 @@ function listeFeuillesMatch(){
     .slice().sort((a, b) => isoMatch(b.date).localeCompare(isoMatch(a.date)));
   if (!rs.length) return '';
   const plusieurs = eqs && eqs.length > 1;
+  /* 02/11/2026 : même date, même équipe, même adversaire = saisi deux fois ? */
+  const cle = r => isoMatch(r.date) + '|' + r.equipe + '|' + String(r.adversaire || '').trim().toUpperCase();
+  const vus = {};
+  rs.forEach(r => { vus[cle(r)] = (vus[cle(r)] || 0) + 1; });
   return `<div class="section-titre">Feuilles de match</div>
-  <p class="carte-note" style="margin:-4px 0 10px">Saisies par l'onglet Match. Touche un match pour voir les stats joueur par joueur.</p>
+  <p class="carte-note" style="margin:-4px 0 10px">Saisies par l'onglet Match. Touche un match pour voir les stats joueur par joueur${PEUT_SUPPR_MATCH() ? ' — ou pour le supprimer (doublon, essai)' : ''}.</p>
   <div class="carte" style="padding:4px 14px">
     ${rs.map(r => {
       const g = (+r.pour || 0) > (+r.contre || 0), c = controleFeuille(r), n = (r.lignes || []).length;
       return `<button class="fm-l" onclick="ouvreRencontre('${esc(r.id)}')">
         <span class="mono fm-d">${dateCourte(isoMatch(r.date))}</span>
         <span class="fm-a"><b>${esc(r.adversaire)}</b>
-          <small>${plusieurs ? esc(nomEq(r.equipe)) + ' · ' : ''}${n} joueur${n > 1 ? 's' : ''}${c ? ` · <em>stats : ${c.pts} pts sur ${c.score} marqués</em>` : ''}</small></span>
+          <small>${plusieurs ? esc(nomEq(r.equipe)) + ' · ' : ''}${n} joueur${n > 1 ? 's' : ''}${c ? ` · <em>stats : ${c.pts} pts sur ${c.score} marqués</em>` : ''}${vus[cle(r)] > 1 ? ' · <em class="fm-dbl">saisi deux fois ?</em>' : ''}</small></span>
         <span class="mono fm-s">${r.pour}–${r.contre}</span>
         <span class="vd ${g ? 'v' : 'd'}">${g ? 'V' : 'D'}</span>
       </button>`;
