@@ -1192,6 +1192,12 @@ const ABREGE = {
   'Lecture de jeu':'Lecture','Athlétisme':'Athlé.','Mental & Attitude':'Mental',
 };
 const EST_COACH = r => ['dt','hc','ca','cd'].includes(r);
+/* 02/11/2026 — Fathy : le head coach reçoit TROIS droits du DT, et
+   seulement ceux-là : modifier le planning de la semaine (PEUT_PLANNING),
+   écrire au médical (p3d), déposer un exercice dans la bibliothèque (p3f).
+   Tout le reste reste au DT seul — partenaires, suppressions de matchs et de
+   résultats, badges, échéances, staff, rapports. */
+const DIRECTION = r => r === 'dt' || r === 'hc';
 const EST_STAFF = r => r !== 'jr';
 
 /* ─────────────────────────────────────────── état */
@@ -2209,6 +2215,9 @@ function vueAccueil(){
   if (E.sous === 'staff')      return vueStaff();
   if (E.sous === 'prochain')   return vueProchainMatch();
   if (E.sous === 'planning')   return vuePlanning();
+  /* 02/11/2026 — le head coach écrit au médical sans avoir l'onglet : il y
+     entre depuis son accueil (raccourci « Médical »). */
+  if (E.sous === 'medical')    return retour('Accueil', 'fermeSous()') + vueMedical();
   /* L'appel, pour ceux dont la barre d'onglets est pleine — le DT et les
      coachs. Six onglets est un plafond tenu par un harnais, pas une préférence :
      au-delà, les libellés deviennent illisibles sur un téléphone. */
@@ -4447,7 +4456,7 @@ function blocMedical(m, actions){
       ${m.retour && m.retour !== '—' ? ' · retour prévu le ' + esc(m.retour) : ''}</div>
     <p class="msg-txt">${esc(m.note)}</p>
     <div class="carte-note mono" style="margin-top:7px;font-size:10px">saisi par ${esc(k.nom || '—')}</div>
-    ${actions && (E.role === 'ki' || E.role === 'dt') ? `
+    ${actions && (E.role === 'ki' || DIRECTION(E.role)) ? `
       <div class="g2" style="margin-top:11px">
         <button class="bouton fant" onclick="changeStatutMed('${m.id}')">Changer le statut</button>
         <button class="bouton fant" onclick="toast('Le staff a été notifié')">Notifier le staff</button>
@@ -4555,7 +4564,7 @@ function supprimeMedical(id){
 function vueMedical(){
   const actifs = DB.medical.filter(m => m.statut !== 'Rétabli');
   const clos = DB.medical.filter(m => m.statut === 'Rétabli');
-  const peutEcrire = (E.role === 'ki' || E.role === 'dt');
+  const peutEcrire = (E.role === 'ki' || DIRECTION(E.role));
 
   return `<h1 class="vue-titre">Secteur médical</h1>
   <p class="vue-sous">Tout le staff voit la même information au même moment — coachs, préparateur, assistants.</p>
@@ -6077,7 +6086,7 @@ function vueBibliotheque(){
 
   <div id="bibListe">${listeExercices(liste)}</div>
 
-  ${E.role === 'dt' ? `<div class="carte" style="margin-top:14px;border-style:dashed">
+  ${DIRECTION(E.role) ? `<div class="carte" style="margin-top:14px;border-style:dashed">
     <div class="carte-titre">Déposer un exercice</div>
     <p class="msg-txt" style="margin-top:7px;color:var(--gris)">
       Les exercices se déposent depuis ce compte : titre, objectif, déroulé, points de coaching
@@ -6329,12 +6338,12 @@ function enregistreAdaptation(){
   if (!deroule.length) { toast('Le déroulé ne peut pas être vide'); return; }
 
   if (A.neuf){
-    if (E.role !== 'dt') { toast('Seul le directeur technique dépose un exercice'); return; }
+    if (!DIRECTION(E.role)) { toast('Seuls le directeur technique et le head coach déposent un exercice'); return; }
     const points = A.points.map(t => t.trim()).filter(Boolean);
     const e = {id: nouvelId(), titre, categorie: A.categorie, duree: A.duree,
                niveau: A.niveau, joueurs: A.joueurs.trim() || '—', materiel: A.materiel.trim() || '—',
                objectif: A.objectif.trim() || '—', deroule, points,
-               video: A.video.trim(), auteur: 'dt', date: AUJ_FR()};
+               video: A.video.trim(), auteur: (E.moi || {}).id || E.role, date: AUJ_FR()};
     DB.exercices = DB.exercices || [];
     DB.exercices.unshift(e);
     enregistrer('exercices', {id: e.id, titre: e.titre, categorie: e.categorie, duree: e.duree,
@@ -9853,7 +9862,7 @@ rendVue = function(){
    comme l'appel et les badges.
    ══════════════════════════════════════════════════════════════════════════ */
 
-const PEUT_PLANNING = r => r === 'dt';
+const PEUT_PLANNING = r => DIRECTION(r);
 
 const TYPES_CRENEAU = {
   'Entraînement': 'var(--or)',
@@ -11462,7 +11471,9 @@ function raccourcisAccueil(){
     b.push(['Rapports du DT', `E.rapVue='fiches';vaVers(indexOnglet('Rapports'))`]);
     b.push(['Chat du staff', `E.chatAvec=null;ouvreSous('chat')`]);
   }
-  /* Le head coach : ses relances sont dans « À traiter », pas en double ici. */
+  /* Le head coach : ses relances sont dans « À traiter », pas en double ici.
+     02/11/2026 : il écrit au médical, mais l'onglet n'est pas dans sa barre. */
+  if (E.role === 'hc') b.push(['Médical', `ouvreSous('medical')`]);
   b.push(['Fatigue, 7 jours', `ouvreSous('fatigue')`]);
   return `<div class="section-titre">Raccourcis</div>
   <div class="acc-racc">${b.map(([t, a]) => `<button onclick="${a}">${esc(t)}</button>`).join('')}</div>`;
