@@ -2614,11 +2614,13 @@ function vueClassement(){
 function listeResultats(){
   const R = DB.championnat.resultats || [];
   if (!R.length) return '';
+  const dt = PEUT_SUPPR_RESULTAT();
   return `<div class="section-titre">Derniers résultats</div>
+  ${dt ? `<p class="carte-note" style="margin:-4px 0 10px">Envoyés par le classeur Championnat. Touche un résultat pour le supprimer (doublon, essai).</p>` : ''}
   <div class="carte" style="padding:6px 14px">
-    ${R.map(r => {
+    ${R.map((r, i) => {
       const g = r.pour > r.contre;
-      return `<div class="dom-ligne" style="grid-template-columns:minmax(0,1fr) auto">
+      return `<div class="dom-ligne" style="grid-template-columns:minmax(0,1fr) auto${dt ? ';cursor:pointer' : ''}"${dt ? ` role="button" onclick="demandeSuppressionResultat(${i})"` : ''}>
         <div><div class="dom-nom">${esc(r.adversaire)}</div>
           <div class="carte-note mono" style="font-size:10.5px">${esc(r.date)} · ${r.domicile?'domicile':'extérieur'}</div>
           ${etiqCompetition(r) ? `<div style="margin-top:4px">${etiqCompetition(r)}</div>` : ''}</div>
@@ -2628,6 +2630,40 @@ function listeResultats(){
         </div></div>`;
     }).join('')}
   </div>`;
+}
+
+/* Supprimer un résultat (02/11/2026) — même option que pour les feuilles de
+   match, demandée par Fathy. Les résultats ne sont pas des lignes : c'est la
+   liste « resultats » (jsonb) de la ligne « championnat » du club, envoyée par
+   le classeur Championnat AA. On renvoie donc la liste sans ce résultat
+   (PATCH). Droit tenu par la base : p_cha_ecrire (DT seulement).
+   Limite dite au DT : le classeur renvoie toute la liste à chaque envoi ; si
+   le score reste dans le classeur, le résultat revient. */
+const PEUT_SUPPR_RESULTAT = () => E.role === 'dt';
+const cleResultat = r => [r.date, r.adversaire, r.pour, r.contre, r.domicile ? 1 : 0].join('|');
+let RESULTAT_VISE = null;   /* la clé du résultat montré dans la confirmation */
+function demandeSuppressionResultat(i){
+  const r = ((DB.championnat || {}).resultats || [])[i];
+  if (!r || !PEUT_SUPPR_RESULTAT()) return;
+  RESULTAT_VISE = cleResultat(r);
+  ouvreFeuille(`<div class="feuille-titre">Supprimer ce résultat ?</div>
+    <div class="feuille-sous">${esc(r.adversaire)} · ${r.pour} – ${r.contre} · ${esc(r.date)}</div>
+    <p class="msg-txt" style="margin:10px 0 8px">Le résultat disparaît pour tout le monde : derniers résultats, bannière, rapport au président. On ne peut pas l'annuler.</p>
+    <p class="msg-txt" style="margin:0 0 14px;color:var(--alerte)">Efface aussi le score de ce match dans le classeur Championnat (onglet Calendrier), sinon il reviendra au prochain envoi.</p>
+    <div class="g2">
+      <button class="bouton fant" onclick="fermeFeuille()">Annuler</button>
+      <button class="bouton plein" style="background:var(--danger);border-color:var(--danger)" onclick="supprimeResultat(${i})">Supprimer</button>
+    </div>`);
+}
+function supprimeResultat(i){
+  if (!PEUT_SUPPR_RESULTAT()) return;
+  const R = (DB.championnat || {}).resultats || [];
+  const vise = RESULTAT_VISE; RESULTAT_VISE = null;
+  if (!R[i] || cleResultat(R[i]) !== vise){ fermeFeuille(); return toast('La liste a changé : réessaie'); }
+  const reste = R.filter((_, k) => k !== i);
+  DB.championnat.resultats = reste;
+  modifier('championnat', 'club_id=not.is.null', {resultats: reste});
+  fermeFeuille(); toast('Résultat supprimé'); rendVue();
 }
 
 /* 26/10/2026 — le DT peut modifier ou supprimer un partenaire. Chaque
