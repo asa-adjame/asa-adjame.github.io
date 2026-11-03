@@ -9,12 +9,12 @@
    C'est son seul rôle : garder une copie de la page pour pouvoir la servir
    sans réseau. Il ne met en cache AUCUNE donnée du club.
 
-   6486aec2b390 est remplacé à la construction par l'empreinte du fichier
+   89460a932695 est remplacé à la construction par l'empreinte du fichier
    produit. Un nouveau dépôt change l'empreinte, donc le nom du cache, donc
    l'ancienne copie est effacée : une mise à jour ne reste jamais coincée.
    ══════════════════════════════════════════════════════════════════════════ */
 
-const CACHE = 'asa-plateforme-6486aec2b390';
+const CACHE = 'asa-plateforme-89460a932695';
 
 /* UNE seule entrée, et c'est volontaire.
 
@@ -196,12 +196,15 @@ function horsLigne(){
 self.addEventListener('push', e => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (x) { d = {corps: e.data ? e.data.text() : ''}; }
-  e.waitUntil(self.registration.showNotification(d.titre || 'ASA Plateforme', {
+  // 03/11/2026 : une page ouverte relit tout de suite ses messages (pastille de l'onglet).
+  const prevenir = self.clients.matchAll({type: 'window', includeUncontrolled: true})
+    .then(cs => cs.forEach(c => c.postMessage({type: 'asa-nouveau'}))).catch(() => {});
+  e.waitUntil(Promise.all([prevenir, self.registration.showNotification(d.titre || 'ASA Plateforme', {
     body: d.corps || '',
     tag: d.url || 'asa',
     renotify: true,
     data: {url: d.url || self.registration.scope}
-  }));
+  })]));
 });
 
 self.addEventListener('notificationclick', e => {
