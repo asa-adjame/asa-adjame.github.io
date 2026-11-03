@@ -171,6 +171,9 @@ a{color:var(--or)}
 .ent-sortie{flex:0 0 auto;font-size:11.5px;color:var(--gris);border:1px solid var(--ligne);
   border-radius:8px;padding:6px 10px;transition:.15s}
 .ent-sortie:hover{color:var(--or);border-color:var(--or)}
+/* 03/11/2026 — Paramètres */
+.ent-param{flex:0 0 auto;display:grid;place-items:center;width:34px;height:34px;color:var(--gris);border:1px solid var(--ligne);border-radius:99px;background:none;cursor:pointer;transition:.15s}
+.ent-param:hover,.ent-param.actif{color:var(--or);border-color:var(--or)}
 
 .vue{flex:1;padding:16px 14px 96px;max-width:1180px;width:100%;margin:0 auto}
 .vue-titre{font-family:var(--titre);font-size:26px;letter-spacing:1.6px;margin-bottom:2px}
@@ -1144,6 +1147,7 @@ table.tab tr.nous{background:rgba(255,178,70,.12)}
       <div class="ent-nom" id="entNom">—</div>
       <div class="ent-role"><i class="ent-point" id="entPoint"></i><span id="entRole">—</span></div>
     </div>
+    <button class="ent-param" onclick="ouvreParametres()" aria-label="Paramètres" title="Paramètres"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     <button class="ent-sortie" onclick="deconnexion()">Changer de rôle</button>
   </header>
   <div class="hf" id="hf" hidden role="status" aria-live="polite"></div>
@@ -1883,8 +1887,9 @@ const PLAN = {
        ['coeur','Médical',vueMedical],['message','Chat',vueChat]],
   /* Le dirigeant (25/10/2026) : il lit tout et n'écrit rien. Le fil du staff
      s'ouvre depuis son accueil, en lecture : six onglets est le plafond. */
+  /* 03/11/2026 : « Chat » remplace « Playbook » (demande de Fathy) — le président écrit aux joueurs. */
   dg: [['maison','Accueil',vueAccueil],['gens','Joueurs',vueJoueurs],['bord','Staff',vueStaff],
-       ['doc','Rapports',vueRapports],['coeur','Médical',vueMedical],['grille','Playbook',vuePlaybook]],
+       ['doc','Rapports',vueRapports],['coeur','Médical',vueMedical],['message','Chat',vueChat]],
   /* « Mon badge » est le premier onglet du joueur après l'accueil, et c'est
      voulu : c'est l'écran qu'il ouvre en arrivant au gymnase, souvent en
      marchant, presque toujours sans réseau. Le reste peut attendre. */
@@ -2188,8 +2193,11 @@ function marqueConsignesLues(){
 }
 function rendVue(){
   /* 03/11/2026 : la carte « Activer les notifications » en tête de l'accueil. */
-  const notif = (E.onglet === 0 && !E.sous && typeof carteNotifications === 'function')
-    ? (carteNotifications() || ligneNotifications()) : '';
+  /* 03/11/2026 — les Paramètres s'ouvrent par-dessus n'importe quel onglet (bouton de l'en-tête). */
+  const p = document.querySelector('.ent-param');
+  if (p) p.classList.toggle('actif', E.sous === 'parametres');
+  if (E.sous === 'parametres' && typeof vueParametres === 'function'){ $('#vue').innerHTML = vueParametres(); return; }
+  const notif = (E.onglet === 0 && !E.sous && typeof carteNotifications === 'function') ? carteNotifications() : '';
   $('#vue').innerHTML = notif + PLAN[E.role][E.onglet][2]();
 }
 
@@ -2242,8 +2250,6 @@ function vueAccueil(){
   if (E.sous === 'planning')   return vuePlanning();
   /* 03/11/2026 — les messages du joueur (sa barre a déjà six onglets). */
   if (E.sous === 'messages' && E.role === 'jr') return vueMessagesJoueur();
-  /* 03/11/2026 — les réglages de notification de chacun. */
-  if (E.sous === 'notifs')     return vueMesNotifs();
   /* 02/11/2026 — le head coach écrit au médical sans avoir l'onglet : il y
      entre depuis son accueil (raccourci « Médical »). */
   if (E.sous === 'medical')    return retour('Accueil', 'fermeSous()') + vueMedical();
@@ -11616,7 +11622,6 @@ function raccourcisAccueil(){
   }
   if (E.role === 'dg'){
     b.push(['Rapports du DT', `E.rapVue='fiches';vaVers(indexOnglet('Rapports'))`]);
-    b.push(['Chat · staff et joueurs', `E.chatAvec=null;ouvreSous('chat')`]);
   }
   /* Le head coach : ses relances sont dans « À traiter », pas en double ici.
      02/11/2026 : il écrit au médical, mais l'onglet n'est pas dans sa barre. */
@@ -12041,7 +12046,7 @@ function carteNotifications(){
       <button class="bouton fant" onclick="notifPlusTard()">Plus tard</button>
       ${iphoneHors ? '' : '<button class="bouton plein" onclick="activeNotifications()">Activer</button>'}
     </div>
-    <button class="bouton fant plein" style="margin-top:8px;border:0" onclick="ouvreSous('notifs')">Choisir ce qui me prévient ›</button>
+    <button class="bouton fant plein" style="margin-top:8px;border:0" onclick="ouvreParametres()">Choisir ce qui me prévient ›</button>
   </div>`;
 }
 
@@ -12160,21 +12165,34 @@ async function desactiveNotifications(){
   rendVue();
 }
 
-/* La ligne discrète de l'accueil, quand la carte d'activation n'est plus là. */
-function ligneNotifications(){
-  if (!E.role || E.role === 'iv') return '';
-  return `<button class="notif-ligne" onclick="ouvreSous('notifs')">
-    <span>${notifActive() ? '🔔 Notifications activées' : '🔕 Notifications'}</span><span class="pousse">Réglages ›</span></button>`;
+/* ══════════════════════════════════════════════════════════════════════════
+   PARAMÈTRES — pour tous                                        (03/11/2026)
+   Fathy : « ajoute un secteur paramètres pour tous les utilisateurs ; pour le
+   moment on y retrouvera uniquement les notifications, mais il se pourrait
+   qu'on ajoute plus de paramètres à l'avenir ».
+   Bouton ⚙︎ de l'en-tête → E.sous = 'parametres', rendu par rendVue() par-dessus
+   l'onglet courant (« ‹ » y ramène). Un réglage de plus = une section de plus
+   dans SECTIONS_PARAMETRES.
+   ══════════════════════════════════════════════════════════════════════════ */
+function ouvreParametres(){ E.sous = 'parametres'; rendVue(); window.scrollTo(0, 0); }
+const SECTIONS_PARAMETRES = [
+  {titre: 'Notifications', html: () => blocNotifsReglages()},
+];
+function vueParametres(){
+  const onglet = ((PLAN[E.role] || [])[E.onglet] || [])[1] || 'Retour';
+  return `${retour(onglet, 'fermeSous()')}
+  <h1 class="vue-titre">Paramètres</h1>
+  <p class="vue-sous">Tes réglages. Ils te suivent sur tous tes appareils.</p>
+  ${SECTIONS_PARAMETRES.map(s => `<div class="section-titre">${esc(s.titre)}</div>${s.html()}`).join('')}`;
 }
 
-function vueMesNotifs(){
+function blocNotifsReglages(){
+  if (E.role === 'iv') return '<div class="carte"><p class="msg-txt">Les comptes invités ne reçoivent pas de notification.</p></div>';
   const types = typesPourMoi();
   const actif = notifActive();
   const iphoneHors = surIphone() && !ecranAccueil();
   const refus = typeof Notification !== 'undefined' && Notification.permission === 'denied';
-  return `${retour('Accueil', 'fermeSous()')}
-  <h1 class="vue-titre">Mes notifications</h1>
-  <p class="vue-sous">Choisis ce qui te prévient sur ton téléphone. Tes choix te suivent sur tous tes appareils.</p>
+  return `
 
   <div class="carte">
     <div class="carte-tete"><div class="carte-titre">Cet appareil</div>
@@ -12187,7 +12205,7 @@ function vueMesNotifs(){
       : (refus || iphoneHors || !pushPossible()) ? '' : `<button class="bouton plein" style="margin-top:11px" onclick="activeNotifications()">Activer sur cet appareil</button>`}
   </div>
 
-  <div class="section-titre">Me prévenir pour</div>
+  <p class="carte-note" style="margin:12px 2px 8px">Me prévenir pour :</p>
   <div class="carte" style="padding:4px 14px">
     ${types.map(t => {
       const on = !notifCoupee(t.id);
