@@ -174,6 +174,7 @@ a{color:var(--or)}
 /* 03/11/2026 — Paramètres */
 .ent-param{flex:0 0 auto;display:grid;place-items:center;width:34px;height:34px;color:var(--gris);border:1px solid var(--ligne);border-radius:99px;background:none;cursor:pointer;transition:.15s}
 .ent-param:hover,.ent-param.actif{color:var(--or);border-color:var(--or)}
+.bouton.bouton-danger{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:600}
 
 .vue{flex:1;padding:16px 14px 96px;max-width:1180px;width:100%;margin:0 auto}
 .vue-titre{font-family:var(--titre);font-size:26px;letter-spacing:1.6px;margin-bottom:2px}
@@ -1148,7 +1149,6 @@ table.tab tr.nous{background:rgba(255,178,70,.12)}
       <div class="ent-role"><i class="ent-point" id="entPoint"></i><span id="entRole">—</span></div>
     </div>
     <button class="ent-param" onclick="ouvreParametres()" aria-label="Paramètres" title="Paramètres"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
-    <button class="ent-sortie" onclick="deconnexion()">Changer de rôle</button>
   </header>
   <div class="hf" id="hf" hidden role="status" aria-live="polite"></div>
   <nav class="nav" id="nav"></nav>
@@ -2111,8 +2111,12 @@ function deconnexion(){
      l'effectif restent sur l'appareil et le suivant hérite de ce que le
      précédent avait le droit de voir — sur un téléphone partagé au gymnase,
      c'est exactement le cas qui se produit. */
+  /* 03/11/2026 : le bouton « Déconnexion » est dans les Paramètres. On rend
+     d'abord l'abonnement de cet appareil : sinon le suivant, sur un téléphone
+     prêté, recevrait les notifications du précédent. */
+  if (typeof oublieAbonnement === 'function') oublieAbonnement();
   if (typeof fermeSession === 'function') fermeSession();
-  E.role = null; E.moi = null; E.joueur = null;
+  E.role = null; E.moi = null; E.joueur = null; E.sous = null; E.chatAvec = null;
   $('#app').classList.remove('on');
   $('#connexion').style.display = 'flex';
   fermeFeuille(); window.scrollTo(0,0);
@@ -2159,15 +2163,53 @@ function nonLusChat(conv){
   return apres.slice(dernierMien + 1).filter(c => !estMoi(c.auteur)).length;
 }
 
-/* PASTILLES DE NAVIGATION RETIRÉES (12/10/2026, demande de Fathy).
+/* LA PASTILLE DE L'ONGLET DES MESSAGES (03/11/2026, demande de Fathy).
+   « Uniquement pour l'onglet message, une pastille pour que les utilisateurs
+   sachent quand ils ont reçu un message, en plus de la notification. »
+   - Staff et dirigeants : sur l'onglet Chat, la somme des non-lus du groupe,
+     des messages privés et des conversations avec les joueurs. Les annonces
+     écrites par le staff n'y entrent pas (ce ne sont pas des messages reçus).
+   - Joueur : il n'a pas d'onglet Messages ; ses messages s'ouvrent depuis
+     l'Accueil, la pastille est donc sur l'Accueil.
+   - Leçon du 12/10 (la pastille « 9+ » allumée en permanence) : seuls les
+     messages des 14 derniers jours comptent. Un appareil neuf, qui n'a encore
+     rien marqué comme lu, n'affiche pas tout l'historique comme du nouveau. */
+const PASTILLE_JOURS = 14;
+function ongletMessages(){
+  const p = PLAN[E.role] || [];
+  return E.role === 'jr' ? 0 : p.findIndex(o => o[1] === 'Chat');
+}
+function nonLusRecents(conv){
+  const n = nonLusChat(conv);
+  if (!n) return 0;
+  const fil = filConv(conv), limite = Date.now() - PASTILLE_JOURS * 864e5;
+  const recents = fil.filter(c => !estMoi(c.auteur) && !c.systeme &&
+    (c.t ? Date.parse(c.t) : (typeof trieQuand === 'function' ? trieQuand(c.date + ' ' + c.heure) : 0)) >= limite).length;
+  return Math.min(n, recents);
+}
+function nonLusOnglet(){
+  try {
+    if (!E.role || E.role === 'iv' || ongletMessages() < 0) return 0;
+    if (E.role === 'jr') return nonLusRecents(typeof CONV_JOUEUR !== 'undefined' ? CONV_JOUEUR : 'staff');
+    let convs = ['groupe'];
+    if (typeof contactsChat === 'function') convs = convs.concat(contactsChat().map(cleContact));
+    if (typeof PEUT_ECRIRE_JOUEURS === 'function' && PEUT_ECRIRE_JOUEURS(E.role))
+      convs = convs.concat((E.equipes || []).flatMap(e => parEq(e)).map(j => 'J:' + j.id));
+    return convs.reduce((a, c) => a + nonLusRecents(c), 0);
+  } catch (e){ return 0; }
+}
+
+/* PASTILLES DE NAVIGATION RETIRÉES (12/10/2026, demande de Fathy) — remise sur le seul onglet des messages le 03/11, voir plus haut.
    Les bulles « 9+ » sur Accueil et Chat restaient allumées en permanence et
    n'apportaient plus d'information. Le repère de lecture du chat (chatLu,
    marqueChatLu, nonLusChat) est conservé : il ne coûte rien et permettra de
    remettre une pastille plus tard si on en veut une. Ce qui attend reste
    visible dans les écrans eux-mêmes (carte « À relancer » de l'accueil). */
 function rendNav(){
+  if (!E.role || !PLAN[E.role]) return;
+  const n = nonLusOnglet(), ou = ongletMessages();
   $('#nav').innerHTML = PLAN[E.role].map((o,i) =>
-    `<button class="nav-item ${i===E.onglet?'actif':''}" onclick="vaVers(${i})">${ico(o[0])}<span>${esc(o[1])}</span></button>`
+    `<button class="nav-item ${i===E.onglet?'actif':''}" onclick="vaVers(${i})">${ico(o[0])}<span>${esc(o[1])}</span>${i === ou && n ? `<i class="nav-bulle">${n > 9 ? '9+' : n}</i>` : ''}</button>`
   ).join('');
 }
 function vaVers(i){
@@ -2199,6 +2241,8 @@ function rendVue(){
   if (E.sous === 'parametres' && typeof vueParametres === 'function'){ $('#vue').innerHTML = vueParametres(); return; }
   const notif = (E.onglet === 0 && !E.sous && typeof carteNotifications === 'function') ? carteNotifications() : '';
   $('#vue').innerHTML = notif + PLAN[E.role][E.onglet][2]();
+  /* La pastille suit ce qu'on vient de lire (un fil ouvert est marqué lu au rendu). */
+  if (document.querySelector('#nav .nav-item')) rendNav();
 }
 
 /* sélecteur d'équipe — masqué si la personne n'a qu'un groupe */
@@ -7852,10 +7896,15 @@ function clubCourant(){
       || null;
 }
 
+const TABLES_PERSO = ['push_abonnements', 'notif_preferences'];
 async function enregistrer(table, ligne, surConflit){
   /* Le dirigeant est en lecture seule partout, SAUF le fil du staff (26/10/2026 :
      « ils doivent aussi pouvoir communiquer »). La base tient la même règle. */
-  if (typeof LECTURE_SEULE === 'function' && LECTURE_SEULE() && (table !== 'messages' || E.role === 'iv')){ toast(E.role === 'iv' ? 'Compte invité : lecture seule' : 'Compte dirigeant : lecture seule'); return false; }
+  /* 03/11/2026 : ses propres réglages de notification (appareil, cases) ne sont
+     pas une écriture « sur le club » — le président doit pouvoir s'abonner. Le
+     garde-fou bloquait son abonnement en silence. */
+  if (typeof LECTURE_SEULE === 'function' && LECTURE_SEULE() && (table !== 'messages' || E.role === 'iv')
+      && !(E.role === 'dg' && TABLES_PERSO.includes(table))){ toast(E.role === 'iv' ? 'Compte invité : lecture seule' : 'Compte dirigeant : lecture seule'); return false; }
   /* On NE met PAS le club dans la ligne ici.
      Il est ajouté au moment de l'envoi, pas au moment de la saisie. La
      différence compte : une saisie faite avant le premier chargement — ou
@@ -7909,7 +7958,7 @@ async function modifier(table, filtre, champs){
    le club est ajouté au filtre à l'envoi, comme pour une modification. Les
    droits sont tenus par la base (p_spo_ecrire, p_med_sup_kine). */
 async function supprimer(table, filtre){
-  if (typeof LECTURE_SEULE === 'function' && LECTURE_SEULE()){ toast('Compte dirigeant : lecture seule'); return false; }
+  if (typeof LECTURE_SEULE === 'function' && LECTURE_SEULE() && !(E.role === 'dg' && TABLES_PERSO.includes(table))){ toast('Compte dirigeant : lecture seule'); return false; }
   await FA.pousser({
     table, filtre, methode: 'DELETE',
     corps: null,
@@ -8507,6 +8556,61 @@ function matchsAVenirDe(liste){
 /* ─────────────────────────────────────────── chargement du club
    Reconstitue exactement la forme du jeu de démonstration : les écrans
    ne font aucune différence entre les deux. */
+/* Une ligne de la table messages, telle que la page la lit. */
+const versChat = c => ({
+  id: c.id, auteur: c.auteur_id || '', date: dateClubFr(c.envoye_le),
+  heure: (c.envoye_le && !isNaN(new Date(c.envoye_le))) ? heureClub(new Date(c.envoye_le)) : '—',
+  texte: c.texte, systeme: !!c.systeme,
+  dest: c.destinataire_id || '',       // 28/10/2026 : message privé
+  fil: c.joueur_id || '',              // 03/11/2026 : fil joueur (id), « tous » ou « eq:<code> »
+  t: c.envoye_le || ''                 // 03/11/2026 : repère pour ne relire que les nouveaux
+});
+
+/* LES NOUVEAUX MESSAGES, APPLICATION OUVERTE (03/11/2026).
+   Les messages n'étaient lus qu'à la connexion : la pastille de l'onglet
+   n'aurait jamais bougé. On ne redemande que ce qui est plus récent que le
+   dernier message connu — une réponse vide la plupart du temps, quelques
+   octets : la connexion mobile d'Abidjan ne paie pas 600 messages par minute.
+   Appelé à chaque retour sur l'application, à l'arrivée d'une notification,
+   et toutes les 60 s tant que l'écran est allumé. */
+let RELECTURE_EN_COURS = false;
+async function rafraichitMessages(){
+  if (RELECTURE_EN_COURS || !E.role || E.role === 'iv' || !enLigne() || !SOURCE.clubId || !DB.chat) return 0;
+  RELECTURE_EN_COURS = true;
+  try {
+    const dernier = DB.chat.reduce((m, c) => (c.t && c.t > m) ? c.t : m, '');
+    const l = await api('messages?select=*&club_id=eq.' + SOURCE.clubId +
+      (dernier ? '&envoye_le=gt.' + encodeURIComponent(dernier) : '') + '&order=envoye_le.asc&limit=200');
+    const connus = new Set(DB.chat.map(c => c.id));
+    let n = 0;
+    (l || []).forEach(c => {
+      const m = versChat(c);
+      if (connus.has(m.id)){ const x = DB.chat.find(y => y.id === m.id); if (x && !x.t) x.t = m.t; return; }
+      DB.chat.push(m); n++;
+    });
+    if (n) apresNouveauxMessages();
+    return n;
+  } catch (e){ return 0; }
+  finally { RELECTURE_EN_COURS = false; }
+}
+/* Redessiner sans perdre ce qu'on est en train d'écrire. */
+function apresNouveauxMessages(){
+  if (typeof rendNav === 'function' && E.role) rendNav();
+  const lib = ((PLAN[E.role] || [])[E.onglet] || [])[1];
+  const surFil = lib === 'Chat' || E.sous === 'messages' || E.sous === 'chat' || (E.role === 'jr' && E.onglet === 0 && !E.sous);
+  if (!surFil || E.sous === 'parametres') return;
+  const ta = document.getElementById('chatTexte'), v = ta ? ta.value : '', focus = ta && document.activeElement === ta;
+  const enBas = (window.innerHeight + window.scrollY) >= document.body.scrollHeight - 80;
+  rendVue();
+  const tb = document.getElementById('chatTexte');
+  if (tb && v){ tb.value = v; if (focus) tb.focus(); }
+  if ((E.chatAvec || E.sous === 'messages') && enBas && typeof basChat === 'function') setTimeout(basChat, 0);
+}
+try {
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') rafraichitMessages(); });
+  setInterval(() => { if (document.visibilityState === 'visible') rafraichitMessages(); }, 60000);
+} catch (e){}
+
 async function chargerSupabase(){
   const club = (await api('clubs?select=*&sigle=eq.' + encodeURIComponent(SOURCE.club)))[0];
   if (!club) throw new Error('Club « ' + SOURCE.club + ' » introuvable.');
@@ -8972,12 +9076,7 @@ async function chargerSupabase(){
     })),
     espacesPub: DB.espacesPub,
     // Le fil se lit dans l'ordre du temps ; on l'a demandé à rebours pour n'en prendre que la fin.
-    chat: (msgs || []).slice().reverse().map(c => ({
-      id: c.id, auteur: c.auteur_id || '', date: dateLocale(c.envoye_le),
-      heure: heure(c.envoye_le), texte: c.texte, systeme: !!c.systeme,
-      dest: c.destinataire_id || '',       // 28/10/2026 : message privé
-      fil: c.joueur_id || ''               // 03/11/2026 : fil joueur (id), « tous » ou « eq:<code> »
-    })),
+    chat: (msgs || []).slice().reverse().map(versChat),
     planning: (planningBase || []).map(w => ({
       equipe: w.equipe_code, lundi: String(w.lundi).slice(0, 10),
       creneaux: Array.isArray(w.creneaux) ? w.creneaux : []
@@ -12067,11 +12166,7 @@ async function activeNotifications(){
     const r = await fetch(URL_NOTIFIER(), {headers: {apikey: SOURCE.cle}});
     const cle = (await r.json()).publique;
     if (!cle) throw new Error('clé publique absente');
-    const sub = (await reg.pushManager.getSubscription())
-             || await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: cleOctets(cle)});
-    const j = sub.toJSON();
-    await enregistrer('push_abonnements', {endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth,
-      personne_id: auteurMoi() || '', appareil: String(navigator.userAgent || '').slice(0, 120)}, 'endpoint');
+    await abonneCetAppareil(reg, cle);
     try { localStorage.setItem(CLE_NOTIF_OK(), '1'); } catch (e){}
     toast('Notifications activées sur cet appareil');
     rendVue();
@@ -12080,11 +12175,88 @@ async function activeNotifications(){
   }
 }
 
+/* UN ABONNEMENT NEUF À CHAQUE ACTIVATION (03/11/2026).
+   L'abonnement d'un navigateur (son « endpoint ») est unique en base et
+   appartient à la personne qui l'a enregistré. Sur un téléphone déjà abonné
+   par quelqu'un d'autre, réutiliser cet endpoint échouait sans bruit : la
+   base refuse de réécrire la ligne d'une autre personne, et les notifications
+   continuaient d'aller à l'ancien titulaire. On rend donc l'ancien et on en
+   demande un neuf : l'ancienne ligne meurt d'elle-même au premier envoi
+   (le service de notification répond « disparu », la fonction l'efface). */
+async function abonneCetAppareil(reg, cle){
+  const ancien = await reg.pushManager.getSubscription();
+  if (ancien){ try { await ancien.unsubscribe(); } catch (e){} }
+  const sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: cleOctets(cle)});
+  const j = sub.toJSON();
+  await enregistrer('push_abonnements', {endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth,
+    personne_id: auteurMoi() || '', appareil: String(navigator.userAgent || '').slice(0, 120)}, 'endpoint');
+  return j.endpoint;
+}
+
+/* À la déconnexion : cet appareil ne doit plus recevoir les notifications de
+   cette personne. On efface sa ligne (avant de fermer la session : c'est elle
+   qui en a le droit) et on rend l'abonnement au navigateur. */
+function oublieAbonnement(){
+  try { localStorage.removeItem(CLE_NOTIF_OK()); } catch (e){}
+  if (!pushPossible() || !E.role || E.role === 'iv') return;
+  try {
+    navigator.serviceWorker.getRegistration().then(reg => reg && reg.pushManager.getSubscription()).then(sub => {
+      if (!sub) return;
+      supprimer('push_abonnements', 'endpoint=eq.' + encodeURIComponent(sub.endpoint));
+      sub.unsubscribe().catch(() => {});
+    }).catch(() => {});
+  } catch (e){}
+}
+
+/* RECEVOIR UNE NOTIFICATION DE TEST (03/11/2026, demande de Fathy).
+   Deux notifications, pour savoir où ça coince :
+   1. tout de suite, fabriquée par le téléphone lui-même : si elle ne
+      s'affiche pas, ce sont les réglages du téléphone (Chrome, site,
+      Ne pas déranger) ;
+   2. cinq secondes plus tard, envoyée par le serveur du club, exactement
+      comme un vrai message : si la première s'affiche et pas celle-ci,
+      c'est l'acheminement (abonnement, économie de batterie).
+   L'abonnement est refait au passage : un test réussi laisse l'appareil en
+   état de marche. */
+async function testeNotification(){
+  if (!pushPossible()) return toast('Ce navigateur ne reçoit pas de notifications');
+  if (!enLigne() || !URL_NOTIFIER()) return toast('Le test a besoin du réseau');
+  const b = document.getElementById('btnTestNotif');
+  if (b){ b.disabled = true; b.textContent = 'Test en cours…'; }
+  const fin = (txt, ok) => {
+    if (b){ b.disabled = false; b.textContent = 'Recevoir une notification de test'; }
+    const r = document.getElementById('resTestNotif');
+    if (r){ r.hidden = false; r.innerHTML = txt; r.style.color = ok ? 'var(--texte)' : 'var(--danger)'; }
+  };
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return fin('Les notifications sont <b>bloquées</b> pour ce site. Dans Chrome : cadenas à gauche de l\'adresse → Autorisations → Notifications → Autoriser.', false);
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification('Test 1/2 · ce téléphone', {
+      body: 'Si tu lis ceci, ton téléphone affiche bien les notifications de la plateforme.', tag: 'asa-test-1'});
+    const r0 = await fetch(URL_NOTIFIER(), {headers: {apikey: SOURCE.cle}});
+    const cle = (await r0.json()).publique;
+    const endpoint = await abonneCetAppareil(reg, cle);
+    try { localStorage.setItem(CLE_NOTIF_OK(), '1'); } catch (e){}
+    if (typeof videFile === 'function') await videFile();
+    fin('Test 1 envoyé. <b>Ferme ou réduis la plateforme maintenant</b> : le test 2, envoyé par le serveur, arrive dans 5 secondes.', true);
+    const r = await fetch(URL_NOTIFIER(), {method: 'POST',
+      headers: {apikey: SOURCE.cle, 'Content-Type': 'application/json'}, body: JSON.stringify({test: endpoint})});
+    const j = await r.json().catch(() => ({}));
+    if (j.envoye) fin('Les deux tests sont partis.<br>· Tu as vu les deux : tout fonctionne.<br>· Seulement le 1 : vérifie l\'économie de batterie de Chrome (« Sans restriction »).<br>· Aucun : Réglages du téléphone → Applications → Chrome → Notifications.', true);
+    else fin('Le serveur n\'a pas pu joindre ce téléphone (' + esc(j.raison || 'statut ' + (j.statut || '?')) + '). Réessaie dans une minute ; si ça recommence, envoie une capture à Fathy.', false);
+    rendVue();
+  } catch (e){
+    fin('Test interrompu : ' + esc(e && e.message ? e.message : 'erreur'), false);
+  }
+}
+
 /* Ouvrir l'écran demandé par une notification. */
 function ouvreDepuisNotif(ouvre){
   if (!E.role || !ouvre) return false;
   if (ouvre === 'messages' && E.role === 'jr') { E.onglet = 0; ouvreSous('messages'); return true; }
   if (ouvre === 'fiche' && E.role === 'jr') { const i = PLAN.jr.findIndex(o => o[1] === 'Ma fiche'); if (i >= 0) vaVers(i); return true; }
+  if (ouvre === 'parametres'){ ouvreParametres(); return true; }
   if (ouvre === 'chat'){
     const i = (PLAN[E.role] || []).findIndex(o => o[1] === 'Chat');
     if (i >= 0) vaVers(i); else { E.onglet = 0; ouvreSous('chat'); }
@@ -12095,6 +12267,7 @@ function ouvreDepuisNotif(ouvre){
 try {
   navigator.serviceWorker && navigator.serviceWorker.addEventListener('message', ev => {
     if (ev.data && ev.data.type === 'asa-ouvre') ouvreDepuisNotif(ev.data.ouvre);
+    if (ev.data && ev.data.type === 'asa-nouveau' && typeof rafraichitMessages === 'function') rafraichitMessages();
   });
 } catch (e){}
 /* À l'ouverture par une notification : on attend que la session soit posée
@@ -12177,6 +12350,12 @@ async function desactiveNotifications(){
 function ouvreParametres(){ E.sous = 'parametres'; rendVue(); window.scrollTo(0, 0); }
 const SECTIONS_PARAMETRES = [
   {titre: 'Notifications', html: () => blocNotifsReglages()},
+  /* 03/11/2026 : « je ne veux plus le bouton Changer de rôle, simplement un
+     bouton Déconnexion rouge dans les paramètres ». */
+  {titre: 'Compte', html: () => `<div class="carte">
+    <p class="msg-txt">Connecté : <b>${esc((E.moi || {}).nom || (ROLES[E.role] || {}).lib || '')}</b> · ${esc((ROLES[E.role] || {}).lib || '')}</p>
+    <button class="bouton plein bouton-danger" style="margin-top:11px" onclick="deconnexion()">Déconnexion</button>
+  </div>`},
 ];
 function vueParametres(){
   const onglet = ((PLAN[E.role] || [])[E.onglet] || [])[1] || 'Retour';
@@ -12201,7 +12380,9 @@ function blocNotifsReglages(){
       : refus ? 'Les notifications sont bloquées pour ce site : autorise-les dans les réglages du navigateur, puis reviens ici.'
       : iphoneHors ? 'Sur iPhone : bouton <b>Partager</b> ⬆︎ puis <b>« Sur l\'écran d\'accueil »</b>, ouvre la plateforme depuis l\'icône, et active ici.'
       : 'Active-les pour être prévenu même application fermée.'}</p>
-    ${actif ? `<button class="bouton fant plein" style="margin-top:11px" onclick="desactiveNotifications()">Désactiver sur cet appareil</button>`
+    ${actif ? `<button class="bouton plein" id="btnTestNotif" style="margin-top:11px" onclick="testeNotification()">Recevoir une notification de test</button>
+      <p class="msg-txt" id="resTestNotif" hidden style="margin-top:10px;font-size:12.5px"></p>
+      <button class="bouton fant plein" style="margin-top:8px" onclick="desactiveNotifications()">Désactiver sur cet appareil</button>`
       : (refus || iphoneHors || !pushPossible()) ? '' : `<button class="bouton plein" style="margin-top:11px" onclick="activeNotifications()">Activer sur cet appareil</button>`}
   </div>
 
