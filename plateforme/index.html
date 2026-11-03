@@ -21,13 +21,19 @@
   script-src 'unsafe-inline';
   style-src 'unsafe-inline' https://fonts.googleapis.com;
   font-src https://fonts.gstatic.com;
-  img-src data: blob:;
+  img-src data: blob: 'self';
   connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://ptkefnqrhlsfbnktnvec.supabase.co;
   worker-src 'self';
   manifest-src 'self';
   base-uri 'none';
   form-action 'none'">
 <title>ASA Plateforme</title>
+<!-- 03/11/2026 — installable sur l'écran d'accueil (notifications sur iPhone) -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icone-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ASA">
+<meta name="theme-color" content="#051630">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -1038,6 +1044,14 @@ table.tab tr.nous{background:rgba(255,178,70,.12)}
 .fm-a{min-width:0;display:flex;flex-direction:column;gap:2px}
 .fm-a b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fm-a small{font-size:11.5px;color:var(--gris)}
+.notif-carte{border-color:var(--or)}
+.notif-ligne{display:flex;width:100%;gap:8px;align-items:center;background:none;border:1px solid var(--ligne);border-radius:12px;padding:9px 13px;margin-bottom:12px;color:var(--gris);font:inherit;font-size:12.5px;cursor:pointer}
+.notif-ligne .pousse{margin-left:auto;color:var(--or)}
+.notif-type{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--ligne);cursor:pointer}
+.notif-type:last-child{border-bottom:0}
+.notif-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.notif-txt small{color:var(--gris);font-size:11.5px}
+.notif-type input{width:22px;height:22px;accent-color:var(--or);flex:0 0 22px}
 .fm-a em{font-style:normal;color:var(--alerte)}
 .fm-s{font-size:14px;font-weight:700}
 /* 01/11/2026 — photo de profil des joueurs */
@@ -1184,6 +1198,9 @@ const ROLES = {
   pp: {lib:'Préparateur physique', couleur:'var(--physique)', court:'PP'},
   /* Les dirigeants (25/10/2026) : tout en lecture seule. Voir p3m_suivi.js. */
   dg: {lib:'Dirigeant',            couleur:'var(--or-sombre)', court:'DG'},
+  /* 03/11/2026 — autres dirigeants et sponsors : résultats et évaluations des
+     joueurs, en lecture seule (p3r_invite.js). */
+  iv: {lib:'Invité',               couleur:'var(--gris)',      court:'INV'},
   jr: {lib:'Joueur',               couleur:'var(--or-clair)', court:'JR'},
 };
 const ABREGE = {
@@ -1871,6 +1888,7 @@ const PLAN = {
   /* « Mon badge » est le premier onglet du joueur après l'accueil, et c'est
      voulu : c'est l'écran qu'il ouvre en arrivant au gymnase, souvent en
      marchant, presque toujours sans réseau. Le reste peut attendre. */
+  iv: [['trophee','Résultats',vueResultatsInvite],['doc','Évaluations',vueEvaluationsInvite]],
   jr: [['maison','Accueil',vueAccueil],['qr','Mon badge',vueMonQR],
        ['perso','Ma fiche',vueJoueurFiche],
        ['cible','Mon tir',vueTirJoueur],['cerveau','Quiz',vueQuizJoueur],['coeur','Ma prépa',vuePrepa]],
@@ -2060,6 +2078,8 @@ function connexion(role, id, joueurId){
   focusEquipes();
   E.role = role;
   E.moi = role === 'jr' ? parId(joueurId) : membre(id);
+  /* 03/11/2026 — un invité n'est pas dans le staff (démonstration). */
+  if (role === 'iv' && !(E.moi && E.moi.nom)) E.moi = {id: id || 'iv', nom: 'Invité', fonction: 'Invité', equipes: []};
   E.joueur = role === 'jr' ? parId(joueurId) : null;
   E.equipes = role === 'jr' ? [E.joueur.equipe]
             : ordreEquipes(((E.moi || {}).equipes || []).length ? E.moi.equipes
@@ -2166,7 +2186,12 @@ function marqueConsignesLues(){
      (joueur_id) qui n'est unique nulle part et revenait en 400. */
   modifier('directives', 'joueur_id=eq.' + encodeURIComponent(j.id) + '&lue=is.false', {lue: true});
 }
-function rendVue(){ $('#vue').innerHTML = PLAN[E.role][E.onglet][2](); }
+function rendVue(){
+  /* 03/11/2026 : la carte « Activer les notifications » en tête de l'accueil. */
+  const notif = (E.onglet === 0 && !E.sous && typeof carteNotifications === 'function')
+    ? (carteNotifications() || ligneNotifications()) : '';
+  $('#vue').innerHTML = notif + PLAN[E.role][E.onglet][2]();
+}
 
 /* sélecteur d'équipe — masqué si la personne n'a qu'un groupe */
 function selEquipe(){
@@ -2215,6 +2240,10 @@ function vueAccueil(){
   if (E.sous === 'staff')      return vueStaff();
   if (E.sous === 'prochain')   return vueProchainMatch();
   if (E.sous === 'planning')   return vuePlanning();
+  /* 03/11/2026 — les messages du joueur (sa barre a déjà six onglets). */
+  if (E.sous === 'messages' && E.role === 'jr') return vueMessagesJoueur();
+  /* 03/11/2026 — les réglages de notification de chacun. */
+  if (E.sous === 'notifs')     return vueMesNotifs();
   /* 02/11/2026 — le head coach écrit au médical sans avoir l'onglet : il y
      entre depuis son accueil (raccourci « Médical »). */
   if (E.sous === 'medical')    return retour('Accueil', 'fermeSous()') + vueMedical();
@@ -2320,7 +2349,8 @@ const libCompetition = r => {
 
 function carteProchainMatch(p){
   const eq = E.role === 'jr' ? E.joueur.equipe : E.equipe;
-  const m = prochainMatch(eq);
+  /* 03/11/2026 : un invité n'a pas accès à la préparation du match. */
+  const m = E.role === 'iv' ? null : prochainMatch(eq);
   const adversaire = m ? m.adversaire : p.adversaire;
   const dom = m ? (m.lieu === 'domicile') : p.domicile;
   const quand = m ? `${m.date}${m.heure ? ' · ' + m.heure : ''}${m.salle ? ' · ' + m.salle : ''}`
@@ -2389,7 +2419,8 @@ function blocAccueilRole(){
     const j = E.joueur, b = bilanTir(j, parcoursDe(j));
     const nonLues = j.directives.filter(d => !d.lu).length;
     const aFaire = DB.quiz.filter(q => q.joueurs.includes(j.id) && !(j.quizFaits||{})[q.id]).length;
-    return `<div class="section-titre">Pour toi</div>
+    return `${carteMessagesJoueur()}
+    <div class="section-titre">Pour toi</div>
     <div class="g3">
       <div class="tuile"><div class="tuile-val" style="color:${couleurPct(b.pct)}">${b.pct}<small style="font-size:14px">%</small></div><div class="tuile-lib">Challenge<br>de tir</div></div>
       <div class="tuile bleu"><div class="tuile-val">${nonLues}</div><div class="tuile-lib">Consignes<br>à lire</div></div>
@@ -4246,7 +4277,8 @@ rendVue = function(){
 
 /* ═══════════════════════════════════ CHAT DU STAFF ═══════════════════════════════════
    Y participent : le DT, les coachs, l'analyste, le kiné, les deux assistants et
-   le préparateur physique prestataire. Les joueurs n'y sont pas. */
+   le préparateur physique prestataire. Depuis le 03/11/2026, les joueurs ont
+   leurs fils à part (voir LES JOUEURS DANS LE CHAT). */
 
 /* 28/10/2026 — DES CONTACTS, ET LE GROUPE.
 
@@ -4277,12 +4309,61 @@ function contactsChat(){
   });
 }
 
+/* 03/11/2026 — LES JOUEURS DANS LE CHAT.
+
+   Demande du président (Koné Sédou), relayée par Fathy : « utiliser
+   l'application comme un canal de communication privé avec les joueurs —
+   des messages de début de saison qu'ils auront tous, et des messages
+   spécifiques à chacun avant les matchs ». Décisions de Fathy : tout le staff
+   écrit aux joueurs ; les joueurs répondent.
+
+   - Une colonne de plus en base, messages.joueur_id, dit à quel « fil
+     joueur » appartient un message :
+       · l'identifiant d'un joueur → sa conversation avec le staff. Tout le
+         staff la lit et y écrit, chaque message signé de son auteur ; le
+         joueur y répond ;
+       · « tous »       → une annonce à tous les joueurs ;
+       · « eq:<code> »  → une annonce à une équipe.
+     Vide → le chat du staff, comme avant (groupe ou privé).
+   - Côté staff, ces fils sont des conversations de l'onglet Chat :
+     « J:<id> » pour un joueur, « A:tous » / « A:eq:pro » pour une annonce.
+   - Côté joueur, une seule conversation, « le staff » : ses échanges plus
+     les annonces qui le visent, dans l'ordre du temps. Elle s'ouvre depuis
+     l'accueil (sa barre a déjà six onglets).
+   - La base tient les droits : un joueur ne lit que son fil et les annonces
+     qui le visent, et n'écrit que dans son fil (le déclencheur pose son
+     identifiant, quoi qu'envoie la page). Les dirigeants n'y ont pas accès. */
+const FIL_TOUS = 'tous';
+const CONV_JOUEUR = 'staff';                       // la conversation unique du joueur
+const estConvJoueur = c => String(c || '').startsWith('J:');
+const estConvAnnonce = c => String(c || '').startsWith('A:');
+const filCible = c => String(c || '').slice(2);    // « J:j07 » → « j07 » ; « A:eq:pro » → « eq:pro »
+const PEUT_ECRIRE_JOUEURS = r => ['dt', 'hc', 'ca', 'cd', 'an', 'ki', 'as', 'pp'].includes(r);
+const libAnnonce = k => k === FIL_TOUS ? 'Tous les joueurs' : 'Équipe ' + String(nomEq(String(k).slice(3))).replace(/^Équipe\s+/i, '');
+
+/* Qui a écrit : un membre du staff, ou un joueur. */
+function auteurChat(a){
+  const m = membre(a);
+  if (m && m.nom) return {nom: m.nom, r: ROLES[m.roleCode] || ROLES[m.id] || ROLES.as, externe: !!m.externe};
+  const j = (DB.joueurs || []).find(x => x.id === a);
+  if (j) return {nom: j.nom, r: ROLES.jr, joueur: true, numero: j.numero};
+  return {nom: '', r: ROLES[a] || ROLES.as};
+}
+
 /* Les messages d'une conversation, dans l'ordre du temps. */
 function filDe(conv){
   const fil = DB.chat || [];
-  if (conv === GROUPE) return fil.filter(c => !c.dest);
+  if (E.role === 'jr'){
+    const j = E.joueur || {};
+    return fil.filter(c => c.fil && (c.fil === j.id || c.fil === FIL_TOUS || c.fil === 'eq:' + j.equipe));
+  }
+  if (conv === GROUPE) return fil.filter(c => !c.dest && !c.fil);
+  if (estConvJoueur(conv) || estConvAnnonce(conv)){
+    const k = filCible(conv);
+    return fil.filter(c => c.fil === k);
+  }
   const moi = auteurMoi();
-  return fil.filter(c => c.dest && (
+  return fil.filter(c => c.dest && !c.fil && (
     (estMoi(c.auteur) && c.dest === conv) || (c.auteur === conv && (c.dest === moi || estMoi(c.dest)))));
 }
 
@@ -4325,21 +4406,34 @@ function vueChat(){
           ${n ? `<i class="ct-n">${n > 9 ? '9+' : n}</i>` : ''}</span>
       </button>`};
   };
+  const recents = l => l.filter(x => x.quand).sort((a, b) => trieQuand(b.quand) - trieQuand(a.quand))
+    .concat(l.filter(x => !x.quand));
 
   const groupe = ligne(GROUPE, 'Groupe staff', 'Tout le staff', 'var(--or)', 'ASA');
   const privees = contactsChat().map(m => {
     const r = ROLES[m.roleCode] || ROLES[m.id] || ROLES.as;
     return ligne(cleContact(m), m.nom || 'Membre du staff', m.fonction || m.role || r.court, r.couleur, r.court);
   });
-  // Les conversations actives d'abord, la plus récente en tête ; puis les autres, dans l'ordre du staff.
-  const actives = privees.filter(x => x.quand).sort((a, b) => trieQuand(b.quand) - trieQuand(a.quand));
-  const autres = privees.filter(x => !x.quand);
+
+  /* 03/11/2026 — les joueurs : les annonces, puis une conversation par joueur. */
+  let joueurs = '';
+  if (PEUT_ECRIRE_JOUEURS(E.role)){
+    const eqs = E.equipes || [];
+    const annonces = [ligne('A:' + FIL_TOUS, 'Tous les joueurs', 'Annonce : chaque joueur la reçoit', 'var(--or)', 'TOUS')]
+      .concat(eqs.length > 1 ? eqs.map(e => ligne('A:eq:' + e, libAnnonce('eq:' + e), 'Annonce à ce groupe seulement', 'var(--or-sombre)', String(e).slice(0, 3).toUpperCase())) : []);
+    const fils = eqs.flatMap(e => parEq(e)).map(j =>
+      ligne('J:' + j.id, j.nom, `${nomEq(j.equipe)}${j.numero ? ' · n°' + j.numero : ''}`, ROLES.jr.couleur, j.numero || 'JR'));
+    joueurs = `<div class="section-titre">Joueurs</div>
+    <div class="carte ct-liste">${annonces.map(x => x.html).join('')}</div>
+    <div class="carte ct-liste" style="margin-top:10px">${recents(fils).map(x => x.html).join('') || '<p class="carte-note">Aucun joueur.</p>'}</div>`;
+  }
 
   const liste = `<div class="carte ct-liste">${groupe.html}</div>
   <div class="section-titre">Messages privés</div>
-  <div class="carte ct-liste">${actives.concat(autres).map(x => x.html).join('') || '<p class="carte-note">Aucun autre membre du staff.</p>'}</div>`;
+  <div class="carte ct-liste">${recents(privees).map(x => x.html).join('') || '<p class="carte-note">Aucun autre membre du staff.</p>'}</div>
+  ${joueurs}`;
   const tete = `<h1 class="vue-titre">Chat</h1>
-  <p class="vue-sous">Le groupe pour tout le staff, ou un message privé à une seule personne.</p>`;
+  <p class="vue-sous">Le groupe pour tout le staff, un message privé à une seule personne${PEUT_ECRIRE_JOUEURS(E.role) ? ', ou les joueurs' : ''}.</p>`;
   if (!large) return tete + liste;
   setTimeout(basChat, 0);
   return `${tete}<div class="chat2"><div class="chat2-l">${liste}</div>
@@ -4352,67 +4446,109 @@ function trieQuand(q){
   return m ? Date.parse(`${m[3]}-${m[2]}-${m[1]}T${m[4] || '00'}:${m[5] || '00'}:00`) : 0;
 }
 
+/* Une bulle du fil. Un message de joueur porte son numéro ; une annonce vue
+   par le joueur est marquée comme telle. */
+function bulleChat(c){
+  const a = auteurChat(c.auteur);
+  const r = a.r, moi = estMoi(c.auteur);
+  if (c.systeme) return `<div class="chat-sys">
+    <i class="puce" style="background:${r.couleur}"></i>
+    <span style="min-width:0"><b>${esc((a.nom || '').split(' ')[0] || r.court)}</b> ${esc(c.texte)}</span>
+  </div>`;
+  const annonce = E.role === 'jr' && c.fil && c.fil !== (E.joueur || {}).id;
+  return `<div class="chat-b ${moi ? 'moi' : ''}">
+    <span class="chat-av" style="background:${r.couleur}">${esc(a.joueur ? (a.numero || 'JR') : r.court)}</span>
+    <div class="chat-bulle">
+      <div class="chat-nom" style="color:${r.couleur}">${esc(a.nom || (a.joueur ? 'Joueur' : 'Membre du staff'))}${a.externe ? ' · externe' : ''}${annonce ? ` · <span style="color:var(--or)">annonce ${c.fil === FIL_TOUS ? 'à tous' : 'à ton équipe'}</span>` : ''}</div>
+      <p class="chat-txt">${esc(c.texte)}</p>
+      <div class="chat-h">${esc(c.date)}${c.heure && c.heure !== '—' ? ' · ' + esc(c.heure) : ''}</div>
+    </div>
+  </div>`;
+}
+
 function vueConversation(conv, large){
-  const groupe = conv === GROUPE;
-  const m = groupe ? null : ((DB.staff || []).find(x => cleContact(x) === conv) || {});
-  const r = groupe ? null : (ROLES[m.roleCode] || ROLES[m.id] || ROLES.as);
+  const groupe = conv === GROUPE, cj = estConvJoueur(conv), ca = estConvAnnonce(conv);
+  const j = cj ? ((DB.joueurs || []).find(x => x.id === filCible(conv)) || {}) : null;
+  const m = (groupe || cj || ca) ? null : ((DB.staff || []).find(x => cleContact(x) === conv) || {});
+  const r = m ? (ROLES[m.roleCode] || ROLES[m.id] || ROLES.as) : null;
   const fil = filDe(conv);
   marqueChatLu(conv);
 
+  const titre = groupe ? 'Groupe staff' : cj ? (j.nom || 'Joueur') : ca ? libAnnonce(filCible(conv)) : (m.nom || 'Message privé');
+  const sous = groupe ? `${(DB.staff || []).length} participants — tout le staff lit ce fil.`
+    : cj ? `${esc(nomEq(j.equipe))} · conversation entre ${esc((j.nom || '').split(' ')[0] || 'le joueur')} et le staff : tout le staff la lit, chaque message est signé.`
+    : ca ? 'Annonce : chaque joueur concerné la reçoit dans ses messages. S\'il répond, sa réponse arrive dans sa conversation avec le staff.'
+    : `${esc(m.fonction || m.role || r.court)} · message privé, vous seuls le lisez.`;
+  const invite = groupe ? 'Écrire à tout le staff…' : ca ? 'Écrire une annonce…'
+    : 'Écrire à ' + esc(((cj ? j.nom : m.nom) || '').split(' ')[0] || 'cette personne') + '…';
+
   return `${large ? '' : `<button class="bouton fant" style="margin-bottom:12px" onclick="fermeConv()">‹ Contacts</button>`}
-  <h1 class="vue-titre${large ? ' chat2-titre' : ''}">${groupe ? 'Groupe staff' : esc(m.nom || 'Message privé')}</h1>
-  <p class="vue-sous">${groupe ? `${(DB.staff || []).length} participants — tout le staff lit ce fil.`
-    : `${esc(m.fonction || m.role || r.court)} · message privé, vous seuls le lisez.`}</p>
+  <h1 class="vue-titre${large ? ' chat2-titre' : ''}">${esc(titre)}</h1>
+  <p class="vue-sous">${sous}</p>
 
   <div class="chat">
     ${fil.length ? '' : `<p class="carte-note" style="text-align:center;padding:18px 0">${groupe ? 'Aucun message pour l\'instant.' : 'Pas encore de message. Écris le premier.'}</p>`}
-    ${fil.map(c => {
-      const m = membre(c.auteur);
-      /* La couleur vient du code de rôle (« ca »), pas de la fonction
-         (« Coach assistant ») que porte m.role une fois le club chargé. */
-      const r = ROLES[m.roleCode] || ROLES[m.id] || ROLES[c.auteur] || ROLES.as;
-      const moi = estMoi(c.auteur);
-      if (c.systeme) return `<div class="chat-sys">
-        <i class="puce" style="background:${r.couleur}"></i>
-        <span style="min-width:0"><b>${esc((m.nom || '').split(' ')[0] || r.court)}</b> ${esc(c.texte)}</span>
-      </div>`;
-      return `<div class="chat-b ${moi ? 'moi' : ''}">
-        <span class="chat-av" style="background:${r.couleur}">${r.court}</span>
-        <div class="chat-bulle">
-          <div class="chat-nom" style="color:${r.couleur}">${esc(m.nom || (c.auteur ? 'Joueur' : 'Membre du staff'))}${m.externe ? ' · externe' : ''}</div>
-          <p class="chat-txt">${esc(c.texte)}</p>
-          <div class="chat-h">${esc(c.date)}${c.heure && c.heure !== '—' ? ' · ' + esc(c.heure) : ''}</div>
-        </div>
-      </div>`;
-    }).join('')}
+    ${fil.map(bulleChat).join('')}
   </div>
 
-  ${/* Tout le staff écrit, dirigeants compris depuis le 26/10/2026. */ ''}<div class="chat-saisie">
-    <textarea class="champ" id="chatTexte" style="min-height:62px"
-      placeholder="${groupe ? 'Écrire à tout le staff…' : 'Écrire à ' + esc((m.nom || '').split(' ')[0] || 'cette personne') + '…'}"></textarea>
+  ${/* Tout le staff écrit, dirigeants compris depuis le 26/10/2026 (pas aux joueurs). */ ''}<div class="chat-saisie">
+    <textarea class="champ" id="chatTexte" style="min-height:62px" placeholder="${invite}"></textarea>
+    <button class="bouton plein" style="margin-top:9px" onclick="envoieChat()">${ca ? 'Envoyer l\'annonce' : 'Envoyer'}</button>
+  </div>`;
+}
+
+/* Côté joueur : ses messages, ouverts depuis l'accueil. */
+function vueMessagesJoueur(){
+  const fil = filDe(CONV_JOUEUR);
+  marqueChatLu(CONV_JOUEUR);
+  setTimeout(basChat, 0);
+  return `${retour('Accueil', 'fermeSous()')}
+  <h1 class="vue-titre">Messages</h1>
+  <p class="vue-sous">Tes échanges avec le staff, et les annonces du club. Ce que tu écris, tout le staff le lit.</p>
+  <div class="chat">
+    ${fil.length ? fil.map(bulleChat).join('') : '<p class="carte-note" style="text-align:center;padding:18px 0">Pas encore de message du staff.</p>'}
+  </div>
+  <div class="chat-saisie">
+    <textarea class="champ" id="chatTexte" style="min-height:62px" placeholder="Écrire au staff…"></textarea>
     <button class="bouton plein" style="margin-top:9px" onclick="envoieChat()">Envoyer</button>
+  </div>`;
+}
+
+/* La carte de l'accueil du joueur. */
+function carteMessagesJoueur(){
+  const n = nonLusChat(CONV_JOUEUR), fil = filDe(CONV_JOUEUR), der = fil[fil.length - 1];
+  return `<div class="carte" style="${n ? 'border-color:var(--or)' : ''}">
+    <div class="carte-tete"><div class="carte-titre">Messages du staff</div>
+      ${n ? `<span class="etiq pleine pousse" style="background:var(--or)">${n} nouveau${n > 1 ? 'x' : ''}</span>` : ''}</div>
+    <p class="msg-txt">${der ? esc((estMoi(der.auteur) ? 'Toi : ' : (auteurChat(der.auteur).nom || '').split(' ')[0] + ' : ') + der.texte).slice(0, 110) : 'Le staff t\'écrit ici, et tu peux lui répondre.'}</p>
+    <button class="bouton ${n ? 'plein' : 'fant'} plein" style="margin-top:11px" onclick="ouvreSous('messages')">${n ? 'Lire' : 'Ouvrir'}</button>
   </div>`;
 }
 
 function envoieChat(){
   const t = ($('#chatTexte').value || '').trim();
   if (!t) { toast('Écris ton message'); return; }
-  const conv = E.chatAvec || GROUPE;
-  const dest = conv === GROUPE ? '' : conv;
+  const joueur = E.role === 'jr';
+  const conv = joueur ? CONV_JOUEUR : (E.chatAvec || GROUPE);
+  const versJoueurs = !joueur && (estConvJoueur(conv) || estConvAnnonce(conv));
+  if (versJoueurs && !PEUT_ECRIRE_JOUEURS(E.role)) { toast('Réservé au staff'); return; }
+  const fil = joueur ? (E.joueur || {}).id : versJoueurs ? filCible(conv) : '';
+  const dest = (joueur || versJoueurs || conv === GROUPE) ? '' : conv;
   // L'uuid naît ici : c'est le même en base, ce qui garde le repère « lu » valable au rechargement.
   const id = nouvelId();
-  /* Signé de l'identifiant PERSONNEL (« st05 »), plus du rôle : deux personnes
-     peuvent partager un rôle. La base le pose d'ailleurs elle-même
-     (trigger t_messages_auteur), d'après le compte connecté. */
-  DB.chat.push({id, auteur:auteurMoi() || E.role, dest,
+  /* Signé de l'identifiant PERSONNEL (« st05 », ou celui du joueur). La base
+     le pose d'ailleurs elle-même (trigger t_messages_auteur), d'après le
+     compte connecté. */
+  DB.chat.push({id, auteur:auteurMoi() || E.role, dest, fil,
                 date:AUJ_FR(), heure:heureCourante(), texte:t});
-  // Le destinataire ne part que pour un message privé : le groupe reste tel qu'avant.
-  enregistrer('messages', Object.assign({id, auteur_id:auteurMoi(), texte:t}, dest ? {destinataire_id: dest} : {}));
+  enregistrer('messages', Object.assign({id, auteur_id:auteurMoi(), texte:t},
+    dest ? {destinataire_id: dest} : {}, fil ? {joueur_id: fil} : {}));
   $('#chatTexte').value = '';
-  toast(dest ? 'Message privé envoyé' : 'Message envoyé au staff');
+  toast(joueur ? 'Message envoyé au staff' : estConvAnnonce(conv) ? 'Annonce envoyée' : versJoueurs ? 'Message envoyé au joueur'
+    : dest ? 'Message privé envoyé' : 'Message envoyé au staff');
   marqueChatLu(conv);
   rendVue(); rendNav();
-  window.scrollTo(0, document.body.scrollHeight);
+  setTimeout(basChat, 0);
 }
 
 /* L'heure du club (Abidjan), horloge corrigée — voir L'HEURE DU CLUB. */
@@ -7663,6 +7799,8 @@ const LIB_TABLE = {
   rencontres:'Match officiel', stats_match:'Statistiques de match',
   planning_semaines:'Planning de la semaine',
   exercices_variantes:'Adaptation d\'exercice', systemes:'Système du playbook',
+  push_abonnements:'Abonnement aux notifications',
+  notif_preferences:'Réglages des notifications',
 };
 const libTable = t => LIB_TABLE[t] || t;
 
@@ -7709,7 +7847,7 @@ function clubCourant(){
 async function enregistrer(table, ligne, surConflit){
   /* Le dirigeant est en lecture seule partout, SAUF le fil du staff (26/10/2026 :
      « ils doivent aussi pouvoir communiquer »). La base tient la même règle. */
-  if (typeof LECTURE_SEULE === 'function' && LECTURE_SEULE() && table !== 'messages'){ toast('Compte dirigeant : lecture seule'); return false; }
+  if (typeof LECTURE_SEULE === 'function' && LECTURE_SEULE() && (table !== 'messages' || E.role === 'iv')){ toast(E.role === 'iv' ? 'Compte invité : lecture seule' : 'Compte dirigeant : lecture seule'); return false; }
   /* On NE met PAS le club dans la ligne ici.
      Il est ajouté au moment de l'envoi, pas au moment de la saisie. La
      différence compte : une saisie faite avant le premier chargement — ou
@@ -8450,8 +8588,8 @@ async function chargerSupabase(){
      tient désormais : TOUTE table passée à enregistrer() a sa ligne ici. */
   const [msgs, meds, quizBase, quizReps, oppos, prefs, rapports, sponsorsBase] =
     await Promise.all([
-      // Les 300 derniers suffisent au fil ; ils sont remis dans l'ordre du temps plus bas.
-      sansEchec(api('messages?select=*&club_id=eq.' + club.id + '&order=envoye_le.desc&limit=300')),
+      // Les 600 derniers (03/11/2026 : les fils des joueurs s'y ajoutent) suffisent ; ils sont remis dans l'ordre du temps plus bas.
+      sansEchec(api('messages?select=*&club_id=eq.' + club.id + '&order=envoye_le.desc&limit=600')),
       sansEchec(api('medical?select=*&club_id=eq.' + club.id + '&order=date_signalement.desc')),
       sansEchec(api('quiz?select=*&club_id=eq.' + club.id + '&order=date_quiz.desc')),
       // Pas de club_id dans cette table : la politique de lecture fait le tri.
@@ -8487,12 +8625,14 @@ async function chargerSupabase(){
   /* 26/10/2026 : 124 jours au lieu de 56 — le calendrier du staff remonte
      jusqu'à trois mois en arrière, et un mois entier doit y être complet. */
   const depuis = (() => { try { return decaleJour(AUJ(), -124); } catch (e){ return '2000-01-01'; } })();
-  const [fatigueBase, retoursBase, evalsDTBase, grillesDTBase, rapmBase] = await Promise.all([
+  const [fatigueBase, retoursBase, evalsDTBase, grillesDTBase, rapmBase, prefsNotif] = await Promise.all([
     sansEchec(api('fatigue?select=joueur_id,jour,note&club_id=eq.' + club.id + '&jour=gte.' + depuis)),
     sansEchec(api('retours?select=type,jour,auteur_id,contenu,rendu_le&club_id=eq.' + club.id + '&jour=gte.' + depuis)),
     sansEchec(api('evaluations_dt?select=*&club_id=eq.' + club.id)),
     sansEchec(api('grilles_dt?select=role,lib,criteres&club_id=eq.' + club.id)),
-    sansEchec(api('rapports_membres?select=*&club_id=eq.' + club.id))
+    sansEchec(api('rapports_membres?select=*&club_id=eq.' + club.id)),
+    // 03/11/2026 : SES réglages de notification (la base ne rend que les siens).
+    sansEchec(api('notif_preferences?select=coupes&club_id=eq.' + club.id))
   ]);
 
   const parJoueur = (liste, cle) => {
@@ -8666,7 +8806,9 @@ async function chargerSupabase(){
     domaines: domaines, cycles: cycles,
     cycleCourant: (cycles.find(c => c.debut <= AUJ() && AUJ() <= c.fin) || {}).nom || '',
     equipes: (equipes || []).map(e => ({id: e.code, nom: e.nom})),
-    staff: (staff || []).map(m => ({
+    /* 03/11/2026 : les invités (« iv ») ne sont pas du staff — ni contacts,
+       ni écran Staff, ni fiches à noter. */
+    staff: (staff || []).filter(m => m.role !== 'iv').map(m => ({
       id: m.role, staffId: m.id, nom: m.nom, role: m.fonction,
       equipes: m.equipe_code ? [m.equipe_code] : (equipes || []).map(e => e.code),
       code: ''
@@ -8801,6 +8943,7 @@ async function chargerSupabase(){
       if (x && x.role && Array.isArray(x.criteres) && x.criteres.length) g[x.role] = {lib: x.lib, criteres: x.criteres};
       return g;
     }, {}),
+    notifCoupes: ((prefsNotif || [])[0] || {}).coupes || [],
     rapportsMembres: (rapmBase || []).map(r => ({personne: r.personne_id, periode: r.periode,
       contenu: r.contenu || {}, finaliseLe: r.finalise_le ? dateClubFr(r.finalise_le) + ' à ' + heureClub(new Date(r.finalise_le)) : ''})),
     /* Relus depuis le 12/10/2026 — voir « LE CHEMIN DU RETOUR, ACHEVÉ ». */
@@ -8824,7 +8967,8 @@ async function chargerSupabase(){
     chat: (msgs || []).slice().reverse().map(c => ({
       id: c.id, auteur: c.auteur_id || '', date: dateLocale(c.envoye_le),
       heure: heure(c.envoye_le), texte: c.texte, systeme: !!c.systeme,
-      dest: c.destinataire_id || ''        // 28/10/2026 : message privé
+      dest: c.destinataire_id || '',       // 28/10/2026 : message privé
+      fil: c.joueur_id || ''               // 03/11/2026 : fil joueur (id), « tous » ou « eq:<code> »
     })),
     planning: (planningBase || []).map(w => ({
       equipe: w.equipe_code, lundi: String(w.lundi).slice(0, 10),
@@ -9417,7 +9561,7 @@ function ouvreRencontre(id){
   const v = x => x == null ? '—' : x;
   const tir = (m, a) => m + (a != null ? '/' + a : '');
   /* 01/11/2026 : l'écart entre les points des joueurs et le score se dit ici aussi. */
-  const ctl = typeof controleFeuille === 'function' ? controleFeuille(r) : null;
+  const ctl = typeof controleFeuille === 'function' && E.role !== 'iv' ? controleFeuille(r) : null;
   ouvreFeuille(`<div class="feuille-titre">${esc(r.adversaire)} · ${r.pour} – ${r.contre}</div>
     <div class="feuille-sous">${esc(nomEq(r.equipe))} · ${esc(jourFr(r.date))}</div>
     ${ctl ? `<div class="msg" style="margin-top:10px;border-left-color:var(--alerte)"><div class="msg-txt">
@@ -10110,7 +10254,7 @@ async function copieSemainePrecedente(){
       dirigeants. L'échéance tombe à minuit, heure d'Abidjan.
    ══════════════════════════════════════════════════════════════════════════ */
 
-const LECTURE_SEULE = () => E.role === 'dg';
+const LECTURE_SEULE = () => E.role === 'dg' || E.role === 'iv';   // 03/11/2026 : et les invités
 const PEUT_PLAYBOOK = r => ['dt', 'hc', 'dg'].includes(r);
 const PEUT_FATIGUE  = r => ['dt', 'hc', 'ca', 'cd', 'pp', 'ki', 'dg'].includes(r);
 const VOIT_ECHEANCES = r => ['dt', 'dg'].includes(r);
@@ -10775,21 +10919,21 @@ function ouvreClasseurEval(){
 
 function vueFicheMembre(){
   let d;
-  if (E.role === 'dg'){
+  if (E.role === 'dg' || E.role === 'iv'){
     const r = (DB.rapportsMembres || []).find(x => x.personne === EVAL.pid && x.periode === EVAL.periode);
-    if (!r) return `${retour('Rapports', 'fermeSous()')}<div class="vide">Cette fiche n'a pas été transmise.</div>`;
+    if (!r) return `${retour(E.role === 'iv' ? 'Évaluations' : 'Rapports', 'fermeSous()')}<div class="vide">Cette fiche n'a pas été transmise.</div>`;
     d = Object.assign({}, r.contenu, {finaliseLe: r.finaliseLe});
   } else {
     const mb = membresEvaluables().find(m => m.pid === EVAL.pid);
-    if (!mb) return `${retour('Rapports', 'fermeSous()')}<div class="vide">Membre introuvable.</div>`;
+    if (!mb) return `${retour(E.role === 'iv' ? 'Évaluations' : 'Rapports', 'fermeSous()')}<div class="vide">Membre introuvable.</div>`;
     d = ficheDonnees(mb, EVAL.periode);
   }
   const fin = (DB.rapportsMembres || []).find(x => x.personne === EVAL.pid && x.periode === EVAL.periode);
-  const periodes = E.role === 'dg'
+  const periodes = (E.role === 'dg' || E.role === 'iv')
     ? (DB.rapportsMembres || []).filter(x => x.personne === EVAL.pid).map(x => x.periode)
     : Array.from(new Set(evalsDe(EVAL.pid).map(e => e.periode).concat([periodeDuJour()])));
   periodes.sort();
-  return `${retour('Rapports', 'fermeSous()')}
+  return `${retour(E.role === 'iv' ? 'Évaluations' : 'Rapports', 'fermeSous()')}
   ${ficheEcran(d)}
   ${periodes.length > 1 ? `<div class="ong" style="margin-top:12px">${periodes.map(p =>
     `<button class="ong-b ${p === EVAL.periode ? 'actif' : ''}" onclick="EVAL.periode='${p}';rendVue()">${esc(libPeriode(p))}</button>`).join('')}</div>` : ''}
@@ -10942,10 +11086,11 @@ function ficheA4(d){
 /* ═══════════════════════════════════ LES DIRIGEANTS ═══════════════════════════════════ */
 
 function vueFichesFinalisees(){
-  const rs = (DB.rapportsMembres || []).slice().sort((a, b) => a.periode < b.periode ? 1 : a.periode > b.periode ? -1 : 0);
+  /* 03/11/2026 — un invité ne lit que les fiches des joueurs (la base le garantit). */
+  const rs = (DB.rapportsMembres || []).filter(r => E.role !== 'iv' || (DB.joueurs || []).some(j => j.id === r.personne)).slice().sort((a, b) => a.periode < b.periode ? 1 : a.periode > b.periode ? -1 : 0);
   const parPeriode = {};
   rs.forEach(r => { (parPeriode[r.periode] = parPeriode[r.periode] || []).push(r); });
-  return `<h1 class="vue-titre">Fiches transmises</h1>
+  return `<h1 class="vue-titre">${E.role === 'iv' ? 'Évaluations des joueurs' : 'Fiches transmises'}</h1>
   <p class="vue-sous">Les fiches individuelles finalisées par le directeur technique, telles qu'il les a validées.</p>
   ${Object.keys(parPeriode).map(p => `<div class="section-titre">${esc(libPeriode(p))}</div>
     <div class="jl">${parPeriode[p].map(r => {
@@ -11574,14 +11719,14 @@ function listeFeuillesMatch(){
   const vus = {};
   rs.forEach(r => { vus[cle(r)] = (vus[cle(r)] || 0) + 1; });
   return `<div class="section-titre">Feuilles de match</div>
-  <p class="carte-note" style="margin:-4px 0 10px">Saisies par l'onglet Match. Touche un match pour voir les stats joueur par joueur${PEUT_SUPPR_MATCH() ? ' — ou pour le supprimer (doublon, essai)' : ''}.</p>
+  <p class="carte-note" style="margin:-4px 0 10px">${E.role === 'iv' ? '' : 'Saisies par l\'onglet Match. '}Touche un match pour voir les stats joueur par joueur${PEUT_SUPPR_MATCH() ? ' — ou pour le supprimer (doublon, essai)' : ''}.</p>
   <div class="carte" style="padding:4px 14px">
     ${rs.map(r => {
       const g = (+r.pour || 0) > (+r.contre || 0), c = controleFeuille(r), n = (r.lignes || []).length;
       return `<button class="fm-l" onclick="ouvreRencontre('${esc(r.id)}')">
         <span class="mono fm-d">${dateCourte(isoMatch(r.date))}</span>
         <span class="fm-a"><b>${esc(r.adversaire)}</b>
-          <small>${plusieurs ? esc(nomEq(r.equipe)) + ' · ' : ''}${n} joueur${n > 1 ? 's' : ''}${c ? ` · <em>stats : ${c.pts} pts sur ${c.score} marqués</em>` : ''}${vus[cle(r)] > 1 ? ' · <em class="fm-dbl">saisi deux fois ?</em>' : ''}</small></span>
+          <small>${plusieurs ? esc(nomEq(r.equipe)) + ' · ' : ''}${n} joueur${n > 1 ? 's' : ''}${c && E.role !== 'iv' ? ` · <em>stats : ${c.pts} pts sur ${c.score} marqués</em>` : ''}${vus[cle(r)] > 1 && E.role !== 'iv' ? ' · <em class="fm-dbl">saisi deux fois ?</em>' : ''}</small></span>
         <span class="mono fm-s">${r.pour}–${r.contre}</span>
         <span class="vd ${g ? 'v' : 'd'}">${g ? 'V' : 'D'}</span>
       </button>`;
@@ -11781,6 +11926,274 @@ function boutonsPhotoJoueur(j){
   <div class="ph-act">
     <button class="bouton fant" onclick="document.getElementById('ph-${esc(j.id)}').click()">${ico('photo')} ${a ? 'Changer la photo' : 'Ajouter une photo'}</button>
     ${a ? `<button class="ph-retire" onclick="retirePhotoJoueur('${esc(j.id)}')">Retirer</button>` : ''}
+  </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LES INVITÉS — autres dirigeants du club et sponsors          (03/11/2026)
+
+   Demande du président (Koné Sédou), relayée par Fathy : « une interface de
+   connexion pour les autres dirigeants du club — ils auraient un accès limité
+   aux résultats des matchs et aux évaluations des joueurs ; l'idée serait de
+   communiquer à certains membres de la direction et éventuellement aux
+   sponsors ». Décision de Fathy : dirigeants invités et sponsors voient la
+   même chose.
+
+   Rôle « iv », en lecture seule, deux onglets :
+   - Résultats   : rang, bilan, prochain match, classement, feuilles de match
+                   (score et stats joueur par joueur), derniers résultats ;
+   - Évaluations : les fiches des JOUEURS finalisées par le DT.
+   Rien sur le staff, le médical, le playbook, les messages, les séances.
+
+   La base tient la règle (maj_2026-11-03_invites.sql) : fermé par défaut,
+   lecture de huit tables seulement, aucune écriture. La page n'affiche donc
+   que ce que la base lui rend ; les filtres ci-dessous évitent seulement,
+   dans la démonstration, d'afficher ce qu'un invité ne recevrait pas.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const EST_INVITE = () => E.role === 'iv';
+
+function vueResultatsInvite(){
+  const C = DB.championnat || {classement: [], resultats: [], prochain: {}};
+  const nous = (C.classement || []).find(l => l.nous) || {};
+  const rang = (C.classement || []).indexOf(nous) + 1;
+  const corps = vueClassement().replace(retour('Accueil', 'fermeSous()'), '')
+    .replace('<h1 class="vue-titre">Classement et résultats</h1>', '<div class="section-titre">Classement</div>');
+  return `<h1 class="vue-titre">Résultats</h1>
+  <p class="vue-sous">Les résultats de l'équipe, mis à jour par le staff du club.</p>
+  ${rang ? `<div class="banniere" style="margin-bottom:12px">
+    <div class="ban-sur">${esc(C.instance || '')}</div>
+    <div class="ban-titre">${esc(C.nom || '')}</div>
+    <div class="ban-rang">
+      <div><div class="ban-chiffre">${rang}<sup style="font-size:14px">${rang == 1 ? 'er' : 'e'}</sup></div><div class="ban-lib">au classement</div></div>
+      <div><div class="ban-chiffre">${nous.v || 0}–${nous.d || 0}</div><div class="ban-lib">bilan</div></div>
+      <div><div class="ban-chiffre">${C.journee || 0}<span style="font-size:15px;color:var(--gris)">/${C.journees || 0}</span></div><div class="ban-lib">journées</div></div>
+    </div></div>` : ''}
+  ${C.prochain && C.prochain.adversaire ? carteProchainMatch(C.prochain) : ''}
+  ${corps}`;
+}
+
+function vueEvaluationsInvite(){
+  if (E.sous === 'fiche') return vueFicheMembre();
+  return vueFichesFinalisees();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LES NOTIFICATIONS SUR LE TÉLÉPHONE                           (03/11/2026)
+
+   Fathy : « je veux qu'on mette en place les notifications sur la
+   plateforme, comme ça ça incitera les utilisateurs à l'utiliser de manière
+   plus fréquente ».
+
+   Ce qui sonne : un nouveau message (chat du staff, message privé, message
+   ou annonce aux joueurs, réponse d'un joueur) et une nouvelle consigne au
+   joueur. Le journal de la plateforme (appel clos…) ne sonne pas.
+
+   Côté page, trois choses :
+   1. une carte « Activer les notifications » en tête de l'accueil, tant que
+      cet appareil n'est pas abonné (« Plus tard » la cache une semaine) ;
+   2. l'abonnement : permission du navigateur, clé publique demandée à la
+      fonction « asa-notifier », appareil enregistré dans push_abonnements
+      (la base y pose elle-même l'identité de la personne) ;
+   3. au toucher d'une notification, l'écran voulu s'ouvre (?ouvre=…).
+
+   Limites, dites dans la carte :
+   - iPhone : seulement si la plateforme est ajoutée à l'écran d'accueil
+     (iOS 16.4 et plus) ;
+   - un invité n'a rien à recevoir : pas de carte.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const URL_NOTIFIER = () => SOURCE.url ? SOURCE.url + '/functions/v1/asa-notifier' : '';
+const CLE_NOTIF_PLUS_TARD = 'asa-notif-plus-tard';
+const CLE_NOTIF_OK = () => 'asa-notif-ok.' + (auteurMoi() || E.role || '');
+
+const pushPossible = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const surIphone = () => /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+const ecranAccueil = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+
+function notifPlusTard(){
+  try { localStorage.setItem(CLE_NOTIF_PLUS_TARD, String(Date.now())); } catch (e){}
+  rendVue();
+}
+function notifRecente(){
+  try { return Date.now() - (+localStorage.getItem(CLE_NOTIF_PLUS_TARD) || 0) < 7 * 864e5; } catch (e){ return false; }
+}
+function notifActive(){
+  try { return localStorage.getItem(CLE_NOTIF_OK()) === '1' && Notification.permission === 'granted'; } catch (e){ return false; }
+}
+
+/* La carte de l'accueil — rien si l'appareil est abonné, si on a dit
+   « plus tard » cette semaine, ou pour un invité. */
+function carteNotifications(){
+  if (!E.role || E.role === 'iv' || notifRecente() || notifActive()) return '';
+  if (typeof Notification !== 'undefined' && Notification.permission === 'denied') return '';
+  const iphoneHors = surIphone() && !ecranAccueil();
+  if (!pushPossible() && !iphoneHors) return '';
+  return `<div class="carte notif-carte">
+    <div class="carte-tete"><div class="carte-titre">Activer les notifications</div>
+      <span class="etiq pousse" style="color:var(--or)">recommandé</span></div>
+    <p class="msg-txt">${iphoneHors
+      ? 'Sur iPhone, ajoute d\'abord la plateforme à ton écran d\'accueil : bouton <b>Partager</b> ⬆︎ puis <b>« Sur l\'écran d\'accueil »</b>. Ouvre-la ensuite depuis l\'icône et active les notifications ici.'
+      : 'Sois prévenu sur ton téléphone dès qu\'un message ou une consigne t\'attend, même application fermée.'}</p>
+    <div class="g2" style="margin-top:11px">
+      <button class="bouton fant" onclick="notifPlusTard()">Plus tard</button>
+      ${iphoneHors ? '' : '<button class="bouton plein" onclick="activeNotifications()">Activer</button>'}
+    </div>
+    <button class="bouton fant plein" style="margin-top:8px;border:0" onclick="ouvreSous('notifs')">Choisir ce qui me prévient ›</button>
+  </div>`;
+}
+
+/* La clé publique arrive en base64 « url » ; le navigateur la veut en octets. */
+function cleOctets(b64){
+  const p = '='.repeat((4 - b64.length % 4) % 4);
+  const s = atob((b64 + p).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(s, c => c.charCodeAt(0));
+}
+
+async function activeNotifications(){
+  if (!pushPossible()) return toast('Ce navigateur ne reçoit pas de notifications');
+  if (!enLigne() || !URL_NOTIFIER()) return toast('Notifications : disponibles une fois connecté au club');
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast('Notifications refusées — tu peux les autoriser dans les réglages du navigateur'); return; }
+    const reg = await navigator.serviceWorker.ready;
+    const r = await fetch(URL_NOTIFIER(), {headers: {apikey: SOURCE.cle}});
+    const cle = (await r.json()).publique;
+    if (!cle) throw new Error('clé publique absente');
+    const sub = (await reg.pushManager.getSubscription())
+             || await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: cleOctets(cle)});
+    const j = sub.toJSON();
+    await enregistrer('push_abonnements', {endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth,
+      personne_id: auteurMoi() || '', appareil: String(navigator.userAgent || '').slice(0, 120)}, 'endpoint');
+    try { localStorage.setItem(CLE_NOTIF_OK(), '1'); } catch (e){}
+    toast('Notifications activées sur cet appareil');
+    rendVue();
+  } catch (e){
+    toast('Notifications : ' + (e && e.message ? e.message : 'échec'));
+  }
+}
+
+/* Ouvrir l'écran demandé par une notification. */
+function ouvreDepuisNotif(ouvre){
+  if (!E.role || !ouvre) return false;
+  if (ouvre === 'messages' && E.role === 'jr') { E.onglet = 0; ouvreSous('messages'); return true; }
+  if (ouvre === 'fiche' && E.role === 'jr') { const i = PLAN.jr.findIndex(o => o[1] === 'Ma fiche'); if (i >= 0) vaVers(i); return true; }
+  if (ouvre === 'chat'){
+    const i = (PLAN[E.role] || []).findIndex(o => o[1] === 'Chat');
+    if (i >= 0) vaVers(i); else { E.onglet = 0; ouvreSous('chat'); }
+    return true;
+  }
+  return false;
+}
+try {
+  navigator.serviceWorker && navigator.serviceWorker.addEventListener('message', ev => {
+    if (ev.data && ev.data.type === 'asa-ouvre') ouvreDepuisNotif(ev.data.ouvre);
+  });
+} catch (e){}
+/* À l'ouverture par une notification : on attend que la session soit posée
+   (dix secondes au plus), puis on va à l'écran, une seule fois. */
+(function(){
+  const m = (location.search || '').match(/[?&]ouvre=([a-z]+)/);
+  if (!m) return;
+  let n = 0;
+  const t = setInterval(() => {
+    if (ouvreDepuisNotif(m[1]) || ++n > 40){
+      clearInterval(t);
+      try { history.replaceState(null, '', location.pathname); } catch (e){}
+    }
+  }, 250);
+})();
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MES NOTIFICATIONS — les réglages de chacun                   (03/11/2026)
+
+   Fathy : « que chaque utilisateur, dans son espace perso ou dans ses
+   paramètres, puisse voir toutes les notifications qu'il peut recevoir et
+   cocher si oui ou non il veut être notifié sur tel ou tel point ».
+
+   - Un écran « Mes notifications », ouvert depuis l'accueil (carte
+     d'activation, ou la ligne « Notifications · réglages » une fois
+     l'appareil abonné). Il liste les notifications que CE rôle peut
+     recevoir, chacune avec sa case.
+   - Les choix suivent la personne, pas l'appareil : table notif_preferences,
+     colonne « coupes » = les types décochés. La fonction asa-notifier les
+     respecte. Tout est coché par défaut.
+   - Le même écran dit si cet appareil est abonné, et permet de l'activer ou
+     de le désactiver.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const TYPES_NOTIF = [
+  {id: 'groupe',   lib: 'Groupe staff',             aide: 'Un message dans le fil de tout le staff.',              pour: r => STAFF_NOTIF(r) || r === 'dg'},
+  {id: 'prive',    lib: 'Messages privés',          aide: 'Un membre du staff t\'écrit en privé.',                  pour: r => STAFF_NOTIF(r) || r === 'dg'},
+  {id: 'joueurs',  lib: 'Réponses des joueurs',     aide: 'Un joueur écrit dans sa conversation avec le staff.',   pour: r => STAFF_NOTIF(r)},
+  {id: 'perso',    lib: 'Messages du staff',        aide: 'Le staff t\'écrit, à toi seul.',                        pour: r => r === 'jr'},
+  {id: 'annonce',  lib: 'Annonces du club',         aide: 'Une annonce à tous les joueurs ou à ton équipe.',       pour: r => r === 'jr'},
+  {id: 'consigne', lib: 'Consignes',                aide: 'Une nouvelle consigne dans ta fiche.',                   pour: r => r === 'jr'},
+];
+function STAFF_NOTIF(r){ return ['dt', 'hc', 'ca', 'cd', 'an', 'ki', 'as', 'pp'].includes(r); }
+const typesPourMoi = () => TYPES_NOTIF.filter(t => t.pour(E.role));
+const notifCoupee = id => (DB.notifCoupes || []).includes(id);
+
+function basculeNotif(id){
+  const c = new Set(DB.notifCoupes || []);
+  if (c.has(id)) c.delete(id); else c.add(id);
+  DB.notifCoupes = Array.from(c);
+  enregistrer('notif_preferences', {personne_id: auteurMoi() || '', coupes: DB.notifCoupes}, 'personne_id');
+  toast(c.has(id) ? 'Tu ne seras plus prévenu pour ça' : 'Tu seras prévenu pour ça');
+  rendVue();
+}
+
+async function desactiveNotifications(){
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub){
+      const ep = sub.endpoint;
+      await sub.unsubscribe();
+      supprimer('push_abonnements', 'endpoint=eq.' + encodeURIComponent(ep));
+    }
+  } catch (e){}
+  try { localStorage.removeItem(CLE_NOTIF_OK()); localStorage.setItem(CLE_NOTIF_PLUS_TARD, String(Date.now())); } catch (e){}
+  toast('Notifications désactivées sur cet appareil');
+  rendVue();
+}
+
+/* La ligne discrète de l'accueil, quand la carte d'activation n'est plus là. */
+function ligneNotifications(){
+  if (!E.role || E.role === 'iv') return '';
+  return `<button class="notif-ligne" onclick="ouvreSous('notifs')">
+    <span>${notifActive() ? '🔔 Notifications activées' : '🔕 Notifications'}</span><span class="pousse">Réglages ›</span></button>`;
+}
+
+function vueMesNotifs(){
+  const types = typesPourMoi();
+  const actif = notifActive();
+  const iphoneHors = surIphone() && !ecranAccueil();
+  const refus = typeof Notification !== 'undefined' && Notification.permission === 'denied';
+  return `${retour('Accueil', 'fermeSous()')}
+  <h1 class="vue-titre">Mes notifications</h1>
+  <p class="vue-sous">Choisis ce qui te prévient sur ton téléphone. Tes choix te suivent sur tous tes appareils.</p>
+
+  <div class="carte">
+    <div class="carte-tete"><div class="carte-titre">Cet appareil</div>
+      <span class="etiq pousse" style="color:${actif ? 'var(--physique)' : 'var(--gris)'}">${actif ? 'activé' : 'non activé'}</span></div>
+    <p class="msg-txt">${actif ? 'Ce téléphone reçoit tes notifications.'
+      : refus ? 'Les notifications sont bloquées pour ce site : autorise-les dans les réglages du navigateur, puis reviens ici.'
+      : iphoneHors ? 'Sur iPhone : bouton <b>Partager</b> ⬆︎ puis <b>« Sur l\'écran d\'accueil »</b>, ouvre la plateforme depuis l\'icône, et active ici.'
+      : 'Active-les pour être prévenu même application fermée.'}</p>
+    ${actif ? `<button class="bouton fant plein" style="margin-top:11px" onclick="desactiveNotifications()">Désactiver sur cet appareil</button>`
+      : (refus || iphoneHors || !pushPossible()) ? '' : `<button class="bouton plein" style="margin-top:11px" onclick="activeNotifications()">Activer sur cet appareil</button>`}
+  </div>
+
+  <div class="section-titre">Me prévenir pour</div>
+  <div class="carte" style="padding:4px 14px">
+    ${types.map(t => {
+      const on = !notifCoupee(t.id);
+      return `<label class="notif-type">
+        <span class="notif-txt"><b>${esc(t.lib)}</b><small>${esc(t.aide)}</small></span>
+        <input type="checkbox" ${on ? 'checked' : ''} onchange="basculeNotif('${t.id}')">
+      </label>`;
+    }).join('') || '<p class="carte-note">Aucune notification pour ton rôle.</p>'}
   </div>`;
 }
 
