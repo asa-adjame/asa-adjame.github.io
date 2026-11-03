@@ -2087,7 +2087,7 @@ function connexion(role, id, joueurId){
   E.equipe = E.equipes[0];                             // Pro d'abord (29/10/2026)
   // On repart d'un écran propre : sans ça, ouvrir une session avec un autre rôle
   // atterrit sur le sous-écran du précédent, et rien ne garantit qu'il y ait droit.
-  E.fiche = null; E.quiz = null; E.onglet = 0; E.sous = null;
+  E.fiche = null; E.quiz = null; E.onglet = 0; E.sous = null; E.chatAvec = null;
   if (typeof PB !== 'undefined') PB = null;
   if (typeof BIB !== 'undefined') BIB = {cat:'Toutes', q:'', ouvert:null, adapte:null};
   if (typeof SAISIE_TIR !== 'undefined') { SAISIE_TIR = null; SAISIE_REPRISE = false; }
@@ -4338,7 +4338,9 @@ const CONV_JOUEUR = 'staff';                       // la conversation unique du 
 const estConvJoueur = c => String(c || '').startsWith('J:');
 const estConvAnnonce = c => String(c || '').startsWith('A:');
 const filCible = c => String(c || '').slice(2);    // « J:j07 » → « j07 » ; « A:eq:pro » → « eq:pro »
-const PEUT_ECRIRE_JOUEURS = r => ['dt', 'hc', 'ca', 'cd', 'an', 'ki', 'as', 'pp'].includes(r);
+/* 03/11/2026, 01 h 18 — les dirigeants aussi : la demande vient du président,
+   qui a un compte dirigeant (« je souhaiterais pouvoir leur envoyer des messages »). */
+const PEUT_ECRIRE_JOUEURS = r => ['dt', 'hc', 'ca', 'cd', 'an', 'ki', 'as', 'pp', 'dg'].includes(r);
 const libAnnonce = k => k === FIL_TOUS ? 'Tous les joueurs' : 'Équipe ' + String(nomEq(String(k).slice(3))).replace(/^Équipe\s+/i, '');
 
 /* Qui a écrit : un membre du staff, ou un joueur. */
@@ -11614,7 +11616,7 @@ function raccourcisAccueil(){
   }
   if (E.role === 'dg'){
     b.push(['Rapports du DT', `E.rapVue='fiches';vaVers(indexOnglet('Rapports'))`]);
-    b.push(['Chat du staff', `E.chatAvec=null;ouvreSous('chat')`]);
+    b.push(['Chat · staff et joueurs', `E.chatAvec=null;ouvreSous('chat')`]);
   }
   /* Le head coach : ses relances sont dans « À traiter », pas en double ici.
      02/11/2026 : il écrit au médical, mais l'onglet n'est pas dans sa barre. */
@@ -12125,7 +12127,7 @@ try {
 const TYPES_NOTIF = [
   {id: 'groupe',   lib: 'Groupe staff',             aide: 'Un message dans le fil de tout le staff.',              pour: r => STAFF_NOTIF(r) || r === 'dg'},
   {id: 'prive',    lib: 'Messages privés',          aide: 'Un membre du staff t\'écrit en privé.',                  pour: r => STAFF_NOTIF(r) || r === 'dg'},
-  {id: 'joueurs',  lib: 'Réponses des joueurs',     aide: 'Un joueur écrit dans sa conversation avec le staff.',   pour: r => STAFF_NOTIF(r)},
+  {id: 'joueurs',  lib: 'Réponses des joueurs',     aide: 'Un joueur écrit dans sa conversation avec le staff.',   pour: r => STAFF_NOTIF(r) || r === 'dg'},
   {id: 'perso',    lib: 'Messages du staff',        aide: 'Le staff t\'écrit, à toi seul.',                        pour: r => r === 'jr'},
   {id: 'annonce',  lib: 'Annonces du club',         aide: 'Une annonce à tous les joueurs ou à ton équipe.',       pour: r => r === 'jr'},
   {id: 'consigne', lib: 'Consignes',                aide: 'Une nouvelle consigne dans ta fiche.',                   pour: r => r === 'jr'},
