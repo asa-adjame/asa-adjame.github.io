@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <!-- Politique de sécurité. Reprise de Sniper (s1_head.html), adaptée au fait
      que la plateforme charge ses polices chez Google.
 
@@ -378,6 +378,38 @@ textarea.champ{resize:vertical;min-height:78px;line-height:1.5}
 .chat-nom{font-size:11px;font-weight:700;margin-bottom:3px}
 .chat-txt{font-size:13px;line-height:1.5;color:#D6E4F2}
 .chat-h{font-family:var(--mono);font-size:9.5px;color:var(--gris2);margin-top:4px;text-align:right}
+/* 03/11/2026 — la conversation façon WhatsApp (téléphone et tablette) */
+html.wa-ouvert,html.wa-ouvert body{overflow:hidden;overscroll-behavior:none}
+.wa{position:fixed;left:0;right:0;top:0;height:100vh;height:100dvh;z-index:95;display:flex;flex-direction:column;
+  background:var(--nuit);background-image:radial-gradient(rgba(255,178,70,.035) 1px,transparent 1px);background-size:22px 22px}
+.wa-tete{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:8px 12px 8px 6px;
+  padding-top:calc(8px + env(safe-area-inset-top));background:rgba(6,24,46,.98);border-bottom:1px solid var(--ligne)}
+.wa-retour{width:38px;height:38px;flex:0 0 38px;font-size:30px;line-height:1;color:var(--or);background:none;border:0;cursor:pointer}
+.wa-qui{min-width:0;display:flex;flex-direction:column}
+.wa-qui b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wa-qui small{font-size:11.5px;color:var(--gris);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wa-fil{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:10px 10px 12px}
+.wa-fil .chat{gap:6px}
+.wa-note{max-width:440px;margin:4px auto 10px;text-align:center;font-size:11.5px;line-height:1.45;color:var(--gris);
+  background:rgba(255,178,70,.06);border:1px solid rgba(255,178,70,.18);border-radius:10px;padding:7px 11px}
+.wa-jour{display:flex;justify-content:center;margin:8px 0 4px}
+.wa-jour span{font-family:var(--mono);font-size:10px;letter-spacing:.6px;color:var(--gris);background:var(--surface);
+  border:1px solid var(--ligne);border-radius:8px;padding:4px 10px}
+.wa-b .chat-av{width:28px;height:28px;flex:0 0 28px;font-size:10px}
+.wa-b .chat-bulle{max-width:82%;padding:7px 10px 5px;border-radius:12px}
+.wa-b.moi .chat-bulle{border-top-right-radius:4px}
+.wa-b:not(.moi) .chat-bulle{border-top-left-radius:4px}
+.wa-b .chat-txt{font-size:14.5px;white-space:pre-wrap;word-break:break-word}
+.wa-b .chat-h{margin-top:2px}
+.wa-saisie{flex:0 0 auto;display:flex;align-items:flex-end;gap:8px;padding:8px 10px;
+  padding-bottom:calc(8px + env(safe-area-inset-bottom));background:rgba(6,24,46,.98);border-top:1px solid var(--ligne)}
+/* 16 px : en dessous, l'iPhone agrandit la page dès qu'on touche le champ. */
+.wa-champ{flex:1;min-height:42px !important;max-height:132px;resize:none !important;font-size:16px !important;
+  line-height:1.35 !important;padding:10px 14px !important;border-radius:21px !important;overflow-y:auto}
+.wa-envoi{flex:0 0 42px;width:42px;height:42px;border-radius:50%;border:0;display:grid;place-items:center;
+  background:var(--or);color:#0A1628;cursor:pointer}
+.wa-envoi:active{transform:scale(.94)}
+.wa-cache{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .chat-saisie{position:sticky;bottom:0;background:linear-gradient(180deg,transparent,var(--nuit) 28%);
   padding-top:14px;margin-top:14px}
 
@@ -2238,6 +2270,8 @@ function rendVue(){
   /* 03/11/2026 — les Paramètres s'ouvrent par-dessus n'importe quel onglet (bouton de l'en-tête). */
   const p = document.querySelector('.ent-param');
   if (p) p.classList.toggle('actif', E.sous === 'parametres');
+  /* 03/11/2026 : la conversation plein écran verrouille la page derrière elle ; on relâche dès qu'elle n'est plus là. */
+  if (typeof waMonte === 'function') setTimeout(waMonte, 0);
   if (E.sous === 'parametres' && typeof vueParametres === 'function'){ $('#vue').innerHTML = vueParametres(); return; }
   const notif = (E.onglet === 0 && !E.sous && typeof carteNotifications === 'function') ? carteNotifications() : '';
   $('#vue').innerHTML = notif + PLAN[E.role][E.onglet][2]();
@@ -2278,7 +2312,7 @@ function listeJoueurs(js, action, valeur){
 
 E.sous = null;
 function ouvreSous(nom){ E.sous = nom; rendVue(); window.scrollTo(0,0); }
-function fermeSous(){ E.sous = null; rendVue(); window.scrollTo(0,0); }
+function fermeSous(){ if (E.sous === 'messages' && typeof waQuitteHistoire === 'function') waQuitteHistoire(); E.sous = null; rendVue(); window.scrollTo(0,0); }
 const retour = (lib, fn) =>
   `<button class="bouton fant" style="margin-bottom:14px" onclick="${fn}">‹ ${esc(lib)}</button>`;
 
@@ -4438,7 +4472,7 @@ try {
     if (E.role && (PLAN[E.role][E.onglet] || [])[1] === 'Chat') { rendVue(); setTimeout(basChat, 0); }
   });
 } catch (e){}
-function fermeConv(){ E.chatAvec = null; rendVue(); window.scrollTo(0, 0); }
+function fermeConv(){ waQuitteHistoire(); E.chatAvec = null; rendVue(); window.scrollTo(0, 0); }
 
 function vueChat(){
   const large = chatLarge(), actif = E.chatAvec || GROUPE;
@@ -4500,7 +4534,9 @@ function trieQuand(q){
 
 /* Une bulle du fil. Un message de joueur porte son numéro ; une annonce vue
    par le joueur est marquée comme telle. */
-function bulleChat(c){
+/* wa = conversation plein écran : le jour est dans le séparateur, la bulle ne
+   porte que l'heure ; mes messages sans avatar ni nom, comme dans WhatsApp. */
+function bulleChat(c, wa){
   const a = auteurChat(c.auteur);
   const r = a.r, moi = estMoi(c.auteur);
   if (c.systeme) return `<div class="chat-sys">
@@ -4508,6 +4544,14 @@ function bulleChat(c){
     <span style="min-width:0"><b>${esc((a.nom || '').split(' ')[0] || r.court)}</b> ${esc(c.texte)}</span>
   </div>`;
   const annonce = E.role === 'jr' && c.fil && c.fil !== (E.joueur || {}).id;
+  if (wa) return `<div class="chat-b wa-b ${moi ? 'moi' : ''}">
+    ${moi ? '' : `<span class="chat-av" style="background:${r.couleur}">${esc(a.joueur ? (a.numero || 'JR') : r.court)}</span>`}
+    <div class="chat-bulle">
+      ${moi && !annonce ? '' : `<div class="chat-nom" style="color:${r.couleur}">${esc(a.nom || (a.joueur ? 'Joueur' : 'Membre du staff'))}${a.externe ? ' · externe' : ''}${annonce ? ` · <span style="color:var(--or)">annonce ${c.fil === FIL_TOUS ? 'à tous' : 'à ton équipe'}</span>` : ''}</div>`}
+      <p class="chat-txt">${esc(c.texte)}</p>
+      <div class="chat-h">${c.heure && c.heure !== '—' ? esc(c.heure) : esc(c.date)}</div>
+    </div>
+  </div>`;
   return `<div class="chat-b ${moi ? 'moi' : ''}">
     <span class="chat-av" style="background:${r.couleur}">${esc(a.joueur ? (a.numero || 'JR') : r.court)}</span>
     <div class="chat-bulle">
@@ -4534,8 +4578,17 @@ function vueConversation(conv, large){
   const invite = groupe ? 'Écrire à tout le staff…' : ca ? 'Écrire une annonce…'
     : 'Écrire à ' + esc(((cj ? j.nom : m.nom) || '').split(' ')[0] || 'cette personne') + '…';
 
-  return `${large ? '' : `<button class="bouton fant" style="margin-bottom:12px" onclick="fermeConv()">‹ Contacts</button>`}
-  <h1 class="vue-titre${large ? ' chat2-titre' : ''}">${esc(titre)}</h1>
+  /* 03/11/2026 — sur téléphone et tablette : la conversation en plein écran,
+     à la manière de WhatsApp (voir waConversation). */
+  if (!large){
+    const av = groupe ? {c: 'var(--or)', t: 'ASA'} : cj ? {c: ROLES.jr.couleur, t: j.numero || 'JR'}
+      : ca ? {c: 'var(--or)', t: 'TOUS'} : {c: r.couleur, t: r.court};
+    const ligne = groupe ? `${(DB.staff || []).length} participants` : cj ? `${nomEq(j.equipe)} · lu par tout le staff`
+      : ca ? 'Annonce aux joueurs' : (m.fonction || m.role || r.court) + ' · privé';
+    return waConversation({titre, ligne, av, note: sous, fil, invite, retour: 'fermeConv()',
+      envoi: ca ? 'Envoyer l\'annonce' : 'Envoyer'});
+  }
+  return `<h1 class="vue-titre chat2-titre">${esc(titre)}</h1>
   <p class="vue-sous">${sous}</p>
 
   <div class="chat">
@@ -4554,6 +4607,9 @@ function vueMessagesJoueur(){
   const fil = filDe(CONV_JOUEUR);
   marqueChatLu(CONV_JOUEUR);
   setTimeout(basChat, 0);
+  if (!chatLarge()) return waConversation({titre: 'Le staff', ligne: 'Tes messages et les annonces du club',
+    av: {c: 'var(--or)', t: 'ASA'}, fil, invite: 'Écrire au staff…', retour: 'fermeSous()', envoi: 'Envoyer',
+    note: 'Tes échanges avec le staff, et les annonces du club. Ce que tu écris, tout le staff le lit.'});
   return `${retour('Accueil', 'fermeSous()')}
   <h1 class="vue-titre">Messages</h1>
   <p class="vue-sous">Tes échanges avec le staff, et les annonces du club. Ce que tu écris, tout le staff le lit.</p>
@@ -4577,9 +4633,115 @@ function carteMessagesJoueur(){
   </div>`;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   LA CONVERSATION FAÇON WHATSAPP                                (03/11/2026)
+   Fathy : « sur portable, quand on écrit un message, il y a une sorte de zoom
+   désagréable. Seul le clavier doit apparaître, la zone de texte visible
+   au-dessus du clavier, le reste fixe, la conversation qui défile — je veux
+   vraiment un chat à l'image de WhatsApp. »
+
+   - Le zoom venait de l'iPhone : il agrandit la page dès qu'on touche un
+     champ écrit en moins de 16 px (le nôtre faisait 13,5). Le champ du chat
+     est en 16 px.
+   - Plein écran, trois étages : l'en-tête (‹, avatar, nom), le fil qui défile
+     seul, la barre de saisie. La barre de navigation et l'en-tête de la
+     plateforme sont dessous, la page derrière ne bouge plus.
+   - Le clavier : l'écran visible (visualViewport) se réduit quand il sort ;
+     la conversation prend exactement cette hauteur, la saisie reste collée
+     au-dessus du clavier et le fil reste en bas.
+   - Envoyer ne redessine plus l'écran : la bulle s'ajoute au fil et le
+     clavier reste ouvert, comme dans WhatsApp. Les messages reçus pendant
+     qu'on écrit arrivent de la même façon (sans fermer le clavier).
+   - Le bouton retour du téléphone ferme la conversation au lieu de quitter
+     la plateforme.
+   - Sur un grand écran (1100 px et plus), rien ne change : contacts à
+     gauche, conversation à droite.
+   ══════════════════════════════════════════════════════════════════════════ */
+function waFilHtml(fil){
+  let jour = '';
+  return fil.map(c => {
+    const d = c.date === AUJ_FR() ? 'Aujourd\'hui' : (c.date || '');
+    const sep = d && d !== jour ? `<div class="wa-jour"><span>${esc(d)}</span></div>` : '';
+    if (d) jour = d;
+    return sep + bulleChat(c, true);
+  }).join('');
+}
+function waConversation(o){
+  E.waRetour = o.retour;
+  setTimeout(waMonte, 0);
+  return `<div class="wa" id="wa">
+    <div class="wa-tete">
+      <button class="wa-retour" onclick="${o.retour}" aria-label="Retour">‹</button>
+      <span class="chat-av" style="background:${o.av.c}">${esc(o.av.t)}</span>
+      <span class="wa-qui"><b>${esc(o.titre)}</b><small>${esc(o.ligne || '')}</small></span>
+    </div>
+    <div class="wa-fil" id="chatPane">
+      <p class="wa-note">${o.note || ''}</p>
+      <div class="chat" id="waFil">${o.fil.length ? waFilHtml(o.fil) : '<p class="wa-note">Pas encore de message. Écris le premier.</p>'}</div>
+    </div>
+    <div class="wa-saisie">
+      <textarea class="champ wa-champ" id="chatTexte" rows="1" placeholder="${o.invite}" oninput="waHauteur(this)"></textarea>
+      <button class="wa-envoi" id="chatEnvoi" onclick="envoieChat()" aria-label="${esc(o.envoi)}" title="${esc(o.envoi)}">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10.1 15 12 3.4 13.9z"/></svg>
+        <span class="wa-cache">${esc(o.envoi)}</span>
+      </button>
+    </div>
+  </div>`;
+}
+/* La zone de texte grandit avec le message, jusqu'à 5 lignes, puis défile. */
+function waHauteur(t){ t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 132) + 'px'; }
+/* La conversation suit l'écran visible : sans clavier, tout l'écran ; avec,
+   ce qu'il en reste au-dessus du clavier. */
+function waAjuste(){
+  const w = document.getElementById('wa');
+  if (!w) return;
+  const vv = window.visualViewport;
+  const pane = document.getElementById('chatPane');
+  const enBas = pane ? pane.scrollHeight - pane.scrollTop - pane.clientHeight < 60 : true;
+  w.style.height = (vv ? vv.height : window.innerHeight) + 'px';
+  w.style.top = (vv ? vv.offsetTop : 0) + 'px';
+  if (enBas) basChat();
+}
+let WA_HISTOIRE = false, WA_RETOUR_DEMANDE = false;
+function waMonte(){
+  const ouvert = !!document.getElementById('wa');
+  document.documentElement.classList.toggle('wa-ouvert', ouvert);
+  if (!ouvert) return;
+  waAjuste(); basChat();
+  // Le retour du téléphone ferme la conversation.
+  if (!WA_HISTOIRE){ try { history.pushState({wa: 1}, ''); WA_HISTOIRE = true; } catch (e){} }
+}
+try {
+  if (window.visualViewport){
+    visualViewport.addEventListener('resize', waAjuste);
+    visualViewport.addEventListener('scroll', waAjuste);
+  }
+  window.addEventListener('popstate', () => {
+    // Le retour que nous avons demandé nous-mêmes (bouton ‹) : rien à fermer.
+    if (WA_RETOUR_DEMANDE){ WA_RETOUR_DEMANDE = false; return; }
+    if (!WA_HISTOIRE) return;
+    WA_HISTOIRE = false;
+    if (document.getElementById('wa')){ if (E.waRetour === 'fermeSous()') fermeSous(); else fermeConv(); }
+  });
+} catch (e){}
+/* Fermer par le bouton ‹ : on retire aussi l'étape ajoutée à l'historique. */
+function waQuitteHistoire(){
+  if (WA_HISTOIRE){ WA_HISTOIRE = false; WA_RETOUR_DEMANDE = true; try { history.back(); } catch (e){ WA_RETOUR_DEMANDE = false; } }
+}
+/* Remettre le fil à jour sans toucher à la saisie (clavier ouvert). */
+function waMajFil(fil){
+  const f = document.getElementById('waFil');
+  if (!f) return false;
+  const pane = document.getElementById('chatPane');
+  const enBas = pane.scrollHeight - pane.scrollTop - pane.clientHeight < 80;
+  f.innerHTML = waFilHtml(fil);
+  if (enBas) basChat();
+  return true;
+}
+
 function envoieChat(){
   const t = ($('#chatTexte').value || '').trim();
-  if (!t) { toast('Écris ton message'); return; }
+  if (!t) { if (!document.getElementById('wa')) toast('Écris ton message'); return; }
   const joueur = E.role === 'jr';
   const conv = joueur ? CONV_JOUEUR : (E.chatAvec || GROUPE);
   const versJoueurs = !joueur && (estConvJoueur(conv) || estConvAnnonce(conv));
@@ -4596,6 +4758,14 @@ function envoieChat(){
   enregistrer('messages', Object.assign({id, auteur_id:auteurMoi(), texte:t},
     dest ? {destinataire_id: dest} : {}, fil ? {joueur_id: fil} : {}));
   $('#chatTexte').value = '';
+  marqueChatLu(conv);
+  /* Plein écran : la bulle s'ajoute, le clavier reste ouvert. */
+  if (document.getElementById('wa')){
+    const ta = $('#chatTexte');
+    waHauteur(ta); ta.focus();
+    waMajFil(filDe(conv)); basChat(); rendNav();
+    return;
+  }
   toast(joueur ? 'Message envoyé au staff' : estConvAnnonce(conv) ? 'Annonce envoyée' : versJoueurs ? 'Message envoyé au joueur'
     : dest ? 'Message privé envoyé' : 'Message envoyé au staff');
   marqueChatLu(conv);
@@ -8599,6 +8769,12 @@ function apresNouveauxMessages(){
   const lib = ((PLAN[E.role] || [])[E.onglet] || [])[1];
   const surFil = lib === 'Chat' || E.sous === 'messages' || E.sous === 'chat' || (E.role === 'jr' && E.onglet === 0 && !E.sous);
   if (!surFil || E.sous === 'parametres') return;
+  /* Conversation plein écran : on remet le fil à jour sans toucher au clavier. */
+  if (document.getElementById('wa') && typeof waMajFil === 'function'){
+    const conv = E.role === 'jr' ? CONV_JOUEUR : E.chatAvec;
+    if (conv){ waMajFil(filDe(conv)); marqueChatLu(conv); rendNav(); }
+    return;
+  }
   const ta = document.getElementById('chatTexte'), v = ta ? ta.value : '', focus = ta && document.activeElement === ta;
   const enBas = (window.innerHeight + window.scrollY) >= document.body.scrollHeight - 80;
   rendVue();
