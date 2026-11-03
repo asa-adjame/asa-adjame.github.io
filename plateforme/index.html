@@ -378,6 +378,12 @@ textarea.champ{resize:vertical;min-height:78px;line-height:1.5}
 .chat-nom{font-size:11px;font-weight:700;margin-bottom:3px}
 .chat-txt{font-size:13px;line-height:1.5;color:#D6E4F2}
 .chat-h{font-family:var(--mono);font-size:9.5px;color:var(--gris2);margin-top:4px;text-align:right}
+/* 03/11/2026 — côté joueur : la fonction de l'auteur, et les messages de la direction en tête */
+.chat-fonction{font-weight:700}
+.chat-nom2{font-weight:500;color:var(--gris)}
+.msg-prio{border-color:var(--or);background:linear-gradient(160deg,rgba(255,178,70,.16),rgba(255,178,70,.03) 60%),var(--surface)}
+.msg-prio .carte-titre{color:var(--or)}
+.msg-prio-txt{font-size:15px;line-height:1.45;color:var(--texte);margin-top:6px;white-space:pre-wrap;word-break:break-word}
 /* 03/11/2026 — la conversation façon WhatsApp (téléphone et tablette) */
 html.wa-ouvert,html.wa-ouvert body{overflow:hidden;overscroll-behavior:none}
 .wa{position:fixed;left:0;right:0;top:0;height:100vh;height:100dvh;z-index:95;display:flex;flex-direction:column;
@@ -2274,7 +2280,11 @@ function rendVue(){
   if (typeof waMonte === 'function') setTimeout(waMonte, 0);
   if (E.sous === 'parametres' && typeof vueParametres === 'function'){ $('#vue').innerHTML = vueParametres(); return; }
   const notif = (E.onglet === 0 && !E.sous && typeof carteNotifications === 'function') ? carteNotifications() : '';
-  $('#vue').innerHTML = notif + PLAN[E.role][E.onglet][2]();
+  /* 03/11/2026 : un message non lu du Président, du DT ou du head coach passe
+     devant tout, y compris la carte des notifications (voir messagesPrioritaires). */
+  const prio = E.role === 'jr' && E.onglet === 0 && !E.sous && typeof messagesPrioritaires === 'function' && messagesPrioritaires().length;
+  const vue = PLAN[E.role][E.onglet][2]();
+  $('#vue').innerHTML = prio ? vue.replace('<!--notif-->', notif) : notif + vue;
   /* La pastille suit ce qu'on vient de lire (un fil ouvert est marqué lu au rendu). */
   if (document.querySelector('#nav .nav-item')) rendNav();
 }
@@ -2359,7 +2369,10 @@ function vueAccueil(){
      fatigue pour le joueur, son retour de la semaine pour le kiné, le
      préparateur physique et le head coach. */
   /* 01/11/2026 : sur ordinateur, deux colonnes (.dsk2) ; empilées sur téléphone. */
-  return `<div class="dsk2"><div class="dsk-g">${carteFatigueJoueur()}${carteMonEcheance()}
+  /* 03/11/2026 : un message non lu du Président, du DT ou du head coach passe
+     avant tout le reste (voir messagesPrioritaires, p3d_collectif.js). */
+  const prio = E.role === 'jr' && messagesPrioritaires().length ? carteMessagesJoueur() + '<!--notif-->' : '';
+  return `<div class="dsk2"><div class="dsk-g">${prio}${carteFatigueJoueur()}${carteMonEcheance()}
   <div class="banniere">
     <div class="ban-sur">${esc(C.instance)}</div>
     <div class="ban-titre">${esc(C.nom)}</div>
@@ -2503,7 +2516,7 @@ function blocAccueilRole(){
     const j = E.joueur, b = bilanTir(j, parcoursDe(j));
     const nonLues = j.directives.filter(d => !d.lu).length;
     const aFaire = DB.quiz.filter(q => q.joueurs.includes(j.id) && !(j.quizFaits||{})[q.id]).length;
-    return `${carteMessagesJoueur()}
+    return `${messagesPrioritaires().length ? '' : carteMessagesJoueur()}
     <div class="section-titre">Pour toi</div>
     <div class="g3">
       <div class="tuile"><div class="tuile-val" style="color:${couleurPct(b.pct)}">${b.pct}<small style="font-size:14px">%</small></div><div class="tuile-lib">Challenge<br>de tir</div></div>
@@ -4428,9 +4441,26 @@ const PEUT_ECRIRE_JOUEURS = r => ['dt', 'hc', 'ca', 'cd', 'an', 'ki', 'as', 'pp'
 const libAnnonce = k => k === FIL_TOUS ? 'Tous les joueurs' : 'Équipe ' + String(nomEq(String(k).slice(3))).replace(/^Équipe\s+/i, '');
 
 /* Qui a écrit : un membre du staff, ou un joueur. */
+/* CE QUE LE JOUEUR LIT SUR UN MESSAGE DU STAFF (03/11/2026).
+   Fathy : « sur les comptes joueurs, quand le président envoie un message, je
+   ne veux pas qu'il soit nommé comme membre du staff ; je veux que sa
+   fonction soit mise : Président, Directeur Technique, Head coach. »
+   Le rôle donne l'appellation des trois postes de direction ; pour un
+   dirigeant, c'est sa fonction dans l'effectif (Président, Secrétaire
+   Général…) ; pour les autres, leur fonction telle qu'elle est écrite. */
+const DIRECTION_CLUB = ['dg', 'dt', 'hc'];
+function fonctionAuteur(m){
+  const r = roleDeMembre(m);
+  const f = String(m.fonction || (ROLES[m.id] ? m.role : '') || '').trim();
+  if (r === 'dt') return 'Directeur Technique';
+  if (r === 'hc') return 'Head coach';
+  if (r === 'dg') return f && !/^dirigeant$/i.test(f) ? f.charAt(0).toUpperCase() + f.slice(1) : 'Direction du club';
+  return f ? f.charAt(0).toUpperCase() + f.slice(1) : ((ROLES[r] || {}).lib || 'Staff');
+}
 function auteurChat(a){
   const m = membre(a);
-  if (m && m.nom) return {nom: m.nom, r: ROLES[m.roleCode] || ROLES[m.id] || ROLES.as, externe: !!m.externe};
+  if (m && m.nom) return {nom: m.nom, r: ROLES[m.roleCode] || ROLES[m.id] || ROLES.as, externe: !!m.externe,
+    role: roleDeMembre(m), fonction: fonctionAuteur(m)};
   const j = (DB.joueurs || []).find(x => x.id === a);
   if (j) return {nom: j.nom, r: ROLES.jr, joueur: true, numero: j.numero};
   return {nom: '', r: ROLES[a] || ROLES.as};
@@ -4544,10 +4574,15 @@ function bulleChat(c, wa){
     <span style="min-width:0"><b>${esc((a.nom || '').split(' ')[0] || r.court)}</b> ${esc(c.texte)}</span>
   </div>`;
   const annonce = E.role === 'jr' && c.fil && c.fil !== (E.joueur || {}).id;
+  /* Côté joueur : la fonction d'abord (« Président »), le nom ensuite. */
+  const vuJoueur = E.role === 'jr' && !a.joueur && !moi;
+  const nomAff = vuJoueur
+    ? `<b class="chat-fonction">${esc(a.fonction || 'Le staff')}</b>${a.nom ? ` <span class="chat-nom2">· ${esc(a.nom)}</span>` : ''}`
+    : esc(a.nom || (a.joueur ? 'Joueur' : 'Membre du staff'));
   if (wa) return `<div class="chat-b wa-b ${moi ? 'moi' : ''}">
-    ${moi ? '' : `<span class="chat-av" style="background:${r.couleur}">${esc(a.joueur ? (a.numero || 'JR') : r.court)}</span>`}
+    ${moi ? '' : `<span class="chat-av" style="background:${r.couleur}">${esc(a.joueur ? (a.numero || 'JR') : (vuJoueur && a.role === 'dg') ? (/^pr[ée]s/i.test(a.fonction || '') ? 'PR' : 'DIR') : r.court)}</span>`}
     <div class="chat-bulle">
-      ${moi && !annonce ? '' : `<div class="chat-nom" style="color:${r.couleur}">${esc(a.nom || (a.joueur ? 'Joueur' : 'Membre du staff'))}${a.externe ? ' · externe' : ''}${annonce ? ` · <span style="color:var(--or)">annonce ${c.fil === FIL_TOUS ? 'à tous' : 'à ton équipe'}</span>` : ''}</div>`}
+      ${moi && !annonce ? '' : `<div class="chat-nom" style="color:${r.couleur}">${nomAff}${a.externe ? ' · externe' : ''}${annonce ? ` · <span style="color:var(--or)">annonce ${c.fil === FIL_TOUS ? 'à tous' : 'à ton équipe'}</span>` : ''}</div>`}
       <p class="chat-txt">${esc(c.texte)}</p>
       <div class="chat-h">${c.heure && c.heure !== '—' ? esc(c.heure) : esc(c.date)}</div>
     </div>
@@ -4555,7 +4590,7 @@ function bulleChat(c, wa){
   return `<div class="chat-b ${moi ? 'moi' : ''}">
     <span class="chat-av" style="background:${r.couleur}">${esc(a.joueur ? (a.numero || 'JR') : r.court)}</span>
     <div class="chat-bulle">
-      <div class="chat-nom" style="color:${r.couleur}">${esc(a.nom || (a.joueur ? 'Joueur' : 'Membre du staff'))}${a.externe ? ' · externe' : ''}${annonce ? ` · <span style="color:var(--or)">annonce ${c.fil === FIL_TOUS ? 'à tous' : 'à ton équipe'}</span>` : ''}</div>
+      <div class="chat-nom" style="color:${r.couleur}">${nomAff}${a.externe ? ' · externe' : ''}${annonce ? ` · <span style="color:var(--or)">annonce ${c.fil === FIL_TOUS ? 'à tous' : 'à ton équipe'}</span>` : ''}</div>
       <p class="chat-txt">${esc(c.texte)}</p>
       <div class="chat-h">${esc(c.date)}${c.heure && c.heure !== '—' ? ' · ' + esc(c.heure) : ''}</div>
     </div>
@@ -4623,12 +4658,38 @@ function vueMessagesJoueur(){
 }
 
 /* La carte de l'accueil du joueur. */
+/* LES MESSAGES DE LA DIRECTION PASSENT DEVANT (03/11/2026).
+   Fathy : « quand un message d'un de ces trois membres (Président, Directeur
+   Technique, Head coach) est envoyé aux joueurs, je veux que la rubrique
+   message soit la toute première visible en haut : leurs messages sont
+   prioritaires. » Tant qu'un de leurs messages n'est pas lu, la carte
+   Messages est la première chose de l'accueil — avant même la carte des
+   notifications — et elle montre ce message-là. */
+function messagesPrioritaires(){
+  if (E.role !== 'jr') return [];
+  const n = nonLusChat(CONV_JOUEUR);
+  if (!n) return [];
+  return filDe(CONV_JOUEUR).slice(-n).filter(c => !estMoi(c.auteur) && !c.systeme
+    && DIRECTION_CLUB.includes(auteurChat(c.auteur).role));
+}
 function carteMessagesJoueur(){
   const n = nonLusChat(CONV_JOUEUR), fil = filDe(CONV_JOUEUR), der = fil[fil.length - 1];
+  const prio = messagesPrioritaires();
+  if (prio.length){
+    const p = prio[prio.length - 1], a = auteurChat(p.auteur);
+    const qui = [...new Set(prio.map(c => auteurChat(c.auteur).fonction))];
+    return `<div class="carte msg-prio">
+      <div class="carte-tete"><div class="carte-titre">${qui.length === 1 ? 'Message ' + (/^[AEIOUÉH]/i.test(qui[0]) && !/^Head/.test(qui[0]) ? 'de l\'' : 'du ') + esc(qui[0]) : 'Messages de la direction'}</div>
+        <span class="etiq pleine pousse" style="background:var(--or)">${n} nouveau${n > 1 ? 'x' : ''}</span></div>
+      <p class="msg-prio-txt">${esc(String(p.texte || '').slice(0, 220))}</p>
+      <p class="carte-note" style="margin:6px 0 0">${esc(a.fonction)}${a.nom ? ' · ' + esc(a.nom) : ''} · ${esc(p.date === AUJ_FR() ? 'aujourd\'hui' : p.date)}${p.heure && p.heure !== '—' ? ' à ' + esc(p.heure) : ''}</p>
+      <button class="bouton plein" style="margin-top:11px" onclick="ouvreSous('messages')">Lire${n > 1 ? ' les ' + n + ' messages' : ''}</button>
+    </div>`;
+  }
   return `<div class="carte" style="${n ? 'border-color:var(--or)' : ''}">
     <div class="carte-tete"><div class="carte-titre">Messages du staff</div>
       ${n ? `<span class="etiq pleine pousse" style="background:var(--or)">${n} nouveau${n > 1 ? 'x' : ''}</span>` : ''}</div>
-    <p class="msg-txt">${der ? esc((estMoi(der.auteur) ? 'Toi : ' : (auteurChat(der.auteur).nom || '').split(' ')[0] + ' : ') + der.texte).slice(0, 110) : 'Le staff t\'écrit ici, et tu peux lui répondre.'}</p>
+    <p class="msg-txt">${der ? esc((estMoi(der.auteur) ? 'Toi : ' : (auteurChat(der.auteur).fonction || (auteurChat(der.auteur).nom || '').split(' ')[0] || 'Le staff') + ' : ') + der.texte).slice(0, 110) : 'Le staff t\'écrit ici, et tu peux lui répondre.'}</p>
     <button class="bouton ${n ? 'plein' : 'fant'} plein" style="margin-top:11px" onclick="ouvreSous('messages')">${n ? 'Lire' : 'Ouvrir'}</button>
   </div>`;
 }
@@ -9097,7 +9158,7 @@ async function chargerSupabase(){
     /* 03/11/2026 : les invités (« iv ») ne sont pas du staff — ni contacts,
        ni écran Staff, ni fiches à noter. */
     staff: (staff || []).filter(m => m.role !== 'iv').map(m => ({
-      id: m.role, staffId: m.id, nom: m.nom, role: m.fonction,
+      id: m.role, staffId: m.id, nom: m.nom, role: m.fonction, fonction: m.fonction || '',
       equipes: m.equipe_code ? [m.equipe_code] : (equipes || []).map(e => e.code),
       code: ''
     })),
