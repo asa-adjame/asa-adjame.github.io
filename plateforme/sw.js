@@ -9,12 +9,12 @@
    C'est son seul rôle : garder une copie de la page pour pouvoir la servir
    sans réseau. Il ne met en cache AUCUNE donnée du club.
 
-   46963cc16b08 est remplacé à la construction par l'empreinte du fichier
+   a3a3e948740d est remplacé à la construction par l'empreinte du fichier
    produit. Un nouveau dépôt change l'empreinte, donc le nom du cache, donc
    l'ancienne copie est effacée : une mise à jour ne reste jamais coincée.
    ══════════════════════════════════════════════════════════════════════════ */
 
-const CACHE = 'asa-plateforme-46963cc16b08';
+const CACHE = 'asa-plateforme-a3a3e948740d';
 
 /* UNE seule entrée, et c'est volontaire.
 
@@ -186,3 +186,34 @@ function horsLigne(){
     + 'réseau : ensuite elle s\'ouvrira partout, même sans connexion.</p>',
     {headers: {'Content-Type': 'text/html; charset=utf-8'}, status: 503});
 }
+
+/* ── LES NOTIFICATIONS (03/11/2026) ──────────────────────────────────────
+   La fonction « asa-notifier » envoie {titre, corps, url}. On l'affiche ; un
+   toucher ouvre la plateforme à l'écran voulu (?ouvre=messages|chat|fiche),
+   ou ramène au premier plan l'onglet déjà ouvert et lui dit où aller.
+   Rien n'est mis en cache ici : la règle du haut (aucune donnée du club en
+   cache) tient toujours. */
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (x) { d = {corps: e.data ? e.data.text() : ''}; }
+  e.waitUntil(self.registration.showNotification(d.titre || 'ASA Plateforme', {
+    body: d.corps || '',
+    tag: d.url || 'asa',
+    renotify: true,
+    data: {url: d.url || self.registration.scope}
+  }));
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || self.registration.scope;
+  const ouvre = (String(url).match(/[?&]ouvre=([a-z]+)/) || [])[1] || '';
+  e.waitUntil(self.clients.matchAll({type: 'window', includeUncontrolled: true}).then(cs => {
+    const ici = cs.find(c => c.url.indexOf(self.registration.scope) === 0);
+    if (ici){
+      ici.postMessage({type: 'asa-ouvre', ouvre});
+      return ici.focus();
+    }
+    return self.clients.openWindow(url);
+  }));
+});
