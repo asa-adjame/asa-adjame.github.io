@@ -384,6 +384,14 @@ textarea.champ{resize:vertical;min-height:78px;line-height:1.5}
 .msg-prio{border-color:var(--or);background:linear-gradient(160deg,rgba(255,178,70,.16),rgba(255,178,70,.03) 60%),var(--surface)}
 .msg-prio .carte-titre{color:var(--or)}
 .msg-prio-txt{font-size:15px;line-height:1.45;color:var(--texte);margin-top:6px;white-space:pre-wrap;word-break:break-word}
+/* 04/11/2026 — l'appel démarre en un toucher */
+.appel-go{display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:100%;padding:22px 20px;border:0;border-radius:var(--r);
+  background:linear-gradient(140deg,var(--or),#ff9a1f);color:#0A1628;text-align:left;cursor:pointer;box-shadow:0 14px 34px rgba(255,178,70,.25)}
+.appel-go:active{transform:scale(.98)}
+.appel-go-t{font-family:var(--titre);font-size:34px;letter-spacing:1.5px;line-height:1}
+.appel-go-s{font-size:15px;font-weight:700;line-height:1.35}
+.appel-go-s small{display:block;font-size:13px;font-weight:500;opacity:.8;margin-top:2px}
+.appel-details summary{cursor:pointer;color:var(--gris);font-size:13px;padding:6px 2px}
 /* 04/11/2026 — chat des joueurs : répondre en privé à une annonce */
 .wa-rep{align-self:flex-start;margin:-2px 0 6px 38px;background:none;border:1px solid rgba(255,178,70,.45);color:var(--or);
   border-radius:99px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer}
@@ -13725,11 +13733,14 @@ function inscrisPresence(s, idJoueur, voie){
 
 /* ─────────────────────────────────────────── ouvrir et clore */
 
-function ouvreSeance(){
-  const eq   = ($('#se-eq') || {}).value || E.equipes[0];
-  const lib  = ((($('#se-lib') || {}).value) || 'Séance').trim();
-  const hDeb = ($('#se-h') || {}).value || heureMin(maintenant());
-  const lim  = ($('#se-lim') || {}).value || hDeb;
+/* `pre` : la séance déjà préparée (démarrage en un toucher, 04/11) ; sans lui,
+   on lit le formulaire « Modifier les détails ». */
+function ouvreSeance(pre){
+  pre = pre || {};
+  const eq   = pre.eq   || ($('#se-eq') || {}).value || E.equipes[0];
+  const lib  = (pre.lib || (($('#se-lib') || {}).value) || 'Séance').trim();
+  const hDeb = pre.debut || ($('#se-h') || {}).value || heureMin(maintenant());
+  const lim  = pre.limite || ($('#se-lim') || {}).value || hDeb;
 
   /* L'identifiant est fabriqué ICI, et c'est indispensable.
 
@@ -13828,34 +13839,73 @@ function vueAppel(){
   return s ? vueSeanceOuverte(s) : vueOuvrirSeance();
 }
 
-function vueOuvrirSeance(){
-  const d = maintenant();
-  const hh = heureMin(d);
-  const lim = heureMin(new Date(d.getTime() + 10 * 60000));
-  const eqs = DB.equipes.filter(e => E.equipes.includes(e.id));
+/* DÉMARRER L'APPEL EN UN TOUCHER (04/11/2026).
+   Fathy : « je voudrais simplifier encore plus la manière de faire l'appel pour
+   Oumar » — choix retenu : démarrer en un toucher.
 
+   La séance se prépare toute seule depuis le planning du DT : les créneaux
+   d'aujourd'hui (hors matchs) de ses équipes, le plus proche de l'heure en
+   premier. Intitulé « Entraînement du 04/11 », début = l'heure du planning,
+   retard au-delà de 10 minutes après le début (la même marge qu'avant).
+   Sans créneau au planning : « Démarrer maintenant » (début = maintenant).
+   Le formulaire d'avant reste derrière « Modifier les détails », pour les
+   exceptions. */
+const MARGE_RETARD = 10;                                    // minutes
+const plusMinutes = (h, n) => { const m = enMinutes(h); if (m == null) return h;
+  const t = (m + n + 1440) % 1440; return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
+function seancesDuJour(){
+  if (typeof creneauxDe !== 'function' || typeof lundiDe !== 'function') return [];
+  const auj = AUJ(), maint = enMinutes(heureMin(maintenant())) || 0;
+  return (E.equipes || []).flatMap(eq => creneauxDe(eq, lundiDe(auj))
+      .filter(c => c.jour === auj && c.type !== 'Match' && enMinutes(c.debut) != null)
+      .map(c => ({eq, type: c.type || 'Entraînement', debut: c.debut, fin: c.fin || '', lieu: c.lieu || ''})))
+    .sort((a, b) => Math.abs(enMinutes(a.debut) - maint) - Math.abs(enMinutes(b.debut) - maint));
+}
+function preparation(c){
+  const debut = c ? c.debut : heureMin(maintenant());
+  return {eq: c ? c.eq : E.equipes[0], debut, limite: plusMinutes(debut, MARGE_RETARD),
+    lib: (c ? c.type : 'Séance') + ' du ' + AUJ_FR().slice(0, 5)};
+}
+function demarreAppel(i){
+  const l = seancesDuJour();
+  ouvreSeance(preparation(i == null ? null : l[i]));
+}
+
+function vueOuvrirSeance(){
+  const l = seancesDuJour();
+  const plusieursEq = (E.equipes || []).length > 1;
+  const resume = (c, p) => `${esc(c ? c.type : 'Séance')}${plusieursEq || !c ? ' · ' + esc(nomEq(p.eq)) : ''}
+    <small>début ${esc(p.debut)}${c && c.fin ? ' – fin ' + esc(c.fin) : ''} · retard après ${esc(p.limite)}${c && c.lieu ? ' · ' + esc(c.lieu) : ''}</small>`;
+  const p0 = preparation(l[0] || null);
   return `<h1 class="vue-titre">Appel</h1>
-  <p class="vue-sous">Ouvre la séance, puis scanne les joueurs à l'arrivée.
-     Celui qui a oublié son téléphone, tu le pointes à la main.</p>
-  <div class="carte">
+  <p class="vue-sous">${l.length ? 'La séance d\'aujourd\'hui est prête, d\'après le planning.' : 'Aucune séance au planning aujourd\'hui : l\'appel démarre maintenant.'}</p>
+  <button class="appel-go" onclick="demarreAppel(${l.length ? 0 : 'null'})">
+    <span class="appel-go-t">Démarrer l'appel</span>
+    <span class="appel-go-s">${resume(l[0] || null, p0)}</span>
+  </button>
+  ${l.slice(1).map((c, i) => `<button class="bouton fant plein" style="margin-top:10px;text-align:left" onclick="demarreAppel(${i + 1})">
+    Autre séance : ${esc(c.type)}${plusieursEq ? ' · ' + esc(nomEq(c.eq)) : ''} · ${esc(c.debut)}</button>`).join('')}
+  <details class="appel-details" style="margin-top:14px">
+    <summary>Modifier les détails ›</summary>
+  <div class="carte" style="margin-top:10px">
     <div class="carte-titre">Nouvelle séance</div>
-    ${eqs.length < 2 ? '' : `<div style="margin-top:12px">
+    ${!plusieursEq ? '' : `<div style="margin-top:12px">
       <label class="label" for="se-eq">Équipe</label>
       <select id="se-eq" class="champ">
-        ${eqs.map(e => `<option value="${esc(e.id)}">${esc(e.nom)}</option>`).join('')}
+        ${DB.equipes.filter(e => E.equipes.includes(e.id)).map(e => `<option value="${esc(e.id)}"${e.id === p0.eq ? ' selected' : ''}>${esc(e.nom)}</option>`).join('')}
       </select></div>`}
     <div style="margin-top:10px">
       <label class="label" for="se-lib">Intitulé</label>
       <input id="se-lib" class="champ" type="text" maxlength="60"
-             value="Séance du ${esc(AUJ_FR().slice(0, 5))}"></div>
+             value="${esc(p0.lib)}"></div>
     <div class="g2" style="margin-top:10px">
       <div><label class="label" for="se-h">Début</label>
-        <input id="se-h" class="champ" type="time" value="${hh}"></div>
+        <input id="se-h" class="champ" type="time" value="${esc(p0.debut)}"></div>
       <div><label class="label" for="se-lim">Retard au-delà de</label>
-        <input id="se-lim" class="champ" type="time" value="${lim}"></div></div>
+        <input id="se-lim" class="champ" type="time" value="${esc(p0.limite)}"></div></div>
     <button class="bouton plein" style="margin-top:14px" onclick="ouvreSeance()">
       Ouvrir la séance</button>
-  </div>` + blocSeancesPassees();
+  </div></details>` + blocSeancesPassees();
 }
 
 function vueSeanceOuverte(s){
