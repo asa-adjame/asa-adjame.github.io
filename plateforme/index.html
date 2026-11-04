@@ -384,6 +384,14 @@ textarea.champ{resize:vertical;min-height:78px;line-height:1.5}
 .msg-prio{border-color:var(--or);background:linear-gradient(160deg,rgba(255,178,70,.16),rgba(255,178,70,.03) 60%),var(--surface)}
 .msg-prio .carte-titre{color:var(--or)}
 .msg-prio-txt{font-size:15px;line-height:1.45;color:var(--texte);margin-top:6px;white-space:pre-wrap;word-break:break-word}
+/* 04/11/2026 — chat des joueurs : répondre en privé à une annonce */
+.wa-rep{align-self:flex-start;margin:-2px 0 6px 38px;background:none;border:1px solid rgba(255,178,70,.45);color:var(--or);
+  border-radius:99px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer}
+.wa-cite{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:8px 12px 0;background:rgba(6,24,46,.98);border-top:1px solid var(--ligne)}
+.wa-cite span{flex:1;min-width:0;border-left:3px solid var(--or);padding:4px 10px;font-size:12.5px;color:var(--gris);background:rgba(255,178,70,.06);border-radius:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wa-cite b{display:block;color:var(--or);font-size:11.5px}
+.wa-cite button{background:none;border:0;color:var(--gris);font-size:18px;cursor:pointer}
+.wa-cite+.wa-saisie{border-top:0}
 /* 03/11/2026 — la conversation façon WhatsApp (téléphone et tablette) */
 html.wa-ouvert,html.wa-ouvert body{overflow:hidden;overscroll-behavior:none}
 .wa{position:fixed;left:0;right:0;top:0;height:100vh;height:100dvh;z-index:95;display:flex;flex-direction:column;
@@ -1933,8 +1941,11 @@ const PLAN = {
      marchant, presque toujours sans réseau. Le reste peut attendre. */
   iv: [['trophee','Résultats',vueResultatsInvite],['doc','Évaluations',vueEvaluationsInvite]],
   jr: [['maison','Accueil',vueAccueil],['qr','Mon badge',vueMonQR],
-       ['perso','Ma fiche',vueJoueurFiche],
-       ['cible','Mon tir',vueTirJoueur],['cerveau','Quiz',vueQuizJoueur],['coeur','Ma prépa',vuePrepa]],
+       ['perso','Ma fiche',vueFicheEtPrepa],
+       ['cible','Mon tir',vueTirJoueur],['cerveau','Quiz',vueQuizJoueur],['message','Chat',vueChatJoueur]],
+  /* 04/11/2026 — Fathy : « inclus l'onglet prépa dans "ma fiche" pour créer un
+     onglet chat ». Ma prépa devient le second volet de Ma fiche (vueFicheEtPrepa) ;
+     le sixième onglet est le chat privé du joueur. Toujours six onglets. */
 };
 
 /* ─────────────────────────────────────────── connexion */
@@ -2215,7 +2226,7 @@ function nonLusChat(conv){
 const PASTILLE_JOURS = 14;
 function ongletMessages(){
   const p = PLAN[E.role] || [];
-  return E.role === 'jr' ? 0 : p.findIndex(o => o[1] === 'Chat');
+  return p.findIndex(o => o[1] === 'Chat');   // 04/11 : le joueur a son onglet Chat
 }
 function nonLusRecents(conv){
   const n = nonLusChat(conv);
@@ -2228,7 +2239,7 @@ function nonLusRecents(conv){
 function nonLusOnglet(){
   try {
     if (!E.role || E.role === 'iv' || ongletMessages() < 0) return 0;
-    if (E.role === 'jr') return nonLusRecents(typeof CONV_JOUEUR !== 'undefined' ? CONV_JOUEUR : 'staff');
+    if (E.role === 'jr') return convsJoueur().reduce((a, c) => a + nonLusRecents(c), 0);   // 04/11 : toutes ses conversations
     let convs = ['groupe'];
     if (typeof contactsChat === 'function') convs = convs.concat(contactsChat().map(cleContact));
     if (typeof PEUT_ECRIRE_JOUEURS === 'function' && PEUT_ECRIRE_JOUEURS(E.role))
@@ -2254,7 +2265,7 @@ function vaVers(i){
   E.onglet = i; E.fiche = null; E.quiz = null; E.sous = null;
   const lib = (PLAN[E.role][i] || [])[1];
   // 28/10/2026 : l'onglet Chat s'ouvre sur la liste des contacts ; une conversation se marque lue quand on l'ouvre.
-  if (lib === 'Chat') E.chatAvec = null;
+  if (lib === 'Chat') { E.chatAvec = null; E.reponseA = null; }
   if (lib === 'Ma fiche') marqueConsignesLues();
   rendVue(); rendNav(); window.scrollTo(0,0);
 }
@@ -2337,7 +2348,7 @@ function vueAccueil(){
   if (E.sous === 'prochain')   return vueProchainMatch();
   if (E.sous === 'planning')   return vuePlanning();
   /* 03/11/2026 — les messages du joueur (sa barre a déjà six onglets). */
-  if (E.sous === 'messages' && E.role === 'jr') return vueMessagesJoueur();
+  if (E.sous === 'messages' && E.role === 'jr'){ setTimeout(() => ouvreChatJoueur(E.chatAvec), 0); return ''; }   // 04/11 : devenu un onglet
   /* 02/11/2026 — le head coach écrit au médical sans avoir l'onglet : il y
      entre depuis son accueil (raccourci « Médical »). */
   if (E.sous === 'medical')    return retour('Accueil', 'fermeSous()') + vueMedical();
@@ -4437,7 +4448,46 @@ const estConvAnnonce = c => String(c || '').startsWith('A:');
 const filCible = c => String(c || '').slice(2);    // « J:j07 » → « j07 » ; « A:eq:pro » → « eq:pro »
 /* 03/11/2026, 01 h 18 — les dirigeants aussi : la demande vient du président,
    qui a un compte dirigeant (« je souhaiterais pouvoir leur envoyer des messages »). */
-const PEUT_ECRIRE_JOUEURS = r => ['dt', 'hc', 'ca', 'cd', 'an', 'ki', 'as', 'pp', 'dg'].includes(r);
+/* 04/11/2026 — LE CHAT DES JOUEURS, EN PRIVÉ.
+   Fathy : « on va ouvrir un accès au chat aux joueurs, mais ils ne pourront
+   pas parler entre eux : ils échangent uniquement avec les membres du staff
+   (head coach, coach assistant, DT, préparateur physique) et les dirigeants
+   (président et secrétaire général). Quand le président envoie un message à
+   tout un groupe, il s'affiche toujours en haut de l'accueil ; quand un joueur
+   y répond, seul le président reçoit la réponse, en privé. Même
+   fonctionnement pour le secrétaire général et le directeur technique. »
+
+   - Joueur ↔ un membre du staff : une conversation PRIVÉE à deux (messages
+     .destinataire_id), que la base ne rend qu'à ces deux personnes.
+   - Les annonces (« tous », « eq:<code> ») restent des messages de groupe ;
+     sous chacune, « Répondre en privé » ouvre la conversation avec son
+     auteur — la réponse ne va qu'à lui.
+   - Seuls ces rôles parlent aux joueurs, dans les deux sens. Le kiné,
+     l'analyste et les assistants administratifs n'ont plus la partie
+     « Joueurs » (ils l'avaient depuis le 03/11). Une ligne à changer ici.
+   - L'ancien fil partagé (joueur_id = id du joueur, lu par tout le staff)
+     reste lisible : « Le staff (ancien fil) » côté joueur, et dans la
+     conversation du joueur côté staff. On n'y écrit plus. */
+const ROLES_CONTACT_JOUEUR = ['dt', 'hc', 'ca', 'cd', 'pp', 'dg'];
+const PEUT_ECRIRE_JOUEURS = r => ROLES_CONTACT_JOUEUR.includes(r);
+const ANNONCES = 'annonces';                      // côté joueur : les messages de groupe
+const estConvPrivee = c => String(c || '').startsWith('P:');   // côté joueur : « P:<membre du staff> »
+/* Les membres du staff qu'un joueur peut joindre : les rôles ci-dessus, de son équipe. */
+function contactsJoueur(){
+  const j = E.joueur || {}, vus = new Set();
+  return (DB.staff || []).filter(m => {
+    const k = cleContact(m), r = roleDeMembre(m);
+    if (!k || vus.has(k) || !ROLES_CONTACT_JOUEUR.includes(r)) return false;
+    if ((m.equipes || []).length && j.equipe && !m.equipes.includes(j.equipe)) return false;
+    vus.add(k); return true;
+  }).sort((a, b) => ROLES_CONTACT_JOUEUR.indexOf(roleDeMembre(a)) - ROLES_CONTACT_JOUEUR.indexOf(roleDeMembre(b)));
+}
+/* Les conversations du joueur : les annonces, une par contact, l'ancien fil s'il existe. */
+function convsJoueur(){
+  const l = [ANNONCES].concat(contactsJoueur().map(m => 'P:' + cleContact(m)));
+  if (filDe(CONV_JOUEUR).length) l.push(CONV_JOUEUR);
+  return l;
+}
 const libAnnonce = k => k === FIL_TOUS ? 'Tous les joueurs' : 'Équipe ' + String(nomEq(String(k).slice(3))).replace(/^Équipe\s+/i, '');
 
 /* Qui a écrit : un membre du staff, ou un joueur. */
@@ -4471,12 +4521,23 @@ function filDe(conv){
   const fil = DB.chat || [];
   if (E.role === 'jr'){
     const j = E.joueur || {};
-    return fil.filter(c => c.fil && (c.fil === j.id || c.fil === FIL_TOUS || c.fil === 'eq:' + j.equipe));
+    if (conv === ANNONCES) return fil.filter(c => c.fil === FIL_TOUS || c.fil === 'eq:' + j.equipe);
+    if (conv === CONV_JOUEUR) return fil.filter(c => c.fil && c.fil === j.id);          // l'ancien fil partagé
+    if (estConvPrivee(conv)){
+      const k = conv.slice(2);
+      return fil.filter(c => !c.fil && c.dest && ((estMoi(c.auteur) && c.dest === k) || (c.auteur === k && estMoi(c.dest))));
+    }
+    return [];
   }
   if (conv === GROUPE) return fil.filter(c => !c.dest && !c.fil);
-  if (estConvJoueur(conv) || estConvAnnonce(conv)){
+  if (estConvAnnonce(conv)){
     const k = filCible(conv);
     return fil.filter(c => c.fil === k);
+  }
+  if (estConvJoueur(conv)){
+    // 04/11 : la conversation privée avec ce joueur, plus l'ancien fil partagé.
+    const k = filCible(conv);
+    return fil.filter(c => c.fil === k || (!c.fil && c.dest && ((estMoi(c.auteur) && c.dest === k) || (c.auteur === k && estMoi(c.dest)))));
   }
   const moi = auteurMoi();
   return fil.filter(c => c.dest && !c.fil && (
@@ -4502,7 +4563,7 @@ try {
     if (E.role && (PLAN[E.role][E.onglet] || [])[1] === 'Chat') { rendVue(); setTimeout(basChat, 0); }
   });
 } catch (e){}
-function fermeConv(){ waQuitteHistoire(); E.chatAvec = null; rendVue(); window.scrollTo(0, 0); }
+function fermeConv(){ waQuitteHistoire(); E.chatAvec = null; E.reponseA = null; rendVue(); rendNav(); window.scrollTo(0, 0); }
 
 function vueChat(){
   const large = chatLarge(), actif = E.chatAvec || GROUPE;
@@ -4607,8 +4668,8 @@ function vueConversation(conv, large){
 
   const titre = groupe ? 'Groupe staff' : cj ? (j.nom || 'Joueur') : ca ? libAnnonce(filCible(conv)) : (m.nom || 'Message privé');
   const sous = groupe ? `${(DB.staff || []).length} participants — tout le staff lit ce fil.`
-    : cj ? `${esc(nomEq(j.equipe))} · conversation entre ${esc((j.nom || '').split(' ')[0] || 'le joueur')} et le staff : tout le staff la lit, chaque message est signé.`
-    : ca ? 'Annonce : chaque joueur concerné la reçoit dans ses messages. S\'il répond, sa réponse arrive dans sa conversation avec le staff.'
+    : cj ? `${esc(nomEq(j.equipe))} · conversation privée : ${esc((j.nom || '').split(' ')[0] || 'le joueur')} et toi seuls la lisez.`
+    : ca ? 'Annonce : chaque joueur concerné la voit en haut de son accueil. S\'il répond, sa réponse t\'arrive en privé, à toi seul.'
     : `${esc(m.fonction || m.role || r.court)} · message privé, vous seuls le lisez.`;
   const invite = groupe ? 'Écrire à tout le staff…' : ca ? 'Écrire une annonce…'
     : 'Écrire à ' + esc(((cj ? j.nom : m.nom) || '').split(' ')[0] || 'cette personne') + '…';
@@ -4618,7 +4679,7 @@ function vueConversation(conv, large){
   if (!large){
     const av = groupe ? {c: 'var(--or)', t: 'ASA'} : cj ? {c: ROLES.jr.couleur, t: j.numero || 'JR'}
       : ca ? {c: 'var(--or)', t: 'TOUS'} : {c: r.couleur, t: r.court};
-    const ligne = groupe ? `${(DB.staff || []).length} participants` : cj ? `${nomEq(j.equipe)} · lu par tout le staff`
+    const ligne = groupe ? `${(DB.staff || []).length} participants` : cj ? `${nomEq(j.equipe)} · privé`
       : ca ? 'Annonce aux joueurs' : (m.fonction || m.role || r.court) + ' · privé';
     return waConversation({titre, ligne, av, note: sous, fil, invite, retour: 'fermeConv()',
       envoi: ca ? 'Envoyer l\'annonce' : 'Envoyer'});
@@ -4637,60 +4698,109 @@ function vueConversation(conv, large){
   </div>`;
 }
 
-/* Côté joueur : ses messages, ouverts depuis l'accueil. */
-function vueMessagesJoueur(){
-  const fil = filDe(CONV_JOUEUR);
-  marqueChatLu(CONV_JOUEUR);
-  setTimeout(basChat, 0);
-  if (!chatLarge()) return waConversation({titre: 'Le staff', ligne: 'Tes messages et les annonces du club',
-    av: {c: 'var(--or)', t: 'ASA'}, fil, invite: 'Écrire au staff…', retour: 'fermeSous()', envoi: 'Envoyer',
-    note: 'Tes échanges avec le staff, et les annonces du club. Ce que tu écris, tout le staff le lit.'});
-  return `${retour('Accueil', 'fermeSous()')}
-  <h1 class="vue-titre">Messages</h1>
-  <p class="vue-sous">Tes échanges avec le staff, et les annonces du club. Ce que tu écris, tout le staff le lit.</p>
-  <div class="chat">
-    ${fil.length ? fil.map(bulleChat).join('') : '<p class="carte-note" style="text-align:center;padding:18px 0">Pas encore de message du staff.</p>'}
-  </div>
-  <div class="chat-saisie">
-    <textarea class="champ" id="chatTexte" style="min-height:62px" placeholder="Écrire au staff…"></textarea>
-    <button class="bouton plein" style="margin-top:9px" onclick="envoieChat()">Envoyer</button>
-  </div>`;
+/* Côté joueur : son chat, ouvert depuis l'accueil (sa barre a déjà six onglets). */
+function infoConvJoueur(conv){
+  if (conv === ANNONCES) return {titre: 'Annonces du club', ligne: 'Messages à tous les joueurs', av: {c: 'var(--or)', t: 'ASA'}};
+  if (conv === CONV_JOUEUR) return {titre: 'Le staff (ancien fil)', ligne: 'Lu par tout le staff', av: {c: 'var(--gris)', t: 'ASA'}};
+  const m = membre(conv.slice(2)), a = m && m.nom ? {fonction: fonctionAuteur(m), nom: m.nom, role: roleDeMembre(m)} : {fonction: 'Le staff', nom: ''};
+  const r = ROLES[a.role] || ROLES.as;
+  return {titre: a.fonction, ligne: a.nom ? a.nom + ' · privé' : 'privé', av: {c: r.couleur, t: a.role === 'dg' ? (/^pr[ée]s/i.test(a.fonction) ? 'PR' : 'DIR') : r.court}};
 }
+function vueMessagesJoueur(){
+  const conv = E.chatAvec;
+  if (conv){
+    const fil = filDe(conv), info = infoConvJoueur(conv);
+    marqueChatLu(conv);
+    if (conv === ANNONCES || conv === CONV_JOUEUR) return waConversation(Object.assign({}, info, {fil, retour: 'fermeConv()',
+      lecture: true, repondre: true,
+      note: conv === ANNONCES ? 'Les messages envoyés à tous les joueurs. Pour répondre, touche « Répondre en privé » sous un message : ta réponse part à son auteur, à lui seul.'
+        : 'L\'ancien fil, lu par tout le staff. Pour écrire, choisis maintenant une personne dans ton chat.'}));
+    const ref = E.reponseA ? (DB.chat || []).find(c => c.id === E.reponseA) : null;
+    return waConversation(Object.assign({}, info, {fil, retour: 'fermeConv()', envoi: 'Envoyer',
+      invite: 'Écrire à ' + info.titre + '…', citation: ref ? ref.texte : '',
+      note: `Conversation privée : ${esc(info.titre)} et toi seuls la lisez.`}));
+  }
+  const ligne = (c) => {
+    const f = filDe(c), der = f[f.length - 1], n = nonLusChat(c), info = infoConvJoueur(c);
+    return {quand: der ? (der.date + ' ' + der.heure) : '', html: `<button class="ct-l" onclick="ouvreConv('${esc(c)}')">
+      <span class="chat-av" style="background:${info.av.c}">${esc(info.av.t)}</span>
+      <span class="ct-m"><b>${esc(info.titre)}</b>
+        <small>${der ? esc(((estMoi(der.auteur) ? 'Toi : ' : '') + der.texte).slice(0, 70)) : esc(info.ligne)}</small></span>
+      <span class="ct-d">${der ? `<small>${esc(der.date === AUJ_FR() ? der.heure : String(der.date).slice(0, 5))}</small>` : ''}
+        ${n ? `<i class="ct-n">${n > 9 ? '9+' : n}</i>` : ''}</span>
+    </button>`};
+  };
+  const contacts = contactsJoueur().map(m => ligne('P:' + cleContact(m)));
+  const recents = l => l.filter(x => x.quand).sort((a, b) => trieQuand(b.quand) - trieQuand(a.quand)).concat(l.filter(x => !x.quand));
+  return `<h1 class="vue-titre">Chat</h1>
+  <p class="vue-sous">Écris en privé au staff et à la direction. Ce que tu écris, seule la personne choisie le lit.</p>
+  <div class="carte ct-liste">${ligne(ANNONCES).html}</div>
+  <div class="section-titre">Le staff et la direction</div>
+  <div class="carte ct-liste">${recents(contacts).map(x => x.html).join('') || '<p class="carte-note">Aucun membre du staff pour l\'instant.</p>'}</div>
+  ${filDe(CONV_JOUEUR).length ? `<div class="carte ct-liste" style="margin-top:10px">${ligne(CONV_JOUEUR).html}</div>` : ''}`;
+}
+/* 04/11 — l'onglet Chat du joueur. */
+function vueChatJoueur(){ return vueMessagesJoueur(); }
+const ongletChatJoueur = () => PLAN.jr.findIndex(o => o[1] === 'Chat');
+/* Ouvrir le chat du joueur, éventuellement sur une conversation. */
+function ouvreChatJoueur(conv){
+  E.onglet = ongletChatJoueur(); E.sous = null; E.fiche = null; E.reponseA = null;
+  if (conv) ouvreConv(conv); else { E.chatAvec = null; rendVue(); rendNav(); window.scrollTo(0, 0); }
+}
+/* « Répondre en privé » à un message de groupe : la conversation avec son
+   auteur s'ouvre, le message cité au-dessus de la saisie. */
+function repondreEnPrive(id){
+  const c = (DB.chat || []).find(x => x.id === id);
+  if (!c) return;
+  if (!PEUT_ECRIRE_JOUEURS(auteurChat(c.auteur).role)) { toast('Cette personne ne reçoit pas de message privé'); return; }
+  marqueChatLu(ANNONCES);
+  E.onglet = ongletChatJoueur(); E.sous = null;
+  E.chatAvec = 'P:' + c.auteur; E.reponseA = id;
+  marqueChatLu(E.chatAvec);
+  rendVue(); rendNav();
+  setTimeout(() => { basChat(); const t = document.getElementById('chatTexte'); if (t) t.focus(); }, 0);
+}
+function annuleReponse(){ E.reponseA = null; const b = document.getElementById('waCite'); if (b) b.remove(); }
 
-/* La carte de l'accueil du joueur. */
 /* LES MESSAGES DE LA DIRECTION PASSENT DEVANT (03/11/2026).
    Fathy : « quand un message d'un de ces trois membres (Président, Directeur
    Technique, Head coach) est envoyé aux joueurs, je veux que la rubrique
    message soit la toute première visible en haut : leurs messages sont
-   prioritaires. » Tant qu'un de leurs messages n'est pas lu, la carte
-   Messages est la première chose de l'accueil — avant même la carte des
-   notifications — et elle montre ce message-là. */
+   prioritaires. » Tant qu'un de leurs messages n'est pas lu, la carte est la
+   première chose de l'accueil — avant même la carte des notifications.
+   04/11 : on y répond directement — en privé, à son auteur. */
+function nonLusJoueur(){ return E.role === 'jr' ? convsJoueur().reduce((a, c) => a + nonLusChat(c), 0) : 0; }
 function messagesPrioritaires(){
   if (E.role !== 'jr') return [];
-  const n = nonLusChat(CONV_JOUEUR);
-  if (!n) return [];
-  return filDe(CONV_JOUEUR).slice(-n).filter(c => !estMoi(c.auteur) && !c.systeme
-    && DIRECTION_CLUB.includes(auteurChat(c.auteur).role));
+  return convsJoueur().flatMap(c => { const n = nonLusChat(c); return n ? filDe(c).slice(-n) : []; })
+    .filter(c => !estMoi(c.auteur) && !c.systeme && DIRECTION_CLUB.includes(auteurChat(c.auteur).role))
+    .sort((a, b) => String(a.t || '').localeCompare(String(b.t || '')) || trieQuand(a.date + ' ' + a.heure) - trieQuand(b.date + ' ' + b.heure));
 }
 function carteMessagesJoueur(){
-  const n = nonLusChat(CONV_JOUEUR), fil = filDe(CONV_JOUEUR), der = fil[fil.length - 1];
-  const prio = messagesPrioritaires();
+  const n = nonLusJoueur(), prio = messagesPrioritaires();
   if (prio.length){
     const p = prio[prio.length - 1], a = auteurChat(p.auteur);
     const qui = [...new Set(prio.map(c => auteurChat(c.auteur).fonction))];
+    const groupe = !!p.fil;
     return `<div class="carte msg-prio">
       <div class="carte-tete"><div class="carte-titre">${qui.length === 1 ? 'Message ' + (/^[AEIOUÉH]/i.test(qui[0]) && !/^Head/.test(qui[0]) ? 'de l\'' : 'du ') + esc(qui[0]) : 'Messages de la direction'}</div>
         <span class="etiq pleine pousse" style="background:var(--or)">${n} nouveau${n > 1 ? 'x' : ''}</span></div>
       <p class="msg-prio-txt">${esc(String(p.texte || '').slice(0, 220))}</p>
-      <p class="carte-note" style="margin:6px 0 0">${esc(a.fonction)}${a.nom ? ' · ' + esc(a.nom) : ''} · ${esc(p.date === AUJ_FR() ? 'aujourd\'hui' : p.date)}${p.heure && p.heure !== '—' ? ' à ' + esc(p.heure) : ''}</p>
-      <button class="bouton plein" style="margin-top:11px" onclick="ouvreSous('messages')">Lire${n > 1 ? ' les ' + n + ' messages' : ''}</button>
+      <p class="carte-note" style="margin:6px 0 0">${esc(a.fonction)}${a.nom ? ' · ' + esc(a.nom) : ''} · ${esc(p.date === AUJ_FR() ? 'aujourd\'hui' : p.date)}${p.heure && p.heure !== '—' ? ' à ' + esc(p.heure) : ''}${groupe ? ' · à tous les joueurs' : ' · à toi seul'}</p>
+      <div class="g2" style="margin-top:11px">
+        <button class="bouton plein" onclick="repondreEnPrive('${esc(p.id)}')">Répondre${groupe ? ' en privé' : ''}</button>
+        <button class="bouton fant" onclick="ouvreChatJoueur(${groupe ? `'${ANNONCES}'` : `'P:${esc(p.auteur)}'`})">${n > 1 ? 'Tout lire' : 'Ouvrir'}</button>
+      </div>
+      ${groupe ? `<p class="carte-note" style="margin:8px 0 0">Ta réponse ne va qu'à son auteur, pas aux autres joueurs.</p>` : ''}
     </div>`;
   }
+  const tout = convsJoueur().flatMap(c => filDe(c)).sort((a, b) => String(a.t || '').localeCompare(String(b.t || '')));
+  const der = tout[tout.length - 1];
   return `<div class="carte" style="${n ? 'border-color:var(--or)' : ''}">
-    <div class="carte-tete"><div class="carte-titre">Messages du staff</div>
+    <div class="carte-tete"><div class="carte-titre">Chat</div>
       ${n ? `<span class="etiq pleine pousse" style="background:var(--or)">${n} nouveau${n > 1 ? 'x' : ''}</span>` : ''}</div>
-    <p class="msg-txt">${der ? esc((estMoi(der.auteur) ? 'Toi : ' : (auteurChat(der.auteur).fonction || (auteurChat(der.auteur).nom || '').split(' ')[0] || 'Le staff') + ' : ') + der.texte).slice(0, 110) : 'Le staff t\'écrit ici, et tu peux lui répondre.'}</p>
-    <button class="bouton ${n ? 'plein' : 'fant'} plein" style="margin-top:11px" onclick="ouvreSous('messages')">${n ? 'Lire' : 'Ouvrir'}</button>
+    <p class="msg-txt">${der ? esc((estMoi(der.auteur) ? 'Toi : ' : (auteurChat(der.auteur).fonction || 'Le staff') + ' : ') + der.texte).slice(0, 110) : 'Écris en privé au staff et à la direction.'}</p>
+    <button class="bouton ${n ? 'plein' : 'fant'} plein" style="margin-top:11px" onclick="ouvreChatJoueur()">${n ? 'Lire' : 'Ouvrir le chat'}</button>
   </div>`;
 }
 
@@ -4718,17 +4828,19 @@ function carteMessagesJoueur(){
    - Sur un grand écran (1100 px et plus), rien ne change : contacts à
      gauche, conversation à droite.
    ══════════════════════════════════════════════════════════════════════════ */
-function waFilHtml(fil){
+function waFilHtml(fil, repondre){
   let jour = '';
   return fil.map(c => {
     const d = c.date === AUJ_FR() ? 'Aujourd\'hui' : (c.date || '');
     const sep = d && d !== jour ? `<div class="wa-jour"><span>${esc(d)}</span></div>` : '';
     if (d) jour = d;
-    return sep + bulleChat(c, true);
+    const rep = repondre && !estMoi(c.auteur) && !c.systeme && PEUT_ECRIRE_JOUEURS(auteurChat(c.auteur).role)
+      ? `<button class="wa-rep" onclick="repondreEnPrive('${esc(c.id)}')">↩︎ Répondre en privé à ${esc(auteurChat(c.auteur).fonction || 'son auteur')}</button>` : '';
+    return sep + bulleChat(c, true) + rep;
   }).join('');
 }
 function waConversation(o){
-  E.waRetour = o.retour;
+  E.waRetour = o.retour; E.waRepondre = !!o.repondre;
   setTimeout(waMonte, 0);
   return `<div class="wa" id="wa">
     <div class="wa-tete">
@@ -4738,15 +4850,16 @@ function waConversation(o){
     </div>
     <div class="wa-fil" id="chatPane">
       <p class="wa-note">${o.note || ''}</p>
-      <div class="chat" id="waFil">${o.fil.length ? waFilHtml(o.fil) : '<p class="wa-note">Pas encore de message. Écris le premier.</p>'}</div>
+      <div class="chat" id="waFil">${o.fil.length ? waFilHtml(o.fil, o.repondre) : `<p class="wa-note">${o.lecture ? 'Aucun message pour l\'instant.' : 'Pas encore de message. Écris le premier.'}</p>`}</div>
     </div>
+    ${o.lecture ? '' : `${o.citation ? `<div class="wa-cite" id="waCite"><span><b>↩︎ En réponse à</b>${esc(String(o.citation).slice(0, 90))}${String(o.citation).length > 90 ? '…' : ''}</span><button onclick="annuleReponse()" aria-label="Annuler">✕</button></div>` : ''}
     <div class="wa-saisie">
       <textarea class="champ wa-champ" id="chatTexte" rows="1" placeholder="${o.invite}" oninput="waHauteur(this)"></textarea>
       <button class="wa-envoi" id="chatEnvoi" onclick="envoieChat()" aria-label="${esc(o.envoi)}" title="${esc(o.envoi)}">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10.1 15 12 3.4 13.9z"/></svg>
         <span class="wa-cache">${esc(o.envoi)}</span>
       </button>
-    </div>
+    </div>`}
   </div>`;
 }
 /* La zone de texte grandit avec le message, jusqu'à 5 lignes, puis défile. */
@@ -4795,7 +4908,7 @@ function waMajFil(fil){
   if (!f) return false;
   const pane = document.getElementById('chatPane');
   const enBas = pane.scrollHeight - pane.scrollTop - pane.clientHeight < 80;
-  f.innerHTML = waFilHtml(fil);
+  f.innerHTML = waFilHtml(fil, E.waRepondre);
   if (enBas) basChat();
   return true;
 }
@@ -4804,30 +4917,38 @@ function envoieChat(){
   const t = ($('#chatTexte').value || '').trim();
   if (!t) { if (!document.getElementById('wa')) toast('Écris ton message'); return; }
   const joueur = E.role === 'jr';
-  const conv = joueur ? CONV_JOUEUR : (E.chatAvec || GROUPE);
+  const conv = joueur ? E.chatAvec : (E.chatAvec || GROUPE);
+  /* 04/11 : un joueur n'écrit qu'en privé, à un membre du staff de sa liste. */
+  if (joueur && !(estConvPrivee(conv) && contactsJoueur().some(m => 'P:' + cleContact(m) === conv))) { toast('Choisis une personne dans ton chat'); return; }
   const versJoueurs = !joueur && (estConvJoueur(conv) || estConvAnnonce(conv));
   if (versJoueurs && !PEUT_ECRIRE_JOUEURS(E.role)) { toast('Réservé au staff'); return; }
-  const fil = joueur ? (E.joueur || {}).id : versJoueurs ? filCible(conv) : '';
-  const dest = (joueur || versJoueurs || conv === GROUPE) ? '' : conv;
+  /* Annonce : un message de groupe (joueur_id). Joueur ↔ staff : un message
+     privé (destinataire_id), lu par ces deux personnes seulement. */
+  const fil = estConvAnnonce(conv) ? filCible(conv) : '';
+  const dest = joueur ? conv.slice(2) : estConvJoueur(conv) ? filCible(conv) : (estConvAnnonce(conv) || conv === GROUPE) ? '' : conv;
+  // Réponse à une annonce : le message cité ouvre la réponse, pour que son auteur s'y retrouve.
+  const ref = joueur && E.reponseA ? (DB.chat || []).find(c => c.id === E.reponseA) : null;
+  const texte = ref ? `↩︎ « ${String(ref.texte || '').slice(0, 60)}${String(ref.texte || '').length > 60 ? '…' : ''} »\n${t}` : t;
+  E.reponseA = null;
   // L'uuid naît ici : c'est le même en base, ce qui garde le repère « lu » valable au rechargement.
   const id = nouvelId();
   /* Signé de l'identifiant PERSONNEL (« st05 », ou celui du joueur). La base
      le pose d'ailleurs elle-même (trigger t_messages_auteur), d'après le
      compte connecté. */
   DB.chat.push({id, auteur:auteurMoi() || E.role, dest, fil,
-                date:AUJ_FR(), heure:heureCourante(), texte:t});
-  enregistrer('messages', Object.assign({id, auteur_id:auteurMoi(), texte:t},
+                date:AUJ_FR(), heure:heureCourante(), texte, t: new Date().toISOString()});
+  enregistrer('messages', Object.assign({id, auteur_id:auteurMoi(), texte},
     dest ? {destinataire_id: dest} : {}, fil ? {joueur_id: fil} : {}));
   $('#chatTexte').value = '';
   marqueChatLu(conv);
   /* Plein écran : la bulle s'ajoute, le clavier reste ouvert. */
   if (document.getElementById('wa')){
     const ta = $('#chatTexte');
-    waHauteur(ta); ta.focus();
+    waHauteur(ta); ta.focus(); annuleReponse();
     waMajFil(filDe(conv)); basChat(); rendNav();
     return;
   }
-  toast(joueur ? 'Message envoyé au staff' : estConvAnnonce(conv) ? 'Annonce envoyée' : versJoueurs ? 'Message envoyé au joueur'
+  toast(joueur ? 'Message envoyé' : estConvAnnonce(conv) ? 'Annonce envoyée' : versJoueurs ? 'Message envoyé au joueur'
     : dest ? 'Message privé envoyé' : 'Message envoyé au staff');
   marqueChatLu(conv);
   rendVue(); rendNav();
@@ -5297,6 +5418,15 @@ function validerQuiz(id){
 
 /* ═══════════════════════════════════ FICHE ET QUESTIONNAIRE DU JOUEUR ═══════════════════════════════════ */
 
+/* 04/11/2026 — Ma fiche et Ma prépa, deux volets du même onglet. */
+function vueFicheEtPrepa(){
+  if (E.sous === 'gouts') return vueJoueurFiche();
+  const v = E.voletFiche === 'prepa' ? 'prepa' : 'fiche';
+  return `<div class="ong" style="margin-bottom:14px">
+    <button class="ong-b ${v === 'fiche' ? 'actif' : ''}" onclick="E.voletFiche='fiche';rendVue();window.scrollTo(0,0)">Ma fiche</button>
+    <button class="ong-b ${v === 'prepa' ? 'actif' : ''}" onclick="E.voletFiche='prepa';rendVue();window.scrollTo(0,0)">Ma prépa</button>
+  </div>${v === 'prepa' ? vuePrepa() : vueJoueurFiche()}`;
+}
 function vueJoueurFiche(){
   const j = E.joueur;
   if (E.sous === 'gouts') return vueGouts();
@@ -8832,7 +8962,7 @@ function apresNouveauxMessages(){
   if (!surFil || E.sous === 'parametres') return;
   /* Conversation plein écran : on remet le fil à jour sans toucher au clavier. */
   if (document.getElementById('wa') && typeof waMajFil === 'function'){
-    const conv = E.role === 'jr' ? CONV_JOUEUR : E.chatAvec;
+    const conv = E.chatAvec;
     if (conv){ waMajFil(filDe(conv)); marqueChatLu(conv); rendNav(); }
     return;
   }
@@ -12491,7 +12621,7 @@ async function testeNotification(){
 /* Ouvrir l'écran demandé par une notification. */
 function ouvreDepuisNotif(ouvre){
   if (!E.role || !ouvre) return false;
-  if (ouvre === 'messages' && E.role === 'jr') { E.onglet = 0; ouvreSous('messages'); return true; }
+  if (ouvre === 'messages' && E.role === 'jr') { ouvreChatJoueur(); return true; }
   if (ouvre === 'fiche' && E.role === 'jr') { const i = PLAN.jr.findIndex(o => o[1] === 'Ma fiche'); if (i >= 0) vaVers(i); return true; }
   if (ouvre === 'parametres'){ ouvreParametres(); return true; }
   if (ouvre === 'chat'){
