@@ -9421,7 +9421,8 @@ async function chargerSupabase(){
     preferences: DB.preferences,
     fatigue: (fatigueBase || []).map(f => ({joueur: f.joueur_id, jour: String(f.jour).slice(0, 10), note: f.note})),
     retours: (retoursBase || []).map(r => ({type: r.type, jour: String(r.jour).slice(0, 10),
-      auteur: r.auteur_id, contenu: r.contenu || {}, renduLe: r.rendu_le ? dateClubFr(r.rendu_le) + ' ' + heureClub(new Date(r.rendu_le)) : ''})),
+      auteur: r.auteur_id, contenu: r.contenu || {}, renduLe: r.rendu_le ? dateClubFr(r.rendu_le) + ' ' + heureClub(new Date(r.rendu_le)) : '',
+      renduIso: r.rendu_le ? jourIso(dateClubFr(r.rendu_le)) : ''})),   // 05/11 : le jour du rendu, pour voir un retard rendu
     evalsDT: (evalsDTBase || []).map(e => ({id: e.id, personne: e.personne_id, role: e.role,
       equipe: e.equipe || null, periode: e.periode, date: e.date_eval ? fr(e.date_eval) : '',
       /* 26/10/2026 : 2 à 4 évaluations par mois, datées, avec un thème. */
@@ -10793,9 +10794,10 @@ function retoursDu(type, jour){
 
 /* L'état d'une échéance un jour donné : rendu, en retard, aujourd'hui, à venir.
    Pour la fatigue, « rendu » veut dire : tous les joueurs attendus ont noté. */
+const joursEntre = (a, b) => Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / 864e5);
 function etatEcheance(type, jour){
   const auj = AUJ();
-  let fait, detail = '';
+  let fait, detail = '', tard = 0;
   if (type === 'fatigue'){
     const n = joueursAttendus().length, k = new Set(fatigueDu(jour).map(f => f.joueur)).size;
     fait = n > 0 && k >= n;
@@ -10803,9 +10805,18 @@ function etatEcheance(type, jour){
   } else {
     const r = retoursDu(type, jour);
     fait = r.length > 0;
-    if (fait) detail = ((r[0].contenu || {}).rien ? 'rien à signaler' : 'rendu') + (r[0].renduLe ? ' à ' + r[0].renduLe : '');
+    if (fait){
+      /* 05/11/2026 — Fathy : un retour rendu après minuit doit se voir. Avant,
+         le retour du head coach du mardi 27/10, rendu le jeudi 30/10 à 23:52,
+         s'affichait « rendu » comme s'il était à l'heure. */
+      const rendu = r[0].renduIso || jour, n = joursEntre(jour, rendu);
+      if (n > 0) tard = n;
+      detail = ((r[0].contenu || {}).rien ? 'rien à signaler' : 'rendu')
+        + (n > 0 ? ` avec ${n} j de retard (${libJour(rendu).toLowerCase()}${r[0].renduLe ? ' à ' + String(r[0].renduLe).slice(-5) : ''})`
+                 : (r[0].renduLe ? ' à ' + String(r[0].renduLe).slice(-5) : ''));
+    }
   }
-  const etat = fait ? 'rendu' : jour < auj ? 'retard' : jour === auj ? 'jour' : 'avenir';
+  const etat = fait ? (tard ? 'tard' : 'rendu') : jour < auj ? 'retard' : jour === auj ? 'jour' : 'avenir';
   return {etat, detail};
 }
 
@@ -10819,8 +10830,8 @@ function joursEcheances(lundi){
   return l;
 }
 
-const COUL_ETAT = {rendu: 'var(--physique)', retard: 'var(--danger)', jour: 'var(--or)', avenir: 'var(--gris2)'};
-const LIB_ETAT  = {rendu: 'rendu', retard: 'en retard', jour: 'aujourd\'hui', avenir: 'à venir'};
+const COUL_ETAT = {rendu: 'var(--physique)', tard: 'var(--alerte)', retard: 'var(--danger)', jour: 'var(--or)', avenir: 'var(--gris2)'};
+const LIB_ETAT  = {rendu: 'rendu', tard: 'rendu en retard', retard: 'en retard', jour: 'aujourd\'hui', avenir: 'à venir'};
 
 /* ─────────────────────────── le tableau de la semaine (DT et dirigeants) */
 
@@ -10831,7 +10842,9 @@ function vueEcheances(){
   const lignes = joursEcheances(lundi);
   const etats = lignes.map(x => etatEcheance(x.e.type, x.jour));
   const nbRetard = etats.filter(s => s.etat === 'retard').length;
-  const nbRendu = etats.filter(s => s.etat === 'rendu').length;
+  const nbALHeure = etats.filter(s => s.etat === 'rendu').length;
+  const nbTard = etats.filter(s => s.etat === 'tard').length;
+  const nbRendu = nbALHeure + nbTard;
   const echus = nbRendu + nbRetard;
 
   return `${retour('Accueil', 'fermeSous()')}
@@ -10845,9 +10858,9 @@ function vueEcheances(){
   </div>
 
   <div class="g3">
-    <div class="tuile vert"><div class="tuile-val">${nbRendu}</div><div class="tuile-lib">Rendus</div></div>
+    <div class="tuile vert"><div class="tuile-val">${nbRendu}</div><div class="tuile-lib">Rendus${nbTard ? `<br>dont ${nbTard} en retard` : ''}</div></div>
     <div class="tuile ${nbRetard ? 'rouge' : 'blanc'}"><div class="tuile-val">${nbRetard}</div><div class="tuile-lib">En retard</div></div>
-    <div class="tuile"><div class="tuile-val">${echus ? Math.round(nbRendu / echus * 100) + '<small style="font-size:14px">%</small>' : '—'}</div><div class="tuile-lib">Tenue des<br>délais</div></div>
+    <div class="tuile"><div class="tuile-val">${echus ? Math.round(nbALHeure / echus * 100) + '<small style="font-size:14px">%</small>' : '—'}</div><div class="tuile-lib">Tenue des<br>délais</div></div>
   </div>
 
   <div class="carte" style="padding:6px 14px;margin-top:12px">
@@ -10961,7 +10974,7 @@ function rienASignaler(type, jour){
   }
   const auteur = monIdEffectif();
   DB.retours = (DB.retours || []).filter(r => !(r.type === type && r.jour === jour && r.auteur === auteur));
-  DB.retours.push({type, jour, auteur, contenu, renduLe: heureClub()});
+  DB.retours.push({type, jour, auteur, contenu, renduLe: heureClub(), renduIso: AUJ()});
   enregistrer('retours', {type, jour, auteur_id: auteur, contenu}, 'club_id,type,jour,auteur_id');
   if (typeof journalChat === 'function')
     journalChat(`n'a rien à signaler : ${echeance(type).lib.toLowerCase()} — ${libJour(jour).toLowerCase()}${motif ? ' (' + motif + ')' : ''}`);
@@ -11040,7 +11053,7 @@ function rendRetour(type, jour){
   }
   const auteur = monIdEffectif();
   DB.retours = (DB.retours || []).filter(r => !(r.type === type && r.jour === jour && r.auteur === auteur));
-  DB.retours.push({type, jour, auteur, contenu, renduLe: heureClub()});
+  DB.retours.push({type, jour, auteur, contenu, renduLe: heureClub(), renduIso: AUJ()});
   enregistrer('retours', {type, jour, auteur_id: auteur, contenu}, 'club_id,type,jour,auteur_id');
   if (typeof journalChat === 'function')
     journalChat(`a rendu : ${echeance(type).lib.toLowerCase()} — ${libJour(jour).toLowerCase()}`);
@@ -11061,6 +11074,7 @@ function ouvreRetour(type, jour){
       return `<div class="carte">
         <div class="carte-tete"><div class="carte-titre">${esc(m.nom || r.auteur)}</div>
           <span class="carte-note pousse mono">${esc(r.renduLe || '')}</span></div>
+        ${r.renduIso && joursEntre(jour, r.renduIso) > 0 ? `<p class="carte-note" style="color:var(--alerte)">Rendu avec ${joursEntre(jour, r.renduIso)} j de retard.</p>` : ''}
         ${type === 'hc' && !c.rien ? `<p class="carte-note">Vidéo ${c.video ? '✓' : '✗'} · Scouting ${c.scouting ? '✓' : '✗'} · Préparation ${c.prepa ? '✓' : '✗'}</p>` : ''}
         ${type === 'kine' ? `<p class="carte-note">${c.indispo || 0} indisponible(s) · ${c.adapte || 0} en reprise adaptée</p>` : ''}
         ${type === 'physique' && c.fatigueMoy != null ? `<p class="carte-note">Fatigue moyenne du jour : ${c.fatigueMoy}/10</p>` : ''}
@@ -11785,7 +11799,7 @@ function pastillesDu(jour){
   if (ech.length){
     const pire = ech.some(x => x.etat === 'retard') ? 'retard'
                : ech.some(x => x.etat === 'jour') ? 'jour'
-               : ech.every(x => x.etat === 'rendu') ? 'rendu' : 'avenir';
+               : ech.every(x => x.etat === 'rendu' || x.etat === 'tard') ? (ech.some(x => x.etat === 'tard') ? 'tard' : 'rendu') : 'avenir';
     p.push({c: COUL_ETAT[pire], t: 'échéances : ' + LIB_ETAT[pire]});
   }
   if (matchsDu(jour).length) p.push({c: 'var(--attaque)', t: 'match'});
