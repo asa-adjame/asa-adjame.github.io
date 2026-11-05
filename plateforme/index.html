@@ -384,6 +384,9 @@ textarea.champ{resize:vertical;min-height:78px;line-height:1.5}
 .msg-prio{border-color:var(--or);background:linear-gradient(160deg,rgba(255,178,70,.16),rgba(255,178,70,.03) 60%),var(--surface)}
 .msg-prio .carte-titre{color:var(--or)}
 .msg-prio-txt{font-size:15px;line-height:1.45;color:var(--texte);margin-top:6px;white-space:pre-wrap;word-break:break-word}
+/* 05/11/2026 — échéances : « Rien à signaler » */
+.rien-l{margin-top:14px;padding-top:12px;border-top:1px dashed var(--ligne);display:flex;flex-direction:column;gap:8px}
+.rien-l>span{font-size:12.5px;color:var(--gris)}
 /* 04/11/2026 — l'appel démarre en un toucher */
 .appel-go{display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:100%;padding:22px 20px;border:0;border-radius:var(--r);
   background:linear-gradient(140deg,var(--or),#ff9a1f);color:#0A1628;text-align:left;cursor:pointer;box-shadow:0 14px 34px rgba(255,178,70,.25)}
@@ -10800,7 +10803,7 @@ function etatEcheance(type, jour){
   } else {
     const r = retoursDu(type, jour);
     fait = r.length > 0;
-    if (fait) detail = 'rendu' + (r[0].renduLe ? ' à ' + r[0].renduLe : '');
+    if (fait) detail = ((r[0].contenu || {}).rien ? 'rien à signaler' : 'rendu') + (r[0].renduLe ? ' à ' + r[0].renduLe : '');
   }
   const etat = fait ? 'rendu' : jour < auj ? 'retard' : jour === auj ? 'jour' : 'avenir';
   return {etat, detail};
@@ -10930,8 +10933,48 @@ function carteMonEcheance(){
   </div>`;
 }
 
+/* « RIEN À SIGNALER » (05/11/2026).
+   Fathy : « imaginons que le kiné, sur une de ses échéances, n'ait pas de
+   retour à faire pour quelconque raison : comment pourrait-il montrer qu'il
+   n'y a rien à signaler, et que par conséquent il n'est pas en retard ? Le
+   message de retard peut être mal interprété. »
+   Un toucher sous le formulaire : l'échéance est tenue, marquée « rien à
+   signaler » (et non « en retard ») chez le DT et les dirigeants. Pareil pour
+   le préparateur physique et le head coach (semaine sans match à préparer).
+   Un motif d'une ligne peut l'accompagner ; il n'est pas obligatoire. */
+const LIB_RIEN = {kine: 'Rien à signaler', physique: 'Rien à signaler',
+                  hc: 'Rien à signaler (pas de match à préparer)'};
+function blocRienASignaler(type, jour){
+  return `<div class="rien-l">
+    <span>Rien de nouveau depuis ton dernier retour ? Ton échéance est tenue sans rien écrire.</span>
+    <input class="champ" id="retRienMotif" maxlength="120" placeholder="Motif, si tu veux (facultatif)">
+    <button class="bouton fant plein" onclick="rienASignaler('${type}','${jour}')">${esc(LIB_RIEN[type] || 'Rien à signaler')}</button>
+  </div>`;
+}
+function rienASignaler(type, jour){
+  if (LECTURE_SEULE()) return toast('Lecture seule');
+  const motif = ((($('#retRienMotif') || {}).value) || '').trim();
+  const contenu = {rien: true, texte: motif};
+  if (type === 'kine'){
+    contenu.indispo = (DB.medical || []).filter(x => x.statut === 'Indisponible').length;
+    contenu.adapte = (DB.medical || []).filter(x => x.statut === 'Reprise adaptée').length;
+  }
+  const auteur = monIdEffectif();
+  DB.retours = (DB.retours || []).filter(r => !(r.type === type && r.jour === jour && r.auteur === auteur));
+  DB.retours.push({type, jour, auteur, contenu, renduLe: heureClub()});
+  enregistrer('retours', {type, jour, auteur_id: auteur, contenu}, 'club_id,type,jour,auteur_id');
+  if (typeof journalChat === 'function')
+    journalChat(`n'a rien à signaler : ${echeance(type).lib.toLowerCase()} — ${libJour(jour).toLowerCase()}${motif ? ' (' + motif + ')' : ''}`);
+  toast('Noté : rien à signaler. Ton échéance est tenue.');
+  rendVue();
+}
+
 /* Le formulaire de chaque retour. Court exprès : il se remplit debout. */
 function formulaireRetour(type, jour){
+  const f = formulaireRetourSeul(type, jour);
+  return f ? f + blocRienASignaler(type, jour) : '';
+}
+function formulaireRetourSeul(type, jour){
   if (type === 'kine'){
     const indispo = (DB.medical || []).filter(x => x.statut === 'Indisponible').length;
     const adapte = (DB.medical || []).filter(x => x.statut === 'Reprise adaptée').length;
@@ -11018,10 +11061,11 @@ function ouvreRetour(type, jour){
       return `<div class="carte">
         <div class="carte-tete"><div class="carte-titre">${esc(m.nom || r.auteur)}</div>
           <span class="carte-note pousse mono">${esc(r.renduLe || '')}</span></div>
-        ${type === 'hc' ? `<p class="carte-note">Vidéo ${c.video ? '✓' : '✗'} · Scouting ${c.scouting ? '✓' : '✗'} · Préparation ${c.prepa ? '✓' : '✗'}</p>` : ''}
+        ${type === 'hc' && !c.rien ? `<p class="carte-note">Vidéo ${c.video ? '✓' : '✗'} · Scouting ${c.scouting ? '✓' : '✗'} · Préparation ${c.prepa ? '✓' : '✗'}</p>` : ''}
         ${type === 'kine' ? `<p class="carte-note">${c.indispo || 0} indisponible(s) · ${c.adapte || 0} en reprise adaptée</p>` : ''}
         ${type === 'physique' && c.fatigueMoy != null ? `<p class="carte-note">Fatigue moyenne du jour : ${c.fatigueMoy}/10</p>` : ''}
-        ${c.texte ? `<p class="msg-txt" style="margin-top:6px">${esc(c.texte)}</p>` : ''}
+        ${c.rien ? `<p class="msg-txt" style="margin-top:6px;color:var(--physique)"><b>Rien à signaler</b>${c.texte ? ' — ' + esc(c.texte) : ''}</p>` : ''}
+        ${c.texte && !c.rien ? `<p class="msg-txt" style="margin-top:6px">${esc(c.texte)}</p>` : ''}
         ${c.surveiller ? `<p class="msg-txt"><b>À surveiller :</b> ${esc(c.surveiller)}</p>` : ''}
         ${/^https?:\/\//.test(c.lien || '') ? `<a class="bouton fant plein" style="margin-top:9px" href="${esc(c.lien)}" target="_blank" rel="noopener">Ouvrir la vidéo ↗</a>` : ''}
       </div>`;
