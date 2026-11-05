@@ -431,7 +431,7 @@ html.wa-ouvert,html.wa-ouvert body{overflow:hidden;overscroll-behavior:none}
 .wa-b:not(.moi) .chat-bulle{border-top-left-radius:4px}
 .wa-b .chat-txt{font-size:14.5px;white-space:pre-wrap;word-break:break-word}
 .wa-b .chat-h{margin-top:2px}
-.wa-saisie{flex:0 0 auto;display:flex;align-items:flex-end;gap:8px;padding:8px 10px;
+.wa-saisie{flex:0 0 auto;display:flex;align-items:flex-end;gap:6px;padding:8px 10px;
   padding-bottom:calc(8px + env(safe-area-inset-bottom));background:rgba(6,24,46,.98);border-top:1px solid var(--ligne)}
 /* 16 px : en dessous, l'iPhone agrandit la page dès qu'on touche le champ. */
 .wa-champ{flex:1;min-height:42px !important;max-height:132px;resize:none !important;font-size:16px !important;
@@ -439,6 +439,23 @@ html.wa-ouvert,html.wa-ouvert body{overflow:hidden;overscroll-behavior:none}
 .wa-envoi{flex:0 0 42px;width:42px;height:42px;border-radius:50%;border:0;display:grid;place-items:center;
   background:var(--or);color:#0A1628;cursor:pointer}
 .wa-envoi:active{transform:scale(.94)}
+/* 05/11/2026 — les photos dans le chat (p3u_photos_chat.js) */
+.wa-champ::placeholder{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-btns{display:flex;gap:2px;flex:0 0 auto;align-self:flex-end}
+.pc-btn{width:38px;height:42px;border:0;background:transparent;color:var(--gris);display:grid;place-items:center;border-radius:12px;cursor:pointer}
+.pc-btn:active{background:rgba(255,255,255,.06);color:var(--or)}
+.pc-ligne{display:flex;align-items:center;gap:8px;margin-top:9px}.pc-ligne .bouton{flex:1}
+.pc-apercu{display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(6,24,46,.98);border-top:1px solid var(--ligne)}
+.pc-apercu img{width:52px;height:52px;object-fit:cover;border-radius:10px;flex:0 0 52px}
+.pc-apercu span{flex:1;min-width:0;font-size:12.5px;color:var(--gris);line-height:1.35}.pc-apercu b{display:block;color:var(--texte);font-size:14px}
+.pc-apercu button{width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.08);color:var(--texte);font-size:15px;cursor:pointer}
+.chat-photo{display:block;padding:0;margin:4px 0 2px;border:0;background:rgba(255,255,255,.05);border-radius:12px;overflow:hidden;cursor:zoom-in;max-width:min(260px,100%);position:relative}
+.chat-photo img{display:block;width:100%;max-height:320px;object-fit:cover}
+.chat-photo.attente{width:220px;height:160px}.chat-photo.attente img{display:none}
+.chat-photo span{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;color:var(--gris)}
+.pc-plein{position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.94);display:grid;place-items:center;padding:12px}
+.pc-plein img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
+.pc-plein button{position:absolute;top:max(14px,env(safe-area-inset-top));right:14px;width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:18px}
 .wa-cache{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .chat-saisie{position:sticky;bottom:0;background:linear-gradient(180deg,transparent,var(--nuit) 28%);
   padding-top:14px;margin-top:14px}
@@ -4662,7 +4679,7 @@ function bulleChat(c, wa){
     ${moi ? '' : `<span class="chat-av" style="background:${r.couleur}">${esc(a.joueur ? (a.numero || 'JR') : (vuJoueur && a.role === 'dg') ? (/^pr[ée]s/i.test(a.fonction || '') ? 'PR' : 'DIR') : r.court)}</span>`}
     <div class="chat-bulle">
       ${moi && !annonce ? '' : `<div class="chat-nom" style="color:${r.couleur}">${nomAff}${a.externe ? ' · externe' : ''}${annonce ? ` · <span style="color:var(--or)">annonce ${c.fil === FIL_TOUS ? 'à tous' : 'à ton équipe'}</span>` : ''}</div>`}
-      <p class="chat-txt">${esc(c.texte)}</p>
+      ${photoBulle(c)}${legendePhoto(c) ? `<p class="chat-txt">${esc(legendePhoto(c))}</p>` : ''}
       <div class="chat-h">${c.heure && c.heure !== '—' ? esc(c.heure) : esc(c.date)}</div>
     </div>
   </div>`;
@@ -4670,7 +4687,7 @@ function bulleChat(c, wa){
     <span class="chat-av" style="background:${r.couleur}">${esc(a.joueur ? (a.numero || 'JR') : r.court)}</span>
     <div class="chat-bulle">
       <div class="chat-nom" style="color:${r.couleur}">${nomAff}${a.externe ? ' · externe' : ''}${annonce ? ` · <span style="color:var(--or)">annonce ${c.fil === FIL_TOUS ? 'à tous' : 'à ton équipe'}</span>` : ''}</div>
-      <p class="chat-txt">${esc(c.texte)}</p>
+      ${photoBulle(c)}${legendePhoto(c) ? `<p class="chat-txt">${esc(legendePhoto(c))}</p>` : ''}
       <div class="chat-h">${esc(c.date)}${c.heure && c.heure !== '—' ? ' · ' + esc(c.heure) : ''}</div>
     </div>
   </div>`;
@@ -4712,7 +4729,7 @@ function vueConversation(conv, large){
 
   ${/* Tout le staff écrit, dirigeants compris depuis le 26/10/2026 (pas aux joueurs). */ ''}<div class="chat-saisie">
     <textarea class="champ" id="chatTexte" style="min-height:62px" placeholder="${invite}"></textarea>
-    <button class="bouton plein" style="margin-top:9px" onclick="envoieChat()">${ca ? 'Envoyer l\'annonce' : 'Envoyer'}</button>
+    <div class="pc-ligne">${boutonsPhotoChat()}<button class="bouton plein" onclick="envoieChat()">${ca ? 'Envoyer l\'annonce' : 'Envoyer'}</button></div>
   </div>`;
 }
 
@@ -4735,7 +4752,7 @@ function vueMessagesJoueur(){
         : 'L\'ancien fil, lu par tout le staff. Pour écrire, choisis maintenant une personne dans ton chat.'}));
     const ref = E.reponseA ? (DB.chat || []).find(c => c.id === E.reponseA) : null;
     return waConversation(Object.assign({}, info, {fil, retour: 'fermeConv()', envoi: 'Envoyer',
-      invite: 'Écrire à ' + info.titre + '…', citation: ref ? ref.texte : '',
+      invite: 'Message…', citation: ref ? ref.texte : '',
       note: `Conversation privée : ${esc(info.titre)} et toi seuls la lisez.`}));
   }
   const ligne = (c) => {
@@ -4872,6 +4889,7 @@ function waConversation(o){
     </div>
     ${o.lecture ? '' : `${o.citation ? `<div class="wa-cite" id="waCite"><span><b>↩︎ En réponse à</b>${esc(String(o.citation).slice(0, 90))}${String(o.citation).length > 90 ? '…' : ''}</span><button onclick="annuleReponse()" aria-label="Annuler">✕</button></div>` : ''}
     <div class="wa-saisie">
+      ${boutonsPhotoChat()}
       <textarea class="champ wa-champ" id="chatTexte" rows="1" placeholder="${o.invite}" oninput="waHauteur(this)"></textarea>
       <button class="wa-envoi" id="chatEnvoi" onclick="envoieChat()" aria-label="${esc(o.envoi)}" title="${esc(o.envoi)}">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10.1 15 12 3.4 13.9z"/></svg>
@@ -4933,7 +4951,8 @@ function waMajFil(fil){
 
 function envoieChat(){
   const t = ($('#chatTexte').value || '').trim();
-  if (!t) { if (!document.getElementById('wa')) toast('Écris ton message'); return; }
+  const photo = E.photoAttente || null;                 // 05/11 : photo jointe (p3u_photos_chat.js)
+  if (!t && !photo) { if (!document.getElementById('wa')) toast('Écris ton message'); return; }
   const joueur = E.role === 'jr';
   const conv = joueur ? E.chatAvec : (E.chatAvec || GROUPE);
   /* 04/11 : un joueur n'écrit qu'en privé, à un membre du staff de sa liste. */
@@ -4946,18 +4965,23 @@ function envoieChat(){
   const dest = joueur ? conv.slice(2) : estConvJoueur(conv) ? filCible(conv) : (estConvAnnonce(conv) || conv === GROUPE) ? '' : conv;
   // Réponse à une annonce : le message cité ouvre la réponse, pour que son auteur s'y retrouve.
   const ref = joueur && E.reponseA ? (DB.chat || []).find(c => c.id === E.reponseA) : null;
-  const texte = ref ? `↩︎ « ${String(ref.texte || '').slice(0, 60)}${String(ref.texte || '').length > 60 ? '…' : ''} »\n${t}` : t;
+  const corpsTxt = photo ? PREFIXE_PHOTO + (t || 'Photo') : t;
+  const texte = ref ? `↩︎ « ${String(ref.texte || '').slice(0, 60)}${String(ref.texte || '').length > 60 ? '…' : ''} »\n${corpsTxt}` : corpsTxt;
   E.reponseA = null;
   // L'uuid naît ici : c'est le même en base, ce qui garde le repère « lu » valable au rechargement.
   const id = nouvelId();
   /* Signé de l'identifiant PERSONNEL (« st05 », ou celui du joueur). La base
      le pose d'ailleurs elle-même (trigger t_messages_auteur), d'après le
      compte connecté. */
+  /* La photo part AVANT le message qui la désigne : la file d'attente garde l'ordre. */
+  const pid = photo ? nouvelId() : '';
+  if (photo){ PHOTOS_CHAT[pid] = photo; enregistrer('photos_chat', {id: pid, photo}); E.photoAttente = null; apercuPhotoChat(); }
   DB.chat.push({id, auteur:auteurMoi() || E.role, dest, fil,
-                date:AUJ_FR(), heure:heureCourante(), texte, t: new Date().toISOString()});
+                date:AUJ_FR(), heure:heureCourante(), texte, t: new Date().toISOString(), photo: pid});
   enregistrer('messages', Object.assign({id, auteur_id:auteurMoi(), texte},
-    dest ? {destinataire_id: dest} : {}, fil ? {joueur_id: fil} : {}));
+    dest ? {destinataire_id: dest} : {}, fil ? {joueur_id: fil} : {}, pid ? {photo_id: pid} : {}));
   $('#chatTexte').value = '';
+  { const ta = $('#chatTexte'); if (ta && ta.dataset.invite) ta.placeholder = ta.dataset.invite; }
   marqueChatLu(conv);
   /* Plein écran : la bulle s'ajoute, le clavier reste ouvert. */
   if (document.getElementById('wa')){
@@ -8275,7 +8299,7 @@ function clubCourant(){
       || null;
 }
 
-const TABLES_PERSO = ['push_abonnements', 'notif_preferences'];
+const TABLES_PERSO = ['push_abonnements', 'notif_preferences', 'photos_chat'];   // 05/11 : la photo d'un message du président
 async function enregistrer(table, ligne, surConflit){
   /* Le dirigeant est en lecture seule partout, SAUF le fil du staff (26/10/2026 :
      « ils doivent aussi pouvoir communiquer »). La base tient la même règle. */
@@ -8942,7 +8966,8 @@ const versChat = c => ({
   texte: c.texte, systeme: !!c.systeme,
   dest: c.destinataire_id || '',       // 28/10/2026 : message privé
   fil: c.joueur_id || '',              // 03/11/2026 : fil joueur (id), « tous » ou « eq:<code> »
-  t: c.envoye_le || ''                 // 03/11/2026 : repère pour ne relire que les nouveaux
+  t: c.envoye_le || '',                // 03/11/2026 : repère pour ne relire que les nouveaux
+  photo: c.photo_id || ''              // 05/11/2026 : photo jointe (table photos_chat)
 });
 
 /* LES NOUVEAUX MESSAGES, APPLICATION OUVERTE (03/11/2026).
@@ -13048,6 +13073,173 @@ function ficheSuiviPhysique(j){
   <div class="section-titre">Challenge de tir</div>
   <div class="carte"><p class="msg-txt">${b && b.total ? `${b.pctGlobal}% de réussite sur ${b.total} tirs relevés (${b.nb} séance${b.nb > 1 ? 's' : ''}).` : 'Pas encore de tir relevé.'}</p></div>`;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LES PHOTOS DANS LE CHAT                                       (05/11/2026)
+
+   Fathy : « côté chat, fais en sorte qu'on puisse également envoyer des
+   photos (soit de la galerie du téléphone, soit depuis la caméra) ».
+
+   - Deux boutons à gauche de la zone de texte : l'appareil photo et la
+     galerie. La photo choisie s'affiche au-dessus de la saisie ; on peut
+     ajouter une légende, puis on envoie (ou ✕ pour renoncer).
+   - Elle part réduite : 1280 px au plus sur le grand côté, JPEG (≈ 150 ko).
+     Un forfait mobile à Abidjan ne doit pas porter des photos de 4 Mo.
+   - Elle vit dans sa propre table (photos_chat) ; le message porte son
+     identifiant (photo_id) et un texte « 📷 Photo » ou « 📷 <légende> » : la
+     notification et l'aperçu des conversations le montrent tels quels.
+   - La photo ne se télécharge qu'à l'affichage de la conversation, puis
+     reste en mémoire le temps de la session. Toucher la photo l'ouvre en
+     plein écran.
+   - La base décide qui la voit : exactement ceux qui voient le message.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const PHOTO_CHAT_MAX = 1280;            // grand côté, en pixels
+const PHOTO_CHAT_LIMITE = 650000;       // la base refuse au-delà de 700 000 caractères
+const PHOTOS_CHAT = {};                 // id → image (data URL), le temps de la session
+const PHOTOS_CHAT_DEMANDEES = new Set();
+const PREFIXE_PHOTO = '📷 ';
+
+/* Réduire et compresser. Si la photo reste trop lourde, on recommence plus petit. */
+function reduitPhotoChat(fichier){
+  return new Promise((ok, ko) => {
+    const lecteur = new FileReader();
+    lecteur.onerror = () => ko(new Error('lecture impossible'));
+    lecteur.onload = () => {
+      const img = new Image();
+      img.onerror = () => ko(new Error('image illisible'));
+      img.onload = () => {
+        const essai = (max, q) => {
+          const k = Math.min(1, max / Math.max(img.width, img.height));
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+          const x = c.getContext('2d');
+          x.imageSmoothingQuality = 'high';
+          x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);   // une image transparente ne devient pas noire
+          x.drawImage(img, 0, 0, c.width, c.height);
+          return c.toDataURL('image/jpeg', q);
+        };
+        let d = essai(PHOTO_CHAT_MAX, 0.72);
+        if (d.length > PHOTO_CHAT_LIMITE) d = essai(1024, 0.62);
+        if (d.length > PHOTO_CHAT_LIMITE) d = essai(800, 0.55);
+        if (d.length > PHOTO_CHAT_LIMITE) return ko(new Error('photo trop lourde'));
+        ok(d);
+      };
+      img.src = lecteur.result;
+    };
+    lecteur.readAsDataURL(fichier);
+  });
+}
+
+/* Les deux boutons et leurs champs de fichier, à gauche de la saisie. */
+function boutonsPhotoChat(){
+  return `<span class="pc-btns">
+    <input id="pcCamera" type="file" accept="image/*" capture="environment" hidden onchange="photoChatChoisie(this)">
+    <input id="pcGalerie" type="file" accept="image/*" hidden onchange="photoChatChoisie(this)">
+    <button type="button" class="pc-btn" onclick="$('#pcCamera').click()" aria-label="Prendre une photo" title="Prendre une photo">
+      <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.6"/></svg></button>
+    <button type="button" class="pc-btn" onclick="$('#pcGalerie').click()" aria-label="Choisir dans la galerie" title="Choisir dans la galerie">
+      <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m20.5 16-5-5-8.5 8.5"/></svg></button>
+  </span>`;
+}
+
+/* L'aperçu de la photo en attente, au-dessus de la saisie. Posé dans la page
+   sans tout redessiner : le clavier et le texte déjà tapé restent. */
+function apercuPhotoChat(){
+  const d = E.photoAttente;
+  const saisie = document.querySelector('.wa-saisie, .chat-saisie');
+  let b = document.getElementById('pcApercu');
+  if (!d){ if (b) b.remove(); return; }
+  if (!saisie) return;
+  if (!b){ b = document.createElement('div'); b.id = 'pcApercu'; b.className = 'pc-apercu'; saisie.parentNode.insertBefore(b, saisie); }
+  b.innerHTML = `<img src="${d}" alt="Photo à envoyer">
+    <span><b>Photo prête</b>Ajoute une légende si tu veux, puis envoie.</span>
+    <button type="button" onclick="annulePhotoChat()" aria-label="Retirer la photo">✕</button>`;
+  const ta = document.getElementById('chatTexte');
+  if (ta){ if (!ta.dataset.invite) ta.dataset.invite = ta.placeholder; ta.placeholder = 'Ajouter une légende…'; }
+}
+function annulePhotoChat(){
+  E.photoAttente = null; apercuPhotoChat();
+  const ta = document.getElementById('chatTexte'); if (ta && ta.dataset.invite) ta.placeholder = ta.dataset.invite;
+}
+
+async function photoChatChoisie(input){
+  const f = input.files && input.files[0];
+  input.value = '';
+  if (!f) return;
+  try {
+    E.photoAttente = await reduitPhotoChat(f);
+    apercuPhotoChat();
+  } catch (e){
+    E.photoAttente = null; apercuPhotoChat();
+    toast(e && e.message === 'photo trop lourde' ? 'Photo trop lourde, choisis-en une autre' : 'Cette image ne peut pas être lue');
+  }
+}
+
+/* Le texte du message sans la marque « 📷 Photo » (la photo la montre déjà). */
+function legendePhoto(c){
+  const t = String(c.texte || '');
+  if (!c.photo) return t;
+  return t.replace(/(^|\n)📷 Photo$/, '').replace(/(^|\n)📷 /, '$1');
+}
+
+/* La photo dans la bulle : affichée si elle est là, sinon un cadre qui se
+   remplit dès qu'elle arrive. */
+function photoBulle(c){
+  if (!c.photo) return '';
+  const id = esc(c.photo), src = PHOTOS_CHAT[c.photo];
+  return `<button type="button" class="chat-photo${src ? '' : ' attente'}" onclick="voirPhotoChat('${id}')" aria-label="Voir la photo">
+    <img data-pc="${id}" alt="Photo" ${src ? `src="${src}"` : ''}>${src ? '' : '<span>Photo…</span>'}</button>`;
+}
+
+/* Télécharger les photos des bulles affichées qui n'ont pas encore leur image. */
+async function chargePhotosChat(){
+  const els = [...document.querySelectorAll('img[data-pc]')];
+  els.forEach(el => { const s = PHOTOS_CHAT[el.dataset.pc]; if (s && !el.getAttribute('src')) poseImagePc(el, s); });
+  if (typeof enLigne === 'function' && !enLigne()) return;
+  const ids = [...new Set(els.map(e => e.dataset.pc))].filter(id => !PHOTOS_CHAT[id] && !PHOTOS_CHAT_DEMANDEES.has(id) && /^[0-9a-f-]{36}$/i.test(id));
+  if (!ids.length) return;
+  ids.forEach(id => PHOTOS_CHAT_DEMANDEES.add(id));
+  try {
+    for (let i = 0; i < ids.length; i += 6){                  // par petits lots : chaque photo pèse ~150 ko
+      const l = await api('photos_chat?select=id,photo&id=in.(' + ids.slice(i, i + 6).join(',') + ')') || [];
+      l.forEach(x => {
+        PHOTOS_CHAT[x.id] = x.photo;
+        document.querySelectorAll('img[data-pc="' + x.id + '"]').forEach(el => poseImagePc(el, x.photo));
+      });
+    }
+  } catch (e){
+    ids.forEach(id => PHOTOS_CHAT_DEMANDEES.delete(id));     // on réessaiera au prochain affichage
+  }
+}
+function poseImagePc(el, src){
+  el.src = src;
+  const b = el.closest('.chat-photo');
+  if (b){ b.classList.remove('attente'); const s = b.querySelector('span'); if (s) s.remove(); }
+}
+
+/* Plein écran : toucher n'importe où pour fermer. */
+function voirPhotoChat(id){
+  const src = PHOTOS_CHAT[id];
+  if (!src) return;
+  const v = document.createElement('div');
+  v.className = 'pc-plein'; v.id = 'pcPlein';
+  v.innerHTML = `<img src="${src}" alt="Photo"><button type="button" aria-label="Fermer">✕</button>`;
+  v.onclick = () => v.remove();
+  document.body.appendChild(v);
+}
+
+/* Après chaque affichage, et à chaque mise à jour du fil plein écran. */
+const _rendVuePhotosChat = rendVue;
+rendVue = function(){
+  _rendVuePhotosChat.apply(this, arguments);
+  // une photo choisie n'accompagne pas l'utilisateur hors de la conversation
+  if (E.photoAttente && !document.getElementById('chatTexte')) E.photoAttente = null;
+  setTimeout(chargePhotosChat, 0);
+  if (E.photoAttente) setTimeout(apercuPhotoChat, 0);
+};
+const _waMajFilPhotosChat = waMajFil;
+waMajFil = function(){ const r = _waMajFilPhotosChat.apply(this, arguments); setTimeout(chargePhotosChat, 0); return r; };
 
 /* ══════════════════════════════════════════════════════════════════════════
    ENCODEUR QR — mode octet, correction M, versions 1 à 10
