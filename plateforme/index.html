@@ -2401,7 +2401,7 @@ function vueAccueil(){
   /* 03/11/2026 : un message non lu du Président, du DT ou du head coach passe
      avant tout le reste (voir messagesPrioritaires, p3d_collectif.js). */
   const prio = E.role === 'jr' && messagesPrioritaires().length ? carteMessagesJoueur() + '<!--notif-->' : '';
-  return `<div class="dsk2"><div class="dsk-g">${prio}${carteFatigueJoueur()}${carteMonEcheance()}
+  return `<div class="dsk2"><div class="dsk-g">${prio}${carteFatigueJoueur()}${carteMonEcheance()}${carteFeuilleMatch()}
   <div class="banniere">
     <div class="ban-sur">${esc(C.instance)}</div>
     <div class="ban-titre">${esc(C.nom)}</div>
@@ -9885,7 +9885,7 @@ function vueMatchVerif(){
   <div class="carte">
     <div class="g2">
       <div><label class="label" for="mt-date">Date</label>
-        <input id="mt-date" class="champ" type="date" value="${esc(L.date || AUJ())}"></div>
+        <input id="mt-date" class="champ" type="date" value="${esc(L.date || dateFeuilleParDefaut())}"></div>
       <div><label class="label" for="mt-adv">Adversaire</label>
         <input id="mt-adv" class="champ" type="text" maxlength="60" value="${esc(L.adversaire || '')}"></div>
     </div>
@@ -10481,6 +10481,81 @@ rendVue = function(){
   _rendVueDirect();
   if (E.sous === 'direct' && PEUT_MATCH(E.role)) brancheDirect();
 };
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LA FEUILLE DE MATCH À ENVOYER — l'échéance d'Oumar            (05/11/2026)
+
+   Fathy : « je veux que l'assistant administratif, Oumar, l'ait envoyée au
+   maximum 24 h après le match ; une notif le lendemain du match à 9 h et une
+   deuxième à midi si elle n'est toujours pas scannée. »
+
+   - Le match vient du planning du DT (créneau « Match ») : c'est là qu'il
+     inscrit chaque rencontre, amicaux compris.
+   - « Envoyée » = une feuille enregistrée (table rencontres) pour cette
+     équipe, datée du jour du match ou du lendemain.
+   - Limite : l'heure du match + 24 h. La carte apparaît sur l'accueil de
+     l'assistant administratif deux heures après le début du match, et reste
+     trois jours si rien n'arrive (en rouge une fois la limite passée).
+   - Les notifications (9 h et midi, le lendemain) partent du serveur :
+     asa-notifier, mode {rappel: 'feuille'}.
+   ══════════════════════════════════════════════════════════════════════════ */
+const FEUILLE_DELAI_H = 24;          // l'envoi attendu au plus tard 24 h après le match
+const FEUILLE_APRES_MIN = 120;       // la carte apparaît deux heures après le début du match
+const advDeCreneau = c => String(c.note || '').replace(/^\s*contre\.?\s*/i, '').trim();
+
+function feuillesAttendues(){
+  if (typeof creneauxDe !== 'function' || typeof lundiDe !== 'function') return [];
+  const auj = AUJ(), maint = enMinutes(heureMin(maintenant())) || 0, debutFen = decaleJour(auj, -3);
+  const lundis = [...new Set([lundiDe(debutFen), lundiDe(auj)])];
+  const out = [];
+  (equipesMatch() || []).forEach(e => {
+    lundis.flatMap(l => creneauxDe(e.id, l))
+      .filter(c => c.type === 'Match' && c.jour >= debutFen && c.jour <= auj)
+      .forEach(c => {
+        const debut = enMinutes(c.debut) || 0;
+        const ecoule = joursEntre(c.jour, auj) * 1440 + maint - debut;
+        if (ecoule < FEUILLE_APRES_MIN) return;
+        const lendemain = decaleJour(c.jour, 1);
+        const faite = (DB.rencontres || []).some(r => r.equipe === e.id && (r.date === c.jour || r.date === lendemain));
+        if (faite) return;
+        out.push({eq: e.id, nomEq: e.nom, jour: c.jour, debut: c.debut || '', adv: advDeCreneau(c),
+                  limite: lendemain, retard: ecoule > FEUILLE_DELAI_H * 60});
+      });
+  });
+  return out.sort((a, b) => (a.jour + a.debut).localeCompare(b.jour + b.debut));
+}
+
+const heureLisible = h => { const m = /^(\d{1,2}):(\d{2})$/.exec(h || ''); return m ? (+m[1]) + ' h' + (m[2] !== '00' ? ' ' + m[2] : '') : ''; };
+
+function carteFeuilleMatch(){
+  if (E.role !== 'as') return '';
+  const fs = feuillesAttendues();
+  if (!fs.length) return '';
+  const plusieursEq = (equipesMatch() || []).length > 1;
+  return fs.map(f => `<div class="carte ech-moi ${f.retard ? 'retard' : 'jour'}">
+    <div class="carte-tete"><div class="carte-titre">${f.retard ? 'Feuille de match en retard' : 'Feuille de match à envoyer'}</div>
+      <span class="etiq pousse" style="color:${f.retard ? 'var(--danger)' : 'var(--or)'}">${esc(libJour(f.jour))}</span></div>
+    <p class="msg-txt">Match du ${esc(libJour(f.jour).toLowerCase())}${f.debut ? ' à ' + esc(heureLisible(f.debut)) : ''}${f.adv ? ' contre ' + esc(f.adv) : ''}${plusieursEq ? ' (' + esc(f.nomEq) + ')' : ''}.
+      ${f.retard ? 'La limite était' : 'À envoyer avant'} ${esc(libJour(f.limite).toLowerCase())}${f.debut ? ', ' + esc(heureLisible(f.debut)) : ''}.</p>
+    <button class="bouton plein" style="margin-top:12px" onclick="allerFeuille('${esc(f.eq)}','${esc(f.jour)}')">${ico('photo')} Photographier la feuille</button>
+  </div>`).join('');
+}
+
+/* Ouvre l'onglet Match sur la bonne équipe ; la date du match sera pré-remplie. */
+function allerFeuille(eq, jour){
+  M = {etape: 'accueil', eq: eq || M.eq, photo: null, lecture: null, erreur: '', dateDefaut: jour || null};
+  const i = (PLAN[E.role] || []).findIndex(o => o[1] === 'Match');
+  if (i >= 0) vaVers(i); else rendVue();
+}
+
+/* La date proposée sur la feuille : celle que la photo donne, sinon le match
+   en attente de cette équipe (scannée le lendemain, la feuille ne doit pas
+   prendre la date du jour), sinon aujourd'hui. */
+function dateFeuilleParDefaut(){
+  if (M.dateDefaut) return M.dateDefaut;
+  const f = feuillesAttendues().filter(x => x.eq === M.eq).pop();
+  return f ? f.jour : AUJ();
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    PLANNING — l'emploi du temps de la semaine                    (19/10/2026)
@@ -12704,6 +12779,8 @@ function ouvreDepuisNotif(ouvre){
   if (ouvre === 'fiche' && E.role === 'jr') { const i = PLAN.jr.findIndex(o => o[1] === 'Ma fiche'); if (i >= 0) vaVers(i); return true; }
   if (ouvre === 'parametres'){ ouvreParametres(); return true; }
   if (ouvre === 'fatigue' && E.role === 'jr'){ vaVers(0); return true; }   // 05/11 : la carte fatigue est en tête de l'accueil
+  /* 05/11 : le rappel de la feuille de match (assistant administratif). */
+  if (ouvre === 'match'){ const i = (PLAN[E.role] || []).findIndex(o => o[1] === 'Match'); if (i >= 0) { vaVers(i); return true; } return false; }
   if (ouvre === 'chat'){
     const i = (PLAN[E.role] || []).findIndex(o => o[1] === 'Chat');
     if (i >= 0) vaVers(i); else { E.onglet = 0; ouvreSous('chat'); }
