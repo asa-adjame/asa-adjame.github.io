@@ -12703,6 +12703,7 @@ function ouvreDepuisNotif(ouvre){
   if (ouvre === 'messages' && E.role === 'jr') { ouvreChatJoueur(); return true; }
   if (ouvre === 'fiche' && E.role === 'jr') { const i = PLAN.jr.findIndex(o => o[1] === 'Ma fiche'); if (i >= 0) vaVers(i); return true; }
   if (ouvre === 'parametres'){ ouvreParametres(); return true; }
+  if (ouvre === 'fatigue' && E.role === 'jr'){ vaVers(0); return true; }   // 05/11 : la carte fatigue est en tête de l'accueil
   if (ouvre === 'chat'){
     const i = (PLAN[E.role] || []).findIndex(o => o[1] === 'Chat');
     if (i >= 0) vaVers(i); else { E.onglet = 0; ouvreSous('chat'); }
@@ -12755,6 +12756,8 @@ const TYPES_NOTIF = [
   {id: 'perso',    lib: 'Messages du staff',        aide: 'Le staff t\'écrit, à toi seul.',                        pour: r => r === 'jr'},
   {id: 'annonce',  lib: 'Annonces du club',         aide: 'Une annonce à tous les joueurs ou à ton équipe.',       pour: r => r === 'jr'},
   {id: 'consigne', lib: 'Consignes',                aide: 'Une nouvelle consigne dans ta fiche.',                   pour: r => r === 'jr'},
+  /* 05/11/2026 : le rappel de la fatigue, mercredi et dimanche à 9 h et à midi (pg_cron). */
+  {id: 'fatigue',  lib: 'Rappel fatigue',           aide: 'Mercredi et dimanche, à 9 h et à midi, si ta fatigue n\'est pas encore notée.', pour: r => r === 'jr'},
 ];
 function STAFF_NOTIF(r){ return ['dt', 'hc', 'ca', 'cd', 'an', 'ki', 'as', 'pp'].includes(r); }
 const typesPourMoi = () => TYPES_NOTIF.filter(t => t.pour(E.role));
