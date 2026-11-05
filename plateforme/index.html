@@ -384,6 +384,11 @@ textarea.champ{resize:vertical;min-height:78px;line-height:1.5}
 .msg-prio{border-color:var(--or);background:linear-gradient(160deg,rgba(255,178,70,.16),rgba(255,178,70,.03) 60%),var(--surface)}
 .msg-prio .carte-titre{color:var(--or)}
 .msg-prio-txt{font-size:15px;line-height:1.45;color:var(--texte);margin-top:6px;white-space:pre-wrap;word-break:break-word}
+/* 05/11/2026 — suivi physique : la fatigue sur 14 jours */
+.phys-fat{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:4px}
+.phys-j{display:flex;flex-direction:column;align-items:center;gap:3px}
+.phys-j b{width:100%;aspect-ratio:1;max-width:30px;display:grid;place-items:center;border-radius:7px;border:1px solid var(--ligne);font-family:var(--mono);font-size:12px;color:var(--gris2)}
+.phys-j small{font-family:var(--mono);font-size:9px;color:var(--gris2)}
 /* 05/11/2026 — échéances : « Rien à signaler » */
 .rien-l{margin-top:14px;padding-top:12px;border-top:1px dashed var(--ligne);display:flex;flex-direction:column;gap:8px}
 .rien-l>span{font-size:12.5px;color:var(--gris)}
@@ -1940,7 +1945,9 @@ const PLAN = {
   as: [['maison','Accueil',vueAccueil],['qr','Appel',vueAppel],
        ['cible','Tir',vueTirAnalyste],['photo','Match',vueMatch],
        ['coeur','Médical',vueMedical],['message','Chat',vueChat]],
-  pp: [['maison','Accueil',vueAccueil],['calendrier','Calendrier',vueCalendrier],
+  /* 05/11/2026 : « Joueurs » = le suivi physique en lecture seule (p3t_physique.js) ;
+     le préparateur n'a plus d'échéance — il a sa propre plateforme. */
+  pp: [['maison','Accueil',vueAccueil],['gens','Joueurs',vueSuiviPhysique],['calendrier','Calendrier',vueCalendrier],
        ['coeur','Médical',vueMedical],['message','Chat',vueChat]],
   /* Le dirigeant (25/10/2026) : il lit tout et n'écrit rien. Le fil du staff
      s'ouvre depuis son accueil, en lecture : six onglets est le plafond. */
@@ -10775,12 +10782,15 @@ const ECHEANCES = [
    quoi: 'Le secteur médical à jour : chaque joueur suivi, son statut et la consigne au staff.'},
   {type: 'hc', role: 'hc', jours: [2], lib: 'Retour du head coach',
    quoi: 'La vidéo du dernier match analysée, le scouting de l\'adversaire et la préparation du prochain match.'},
-  {type: 'physique', role: 'pp', jours: [3, 0], lib: 'Avis du préparateur physique',
-   quoi: 'L\'état physique du groupe, la charge à venir et les joueurs à surveiller.'},
+  /* 05/11/2026 — l'avis du préparateur physique est retiré (Fathy : « il a déjà
+     sa propre plateforme, qu'il n'ait rien à rendre »). Il consulte le suivi
+     physique (onglet Joueurs, p3t_physique.js). Un ancien retour « physique »
+     resterait lisible (voir echeance()). */
   {type: 'fatigue', role: 'jr', jours: [3, 0], lib: 'Fatigue des joueurs',
    quoi: 'Chaque joueur note sa fatigue de 0 à 10 sur son accueil.'}
 ];
-const echeance = t => ECHEANCES.find(e => e.type === t);
+const echeance = t => ECHEANCES.find(e => e.type === t)
+  || (t === 'physique' ? {type: 'physique', role: 'pp', jours: [], lib: 'Avis du préparateur physique', quoi: ''} : null);
 
 /* Les joueurs attendus pour la fatigue : ceux des équipes ouvertes. */
 const joueursAttendus = () => (DB.joueurs || []).filter(j => equipeOuverte(j.equipe));
@@ -10913,8 +10923,11 @@ function carteEcheances(){
 function monEcheance(){
   const e = ECHEANCES.find(x => x.role === E.role && x.type !== 'fatigue');
   if (!e) return null;
-  const auj = AUJ(), moi = monIdEffectif();
-  const fait = j => (DB.retours || []).some(r => r.type === e.type && r.jour === j && r.auteur === moi);
+  /* 05/11/2026 : un retour rendu par n'importe qui pour ce jour tient
+     l'échéance (comme dans le tableau du DT), et le rappel disparaît chez tous
+     ceux qui partagent ce rôle. */
+  const auj = AUJ();
+  const fait = j => (DB.retours || []).some(r => r.type === e.type && r.jour === j);
   const dus = [];
   for (let i = 6; i >= 0; i--){
     const d = decaleJour(auj, -i);
@@ -12829,6 +12842,131 @@ function blocNotifsReglages(){
       </label>`;
     }).join('') || '<p class="carte-note">Aucune notification pour ton rôle.</p>'}
   </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LE SUIVI PHYSIQUE — l'écran du préparateur physique          (05/11/2026)
+
+   Fathy : « pour le préparateur physique, il a déjà sa propre plateforme.
+   Fais en sorte qu'il n'ait rien à rendre, qu'il ait juste le visuel des
+   stats, des blessures, des temps de présence aux entraînements et du degré
+   de fatigue. »
+
+   - Plus d'échéance pour lui (retirée de ECHEANCES, p3m_suivi.js).
+   - Un onglet « Joueurs » en lecture seule : le groupe en un coup d'œil
+     (indisponibles, fatigue récente, présence), puis une ligne par joueur.
+   - La fiche d'un joueur : ses blessures, sa fatigue des 14 derniers jours,
+     ses entraînements (arrivée, départ, temps réel), ses stats de match et
+     son tir. Rien ne s'y écrit.
+   - La base lui ouvrait déjà ces tables en lecture (vérifié le 05/11 sous
+     son identité) : rien n'y change.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const PHYS_JOURS_FATIGUE = 14;     // la fatigue sur deux semaines
+const PHYS_SEANCES = 8;            // les huit derniers entraînements
+
+/* La dernière fatigue d'un joueur sur les n derniers jours. */
+function derniereFatigue(j, n){
+  const lim = decaleJour(AUJ(), -(n || 3));
+  return (DB.fatigue || []).filter(f => f.joueur === j.id && f.jour >= lim)
+    .sort((a, b) => b.jour.localeCompare(a.jour))[0] || null;
+}
+/* Les derniers entraînements tenus (appel fait, séance close) de l'équipe du joueur, du plus récent au plus ancien. */
+function entrainementsDe(j, n){
+  return (DB.seances || []).filter(s => s.equipe === j.equipe && s.type !== 'match' && appelDe(s).length && !s.ouverte)
+    .sort((a, b) => isoDe(b.date).localeCompare(isoDe(a.date)) || String(b.heure || '').localeCompare(String(a.heure || '')))
+    .slice(0, n || PHYS_SEANCES);
+}
+/* Sa présence sur ces entraînements : combien, et le temps réel moyen. */
+function presenceDe(j){
+  const ss = entrainementsDe(j);
+  let pres = 0, min = 0, mesures = 0;
+  ss.forEach(s => {
+    const p = pointeDe(s, j.id);
+    if (p && p.present !== false){ pres++; const m = minutesReelles(s, p); if (m != null){ min += m; mesures++; } }
+  });
+  return {n: ss.length, pres, moy: mesures ? Math.round(min / mesures) : null};
+}
+const blessureEnCours = j => (DB.medical || []).find(x => x.joueur === j.id && x.statut !== 'Rétabli') || null;
+
+function vueSuiviPhysique(){
+  if (E.fiche) return ficheSuiviPhysique(parId(E.fiche));
+  const js = parEq(E.equipe);
+  const indispo = js.filter(j => { const m = blessureEnCours(j); return m && m.statut === 'Indisponible'; }).length;
+  const adapte = js.filter(j => { const m = blessureEnCours(j); return m && m.statut !== 'Indisponible'; }).length;
+  const fat = js.map(j => derniereFatigue(j, 3)).filter(Boolean);
+  const moyF = fat.length ? (fat.reduce((a, f) => a + f.note, 0) / fat.length) : null;
+  const hauts = fat.filter(f => f.note >= 7).length;
+  const der = js.length ? entrainementsDe(js[0], 1)[0] : null;
+  const presDer = der ? js.filter(j => { const p = pointeDe(der, j.id); return p && p.present !== false; }).length : null;
+
+  return `<h1 class="vue-titre">Suivi physique</h1>
+  <p class="vue-sous">Blessures, fatigue, présence aux entraînements et stats de chaque joueur. Consultation seulement : rien à remplir ici.</p>
+  ${selEquipe()}
+  <div class="g4">
+    <div class="tuile ${indispo ? 'rouge' : 'vert'}"><div class="tuile-val">${indispo}</div><div class="tuile-lib">Indispo-<br>nibles</div></div>
+    <div class="tuile ${adapte ? '' : 'vert'}"><div class="tuile-val">${adapte}</div><div class="tuile-lib">Reprise /<br>suivi</div></div>
+    <div class="tuile"><div class="tuile-val" style="${moyF != null ? 'color:' + couleurFatigue(Math.round(moyF)) : ''}">${moyF != null ? moyF.toFixed(1).replace('.', ',') : '—'}</div><div class="tuile-lib">Fatigue<br>${fat.length}/${js.length} · 3 j</div></div>
+    <div class="tuile ${hauts ? 'rouge' : 'blanc'}"><div class="tuile-val">${hauts}</div><div class="tuile-lib">Fatigue<br>7 ou plus</div></div>
+  </div>
+  ${der ? `<p class="carte-note" style="margin:8px 0 0">Dernier entraînement (${esc(String(der.date).slice(0, 5))}) : ${presDer}/${js.length} présents.</p>` : ''}
+  <div class="section-titre">Les joueurs</div>
+  ${listeJoueurs(js, 'ouvreFiche', j => {
+    const m = blessureEnCours(j), f = derniereFatigue(j, 3), p = presenceDe(j);
+    return {
+      txt: f ? String(f.note) : '—', coul: f ? couleurFatigue(f.note) : 'var(--gris2)',
+      meta: m ? m.statut + ' · ' + m.type : 'Aucune blessure',
+      meta2: (f ? `Fatigue ${f.note}/10 (${jourFr(f.jour).slice(0, 5)})` : 'Fatigue non notée')
+        + ' · ' + (p.n ? `Entr. ${p.pres}/${p.n}${p.moy != null ? ' · ' + enDuree(p.moy) : ''}` : 'aucun entr. relevé')
+    };
+  })}`;
+}
+
+function ficheSuiviPhysique(j){
+  if (!j) { E.fiche = null; return vueSuiviPhysique(); }
+  const meds = (DB.medical || []).filter(x => x.joueur === j.id).slice(0, 4);
+  // la fatigue des 14 derniers jours, une case par jour
+  const jours = [];
+  for (let i = PHYS_JOURS_FATIGUE - 1; i >= 0; i--) jours.push(decaleJour(AUJ(), -i));
+  const fat = jours.map(d => ({d, f: (DB.fatigue || []).find(x => x.joueur === j.id && x.jour === d)}));
+  const notees = fat.filter(x => x.f).map(x => x.f.note);
+  const ss = entrainementsDe(j), p = presenceDe(j);
+  const b = bilanTir(j, parcoursDe(j));
+
+  return `${retour('Joueurs', 'E.fiche=null;rendVue()')}
+  <div class="carte"><div class="rang" style="align-items:center">
+    ${avatarJoueur(j, 56) || `<div class="jl-num" style="width:44px;height:44px;flex:0 0 44px;font-size:20px">${esc(j.numero)}</div>`}
+    <div style="min-width:0"><div class="titre" style="font-size:21px">${esc(j.nom)}</div>
+      <div class="carte-note">${esc(j.poste || '')}${j.taille ? ' · ' + j.taille + ' cm' : ''} · ${esc(nomEq(j.equipe))}</div></div>
+  </div></div>
+
+  <div class="section-titre">Blessures</div>
+  ${meds.length ? meds.map(m => blocMedical(m, false)).join('') : '<div class="carte"><p class="msg-txt">Aucune blessure signalée.</p></div>'}
+
+  <div class="section-titre">Fatigue · ${PHYS_JOURS_FATIGUE} derniers jours</div>
+  <div class="carte">
+    <div class="phys-fat">${fat.map(x => `<div class="phys-j" title="${esc(libJour(x.d))}">
+      <b style="${x.f ? 'background:' + couleurFatigue(x.f.note) + ';color:#0A1628;border-color:transparent' : ''}">${x.f ? x.f.note : '·'}</b>
+      <small>${esc(jourFr(x.d).slice(0, 2))}</small></div>`).join('')}</div>
+    <p class="carte-note" style="margin-top:8px">${notees.length ? `Moyenne ${(notees.reduce((a, n) => a + n, 0) / notees.length).toFixed(1).replace('.', ',')}/10 sur ${notees.length} note${notees.length > 1 ? 's' : ''}. 0 = tout frais · 10 = épuisé.` : 'Aucune note sur la période.'}</p>
+  </div>
+
+  <div class="section-titre">Présence aux entraînements</div>
+  <div class="carte">
+    <p class="carte-note" style="margin-bottom:6px">${p.n ? `${p.pres} présence${p.pres > 1 ? 's' : ''} sur les ${p.n} derniers entraînements${p.moy != null ? ' · ' + enDuree(p.moy) + ' en moyenne' : ''}.` : 'Aucun entraînement relevé pour son équipe.'}</p>
+    ${ss.map(s => {
+      const q = pointeDe(s, j.id), m = minutesReelles(s, q);
+      const etat = !q || q.present === false ? '<span class="pt-h retard">absent</span>'
+        : `<span class="pt-h ${q.retard ? 'retard' : 'ok'}">${esc(q.heure || '—')}${q.retard ? ' · retard' : ''}</span>`;
+      return `<div class="pt-l"><span class="pt-nom" style="flex:1">${esc(String(s.date).slice(0, 5))} · ${esc(s.libelle || 'Séance')}</span>${etat}</div>
+        ${m != null || (q && q.depart) ? `<p class="carte-note" style="margin:-4px 0 8px">${q && q.depart ? 'Parti à ' + esc(q.depart.heure) + (q.depart.motif ? ' (' + esc(q.depart.motif) + ')' : '') + ' · ' : ''}${m != null ? 'Temps réel ' + enDuree(m) : ''}</p>` : ''}`;
+    }).join('')}
+  </div>
+
+  ${blocMatchsJoueur(j) || '<div class="section-titre">Statistiques de match</div><div class="carte"><p class="msg-txt">Pas encore de feuille de match pour lui.</p></div>'}
+
+  <div class="section-titre">Challenge de tir</div>
+  <div class="carte"><p class="msg-txt">${b && b.total ? `${b.pctGlobal}% de réussite sur ${b.total} tirs relevés (${b.nb} séance${b.nb > 1 ? 's' : ''}).` : 'Pas encore de tir relevé.'}</p></div>`;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
