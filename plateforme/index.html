@@ -453,6 +453,14 @@ html.wa-ouvert,html.wa-ouvert body{overflow:hidden;overscroll-behavior:none}
 .chat-photo img{display:block;width:100%;max-height:320px;object-fit:cover}
 .chat-photo.attente{width:220px;height:160px}.chat-photo.attente img{display:none}
 .chat-photo span{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;color:var(--gris)}
+.as-rub{cursor:pointer;display:block;transition:border-color .15s}.as-rub:active{border-color:var(--or)}
+.as-rub-l{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.as-rub-l div{display:flex;flex-direction:column;gap:3px}
+.as-rub-l b{font-family:var(--titre);font-size:30px;line-height:1}.as-rub-l b small{font-size:16px;color:var(--gris);margin-left:1px}
+.as-rub-l span{font-size:12px;color:var(--gris);line-height:1.25}
+.as-rub-barre{height:6px;border-radius:3px;background:rgba(255,255,255,.08);margin:12px 0 10px;overflow:hidden}
+.as-rub-barre i{display:block;height:100%;background:var(--physique);border-radius:3px}
+.as-rub-voir{display:block;color:var(--or);font-size:13px;font-weight:600}
 .as-mois{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 12px}
 .as-mois b{font-family:var(--titre);font-size:22px;letter-spacing:.5px}.as-mois .pc-btn{font-size:24px}.as-mois .pc-btn:disabled{opacity:.25}
 .as-liste{display:grid;gap:7px}
@@ -12286,7 +12294,6 @@ function raccourcisAccueil(){
      02/11/2026 : il écrit au médical, mais l'onglet n'est pas dans sa barre. */
   if (E.role === 'hc') b.push(['Médical', `ouvreSous('medical')`]);
   b.push(['Fatigue, 7 jours', `ouvreSous('fatigue')`]);
-  if (VOIT_ASSIDUITE(E.role)) b.push(['Assiduité des joueurs', `ouvreSous('assiduite')`]);   // 05/11
   return `<div class="section-titre">Raccourcis</div>
   <div class="acc-racc">${b.map(([t, a]) => `<button onclick="${a}">${esc(t)}</button>`).join('')}</div>`;
 }
@@ -12315,6 +12322,7 @@ function vueAccueilLeger(){
   ${carteProchainMatch(DB.championnat.prochain)}
   </div><div class="dsk-d">
   ${carteAujourdhui()}
+  ${rubriqueAssiduite()}
   ${tuilesAccueil()}
   ${raccourcisAccueil()}
   ${lignePartenaire()}
@@ -13328,7 +13336,7 @@ async function chargeAssiduite(m){
   } catch (e){
     ASSI.charge[m] = 'erreur';
   }
-  if (E.sous === 'assiduite') rendVue();
+  if (E.sous === 'assiduite' || (!E.sous && E.onglet === 0 && VOIT_ASSIDUITE(E.role))) rendVue();   // l'écran, ou la rubrique de l'accueil
 }
 
 /* Le score d'un joueur sur un mois : jours ouverts / jours comptés. */
@@ -13403,6 +13411,33 @@ function ligneAssiduite(l, m){
     ${(typeof avatarJoueur === 'function' && avatarJoueur(l.j, 34)) || `<span class="jl-num">${esc(String(l.j.numero ?? ''))}</span>`}
     <span class="as-bloc"><span class="as-nom">${esc(l.j.nom)}</span><span class="as-cases">${cases.join('')}</span></span>
     <span class="as-score"><b style="color:${couleurAssi(l.pct)}">${l.pct != null ? l.pct + '%' : '—'}</b><small>${l.faits}/${l.compte}</small></span>
+  </div>`;
+}
+
+/* ───────────────────────── la rubrique de l'accueil (DT et dirigeants)
+   05/11/2026 — Fathy : « une rubrique cliquable, et non un raccourci ». La
+   carte résume le jour et le mois ; la toucher ouvre l'écran détaillé. */
+function rubriqueAssiduite(){
+  if (!VOIT_ASSIDUITE(E.role)) return '';
+  const auj = AUJ(), m = auj.slice(0, 7);
+  if (!ASSI.charge[m]) setTimeout(() => chargeAssiduite(m), 0);
+  const ouvre = `ASSI.mois=null;ouvreSous('assiduite')`;
+  const tete = `<div class="section-titre">Assiduité · ${esc(libMois(m))}</div>`;
+  if (!ASSI.donnees[m]) return tete + `<div class="carte as-rub" role="button" tabindex="0" onclick="${ouvre}">
+    <p class="carte-note">${ASSI.charge[m] === 'erreur' ? 'Lecture impossible pour l\'instant.' : 'Chargement…'}</p><span class="as-rub-voir">Voir le détail ›</span></div>`;
+  const js = parEq(E.equipe), ls = js.map(j => scoreAssiduite(j.id, m));
+  const ouverts = ls.filter(l => l.auj).length;
+  const avec = ls.filter(l => l.pct != null);
+  const moy = avec.length ? Math.round(avec.reduce((s, l) => s + l.pct, 0) / avec.length) : null;
+  const faibles = avec.filter(l => l.pct < 50).length;
+  return tete + `<div class="carte as-rub" role="button" tabindex="0" onclick="${ouvre}">
+    <div class="as-rub-l">
+      <div><b>${ouverts}<small>/${js.length}</small></b><span>ont ouvert<br>aujourd'hui</span></div>
+      <div><b style="color:${couleurAssi(moy)}">${moy != null ? moy : '—'}<small>%</small></b><span>moyenne<br>du mois</span></div>
+      <div><b style="color:${faibles ? 'var(--danger)' : 'var(--physique)'}">${faibles}</b><span>sous<br>50 %</span></div>
+    </div>
+    <div class="as-rub-barre"><i style="width:${js.length ? Math.round(ouverts * 100 / js.length) : 0}%"></i></div>
+    <span class="as-rub-voir">Voir qui, joueur par joueur ›</span>
   </div>`;
 }
 
