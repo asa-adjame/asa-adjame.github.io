@@ -453,6 +453,18 @@ html.wa-ouvert,html.wa-ouvert body{overflow:hidden;overscroll-behavior:none}
 .chat-photo img{display:block;width:100%;max-height:320px;object-fit:cover}
 .chat-photo.attente{width:220px;height:160px}.chat-photo.attente img{display:none}
 .chat-photo span{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;color:var(--gris)}
+.as-mois{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 12px}
+.as-mois b{font-family:var(--titre);font-size:22px;letter-spacing:.5px}.as-mois .pc-btn{font-size:24px}.as-mois .pc-btn:disabled{opacity:.25}
+.as-liste{display:grid;gap:7px}
+.as-l{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid var(--ligne);border-radius:14px}
+.as-bloc{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.as-nom{font-weight:600;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.as-cases{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px;max-width:330px}
+.as-cases .as-d{width:auto;height:9px}
+.as-d{display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(255,255,255,.1);vertical-align:middle}
+.as-d.ok{background:var(--physique)}.as-d.ko{background:var(--danger);opacity:.75}.as-d.auj{outline:1px solid var(--or);outline-offset:1px}
+.as-score{display:flex;flex-direction:column;align-items:flex-end;flex:0 0 auto}
+.as-score b{font-family:var(--titre);font-size:22px;line-height:1}.as-score small{font-size:11.5px;color:var(--gris);font-family:var(--mono)}
 .pc-plein{position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.94);display:grid;place-items:center;padding:12px}
 .pc-plein img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
 .pc-plein button{position:absolute;top:max(14px,env(safe-area-inset-top));right:14px;width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:18px}
@@ -2401,6 +2413,8 @@ function vueAccueil(){
   if (E.sous === 'echeances')  return vueEcheances();
   if (E.sous === 'fatigue')    return vueFatigue();
   if (E.sous === 'chat')       return retour('Accueil', 'fermeSous()') + vueChat();
+  /* 05/11/2026 — l'assiduité des joueurs sur la plateforme (p3v_assiduite.js). */
+  if (E.sous === 'assiduite')  return vueAssiduite();
 
   /* 27/10/2026 — DT, dirigeants, head coach : l'accueil allégé (p3o_accueil.js). */
   if (ACCUEIL_LEGER(E.role)) return vueAccueilLeger();
@@ -12272,6 +12286,7 @@ function raccourcisAccueil(){
      02/11/2026 : il écrit au médical, mais l'onglet n'est pas dans sa barre. */
   if (E.role === 'hc') b.push(['Médical', `ouvreSous('medical')`]);
   b.push(['Fatigue, 7 jours', `ouvreSous('fatigue')`]);
+  if (VOIT_ASSIDUITE(E.role)) b.push(['Assiduité des joueurs', `ouvreSous('assiduite')`]);   // 05/11
   return `<div class="section-titre">Raccourcis</div>
   <div class="acc-racc">${b.map(([t, a]) => `<button onclick="${a}">${esc(t)}</button>`).join('')}</div>`;
 }
@@ -13240,6 +13255,156 @@ rendVue = function(){
 };
 const _waMajFilPhotosChat = waMajFil;
 waMajFil = function(){ const r = _waMajFilPhotosChat.apply(this, arguments); setTimeout(chargePhotosChat, 0); return r; };
+
+/* ══════════════════════════════════════════════════════════════════════════
+   L'ASSIDUITÉ DES JOUEURS SUR LA PLATEFORME                    (05/11/2026)
+
+   Fathy : « voir quotidiennement qui a ouvert ou non la plateforme ; à la fin
+   du mois, si le joueur a ouvert l'application une fois par jour, il a 30/30
+   soit 100 % ; certains jours il ne l'a pas ouverte, il perd des points ».
+   Choix : les joueurs seulement ; visible par le DT et les dirigeants ;
+   tous les jours du mois comptent.
+
+   - Côté joueur : à chaque ouverture (et à chaque retour sur l'application),
+     un jour est marqué, une seule fois par jour et par téléphone. L'envoi
+     passe par la file d'attente : une ouverture sans réseau compte quand
+     même, avec sa date (la base accepte jusqu'à deux jours de retard).
+   - Côté DT et dirigeants : Accueil → « Assiduité des joueurs ». Le mois,
+     joueur par joueur : le score (jours ouverts / jours comptés), le
+     pourcentage, et une case par jour.
+   - Le mois en cours : les jours passés comptent, et aujourd'hui compte dès
+     que le joueur a ouvert. Un jour n'est perdu qu'à minuit (heure d'Abidjan).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const VOIT_ASSIDUITE = r => ['dt', 'dg'].includes(r);
+const CLE_OUVERTURE = 'asa-ouvert-';
+const ASSI = {mois: null, donnees: {}, charge: {}};   // donnees[mois] = {joueur: Set(jours)}
+
+/* ───────────────────────── côté joueur : marquer le jour */
+function marqueOuverture(){
+  if (E.role !== 'jr') return;
+  const j = E.joueur || E.moi;
+  if (!j || !j.id) return;
+  const auj = AUJ(), cle = CLE_OUVERTURE + j.id;
+  let deja = '';
+  try { deja = localStorage.getItem(cle) || ''; } catch (e){}
+  if (deja === auj) return;
+  try { localStorage.setItem(cle, auj); } catch (e){}
+  /* La base pose elle-même l'identifiant du joueur et vérifie la date. */
+  enregistrer('ouvertures', {joueur_id: j.id, jour: auj}, 'joueur_id,jour');
+  // démonstration (et écran ouvert sur le même appareil) : la marque se voit tout de suite
+  const m = auj.slice(0, 7);
+  if (ASSI.donnees[m]) (ASSI.donnees[m][j.id] = ASSI.donnees[m][j.id] || new Set()).add(auj);
+}
+const _connexionAssiduite = connexion;
+connexion = function(){ const r = _connexionAssiduite.apply(this, arguments); setTimeout(marqueOuverture, 0); return r; };
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') marqueOuverture(); });
+setInterval(marqueOuverture, 5 * 60 * 1000);       // l'application restée ouverte passé minuit
+
+/* ───────────────────────── les données du mois */
+const finMois = m => { const [a, mm] = m.split('-').map(Number); return new Date(Date.UTC(a, mm, 0, 12)).toISOString().slice(0, 10); };
+
+async function chargeAssiduite(m){
+  if (ASSI.charge[m] === 'en cours') return;
+  ASSI.charge[m] = 'en cours';
+  const par = {};
+  try {
+    if (typeof enLigne === 'function' && enLigne() && SOURCE.clubId){
+      const l = await api('ouvertures?select=joueur_id,jour&club_id=eq.' + SOURCE.clubId
+        + '&jour=gte.' + m + '-01&jour=lte.' + finMois(m) + '&limit=5000') || [];
+      l.forEach(x => { (par[x.joueur_id] = par[x.joueur_id] || new Set()).add(String(x.jour).slice(0, 10)); });
+    } else {
+      /* Démonstration : des habitudes fictives, stables d'un affichage à l'autre. */
+      const auj = AUJ();
+      (DB.joueurs || []).forEach((j, k) => {
+        const regulier = [0.97, 0.9, 0.75, 0.55, 0.3][k % 5];
+        for (let d = m + '-01'; d <= finMois(m) && d <= auj; d = decaleJour(d, 1)){
+          let h = 7; for (const c of j.id + '|' + d) h = Math.imul(h ^ c.charCodeAt(0), 2654435761) >>> 0;
+          if ((h % 1000) / 1000 < regulier && !(d === auj && k % 3 === 0)) (par[j.id] = par[j.id] || new Set()).add(d);
+        }
+      });
+    }
+    ASSI.donnees[m] = par; ASSI.charge[m] = 'ok';
+  } catch (e){
+    ASSI.charge[m] = 'erreur';
+  }
+  if (E.sous === 'assiduite') rendVue();
+}
+
+/* Le score d'un joueur sur un mois : jours ouverts / jours comptés. */
+function scoreAssiduite(jid, m){
+  const auj = AUJ(), fin = finMois(m), ouverts = (ASSI.donnees[m] || {})[jid] || new Set();
+  let compte = 0, faits = 0;
+  for (let d = m + '-01'; d <= fin && d <= auj; d = decaleJour(d, 1)){
+    const fait = ouverts.has(d);
+    if (d === auj && !fait) continue;          // aujourd'hui ne se perd qu'à minuit
+    compte++; if (fait) faits++;
+  }
+  return {faits, compte, pct: compte ? Math.round(faits * 100 / compte) : null, auj: ouverts.has(auj)};
+}
+const couleurAssi = p => p == null ? 'var(--gris2)' : p >= 80 ? 'var(--physique)' : p >= 50 ? 'var(--or)' : 'var(--danger)';
+
+/* ───────────────────────── l'écran (DT et dirigeants) */
+function vueAssiduite(){
+  if (!VOIT_ASSIDUITE(E.role)) return `${retour('Accueil', 'fermeSous()')}<div class="vide">Réservé au DT et aux dirigeants.</div>`;
+  const auj = AUJ(), moisAuj = auj.slice(0, 7);
+  const m = ASSI.mois = ASSI.mois && ASSI.mois <= moisAuj ? ASSI.mois : moisAuj;
+  if (!ASSI.charge[m] || (ASSI.charge[m] === 'erreur' && !ASSI.donnees[m])) setTimeout(() => chargeAssiduite(m), 0);
+  const js = parEq(E.equipe).slice();
+  const enCours = m === moisAuj;
+  const pret = !!ASSI.donnees[m];
+
+  const tete = `${retour('Accueil', 'fermeSous()')}
+  <h1 class="vue-titre">Assiduité des joueurs</h1>
+  <p class="vue-sous">Un point par jour où le joueur a ouvert la plateforme. ${enCours
+    ? 'Aujourd\'hui compte dès qu\'il l\'ouvre ; un jour n\'est perdu qu\'à minuit.' : 'Mois terminé : tous les jours comptent.'}</p>
+  ${selEquipe()}
+  <div class="as-mois">
+    <button class="pc-btn" onclick="ASSI.mois=decaleMois(ASSI.mois,-1);rendVue()" aria-label="Mois précédent">‹</button>
+    <b>${esc(libMois(m))}</b>
+    <button class="pc-btn" ${enCours ? 'disabled' : ''} onclick="ASSI.mois=decaleMois(ASSI.mois,1);rendVue()" aria-label="Mois suivant">›</button>
+  </div>`;
+  if (!pret) return tete + `<div class="carte"><p class="carte-note">${ASSI.charge[m] === 'erreur' ? 'Lecture impossible pour l\'instant (réseau ?). Réessaie dans un moment.' : 'Chargement…'}</p></div>`;
+
+  const lignes = js.map(j => Object.assign({j}, scoreAssiduite(j.id, m)))
+    .sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1) || a.j.nom.localeCompare(b.j.nom));
+  const avecScore = lignes.filter(l => l.pct != null);
+  const moy = avecScore.length ? Math.round(avecScore.reduce((s, l) => s + l.pct, 0) / avecScore.length) : null;
+  const pleins = avecScore.filter(l => l.pct === 100).length;
+  const jamais = lignes.filter(l => !l.faits && !l.auj).length;
+  const ouvertsAuj = lignes.filter(l => l.auj).length;
+  const absentsAuj = lignes.filter(l => !l.auj);
+  const nbJours = Number(finMois(m).slice(8, 10));
+
+  return tete + `
+  <div class="g4">
+    <div class="tuile"><div class="tuile-val" style="color:${couleurAssi(moy)}">${moy != null ? moy + '%' : '—'}</div><div class="tuile-lib">Moyenne<br>du groupe</div></div>
+    ${enCours ? `<div class="tuile ${ouvertsAuj === js.length ? 'vert' : ''}"><div class="tuile-val">${ouvertsAuj}/${js.length}</div><div class="tuile-lib">Ouvert<br>aujourd'hui</div></div>`
+      : `<div class="tuile"><div class="tuile-val">${nbJours}</div><div class="tuile-lib">Jours<br>comptés</div></div>`}
+    <div class="tuile ${pleins ? 'vert' : ''}"><div class="tuile-val">${pleins}</div><div class="tuile-lib">À 100 %</div></div>
+    <div class="tuile ${jamais ? 'rouge' : 'vert'}"><div class="tuile-val">${jamais}</div><div class="tuile-lib">Jamais<br>ouvert</div></div>
+  </div>
+  ${enCours && absentsAuj.length ? `<div class="carte" style="margin-top:10px">
+    <div class="carte-titre" style="font-size:15px">Pas encore ouverte aujourd'hui · ${absentsAuj.length}</div>
+    <p class="msg-txt" style="margin-top:6px">${absentsAuj.map(l => esc(l.j.nom)).join(', ')}</p></div>` : ''}
+  <div class="section-titre">Le mois, joueur par joueur</div>
+  <div class="as-liste">${lignes.map(l => ligneAssiduite(l, m)).join('')}</div>
+  <p class="carte-note" style="margin-top:8px"><i class="as-d ok"></i> ouverte · <i class="as-d ko"></i> pas ouverte · <i class="as-d"></i> à venir</p>`;
+}
+
+function ligneAssiduite(l, m){
+  const auj = AUJ(), fin = finMois(m), ouverts = (ASSI.donnees[m] || {})[l.j.id] || new Set();
+  const cases = [];
+  for (let d = m + '-01'; d <= fin; d = decaleJour(d, 1)){
+    const c = ouverts.has(d) ? 'ok' : d < auj ? 'ko' : '';
+    cases.push(`<i class="as-d ${c}${d === auj ? ' auj' : ''}" title="${esc(jourFr(d).slice(0, 5))}"></i>`);
+  }
+  return `<div class="as-l">
+    ${(typeof avatarJoueur === 'function' && avatarJoueur(l.j, 34)) || `<span class="jl-num">${esc(String(l.j.numero ?? ''))}</span>`}
+    <span class="as-bloc"><span class="as-nom">${esc(l.j.nom)}</span><span class="as-cases">${cases.join('')}</span></span>
+    <span class="as-score"><b style="color:${couleurAssi(l.pct)}">${l.pct != null ? l.pct + '%' : '—'}</b><small>${l.faits}/${l.compte}</small></span>
+  </div>`;
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    ENCODEUR QR — mode octet, correction M, versions 1 à 10
