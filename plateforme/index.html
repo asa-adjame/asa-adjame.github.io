@@ -8145,6 +8145,36 @@ const SOURCE = {
 const enLigne = () => SOURCE.mode === 'supabase';
 
 /* ─────────────────────────────────────────── appels REST */
+/* ─────────────────────────────────────────── le réseau, vraiment
+   08/11/2026 — Fathy : « sur ordinateur, j'ai beau rafraîchir, ça me met
+   toujours hors ligne ». Constaté sur son Mac (Chrome 156) : navigator.onLine
+   valait false alors que la base répondait en 38 ms. Ce drapeau du navigateur
+   ment parfois (VPN, partage de connexion, carte réseau virtuelle), et la
+   plateforme le croyait sur parole : bandeau « Hors ligne », saisies gardées
+   en file sans jamais partir, session non renouvelée au bout d'une heure.
+   Désormais « hors ligne » veut dire : le navigateur le dit ET la base ne
+   répond pas. Toute réponse de la base, même une erreur, prouve le réseau. */
+let RESEAU_VU = 0;                       // dernière réponse reçue de la base (ms)
+let RESEAU_SONDE = null;
+const RESEAU_FRAIS = 60000;
+const horsLigneVrai = () => navigator.onLine === false && Date.now() - RESEAU_VU > RESEAU_FRAIS;
+async function reseauDispo(){
+  if (navigator.onLine !== false) return true;
+  if (Date.now() - RESEAU_VU < RESEAU_FRAIS) return true;
+  if (!SOURCE.url) return false;
+  if (!RESEAU_SONDE) RESEAU_SONDE = (async () => {
+    const c = typeof AbortController === 'function' ? new AbortController() : null;
+    const t = c ? setTimeout(() => c.abort(), 4000) : null;
+    try {
+      await fetch(SOURCE.url + '/rest/v1/', {method: 'HEAD', cache: 'no-store', headers: {'apikey': SOURCE.cle}, signal: c ? c.signal : undefined});
+      RESEAU_VU = Date.now();
+      return true;
+    } catch (e){ return false; }
+    finally { if (t) clearTimeout(t); RESEAU_SONDE = null; }
+  })();
+  return RESEAU_SONDE;
+}
+
 async function api(chemin, opts){
   opts = opts || {};
   let r;
@@ -8165,6 +8195,7 @@ async function api(chemin, opts){
     err.reseau = true;
     throw err;
   }
+  RESEAU_VU = Date.now();                // la base a répondu : le réseau est là
   /* L'heure du serveur, à chaque réponse, même en erreur : c'est elle qui
      corrige un téléphone mal réglé (voir L'HEURE DU CLUB, p3a). */
   try { recaleHorloge(r.headers.get('date'), t0, Date.now()); } catch (e) {}
@@ -8490,7 +8521,7 @@ async function videFile(){
     FA_ETAT = FA_REFUS.length ? 'refus' : 'vide';
     return majFile();
   }
-  if (navigator.onLine === false){
+  if (!(await reseauDispo())){
     FA_EN_COURS = false;
     FA_ETAT = 'attente';
     return majFile();
@@ -8565,7 +8596,7 @@ async function majFile(){
   FA_NB = await FA.compte();
   const z = document.getElementById('hf');
   if (!z) return;
-  const horsLigne = navigator.onLine === false;
+  const horsLigne = horsLigneVrai();
 
   if (!FA_NB && !horsLigne && FA_ETAT !== 'ok' && !FA_REFUS.length){
     z.hidden = true; z.className = 'hf'; return;
@@ -8889,7 +8920,7 @@ function fermeSession(){
    écritures attendent dans la file. Au retour du réseau, on reprend la main. */
 async function rafraichitSession(){
   if (!enLigne() || !SESSION || !SESSION.rafraichissement) return false;
-  if (navigator.onLine === false) return false;
+  if (!(await reseauDispo())) return false;
   const marge = 120;                                  // secondes
   if (SESSION.expire && SESSION.expire - marge > Math.floor(maintenant().getTime() / 1000)) return true;
   try {
@@ -9703,7 +9734,8 @@ async function demarrer(){
   await majFile();
   videFile();
   window.addEventListener('online',  () => { majFile(); videFile(); });
-  window.addEventListener('offline', () => { FA_ETAT = 'attente'; majFile(); });
+  window.addEventListener('offline', async () => { if (!(await reseauDispo())){ FA_ETAT = 'attente'; } majFile(); });
+  if (navigator.onLine === false) reseauDispo().then(ok => { if (ok){ majFile(); videFile(); } });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) videFile(); });
 }
 document.addEventListener('DOMContentLoaded', demarrer);
@@ -9845,7 +9877,7 @@ function vueMatchLecture(){
 async function lisFeuille(photo, eq){
   const joueurs = parEq(eq).map(j => ({numero: j.numero, nom: j.nom}));
   if (!enLigne()) return lectureDemo(eq);
-  if (!navigator.onLine) throw new Error('Pas de réseau : la lecture de la feuille en demande. Garde la photo et recommence dès que le réseau revient.');
+  if (!(await reseauDispo())) throw new Error('Pas de réseau : la lecture de la feuille en demande. Garde la photo et recommence dès que le réseau revient.');
   /* Le jeton d'une page restée ouverte expire au bout d'une heure ; la file
      d'attente le renouvelle d'elle-même, cet appel direct doit le faire aussi.
      Mesuré le 19/10 : un onglet ouvert depuis la veille recevait « session ». */
