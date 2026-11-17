@@ -15,7 +15,11 @@
      'unsafe-inline' sur script et style est la contrepartie assumée du fichier
      unique : tout le code et tout le style sont dans la page. Ce que la
      politique protège quand même, c'est ce que la page a le droit de JOINDRE,
-     et c'est là qu'est le risque pour un fichier public. -->
+     et c'est là qu'est le risque pour un fichier public.
+
+     17/11/2026 — frame-src : le lecteur des vidéos de matchs (p3x) affiche
+     drive.google.com dans un cadre. Ce domaine seul ; sans cette ligne,
+     default-src 'none' bloquait le lecteur. -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'none';
   script-src 'unsafe-inline';
@@ -24,6 +28,7 @@
   img-src data: blob: 'self';
   connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://ptkefnqrhlsfbnktnvec.supabase.co;
   worker-src 'self';
+  frame-src https://drive.google.com;
   manifest-src 'self';
   base-uri 'none';
   form-action 'none'">
@@ -485,6 +490,23 @@ html.wa-ouvert,html.wa-ouvert body{overflow:hidden;overscroll-behavior:none}
 .mm-act:active{border-color:var(--or)}
 .mm-act.danger{color:var(--danger)}
 .mm-champ{font-size:16px;min-height:96px;margin-top:10px}
+/* 17/11/2026 — vidéos des matchs complets (p3x_videos_match.js) */
+.vm-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.vm-btns .bouton{width:100%;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center}
+.vm-rub{cursor:pointer;display:block}.vm-rub:active{border-color:var(--or)}
+.vm-l{display:grid;grid-template-columns:52px minmax(0,1fr);gap:8px;padding:6px 0;border-top:1px solid var(--ligne);font-size:14px}
+.vm-l:first-child{border-top:0}.vm-l small{color:var(--gris)}
+.vm-lab{display:block;font-size:12.5px;color:var(--gris);margin-top:10px}.vm-lab .champ{margin-top:4px;width:100%;font-size:16px}
+.vm-aide{margin-top:10px;padding:9px 11px;border-radius:10px;background:rgba(255,178,70,.08);line-height:1.45}
+.vm-plein{position:fixed;inset:0;z-index:650;background:#000;display:flex;flex-direction:column}
+.vm-tete{display:flex;align-items:center;gap:10px;padding:max(10px,env(safe-area-inset-top)) 12px 10px;color:#fff}
+.vm-tete b{font-size:15px;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vm-tete span{font-size:12px;color:#aaa;flex:1}
+.vm-tete button{width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:17px}
+.vm-cadre{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.vm-cadre iframe{width:100%;aspect-ratio:16/9;max-height:100%;border:0;background:#111}
+.vm-pied{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 12px}
+.vm-pied .bouton{text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center}
+.vm-note{color:#999;font-size:11.5px;line-height:1.4;padding:0 14px max(12px,env(safe-area-inset-bottom))}
 .pc-plein{position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.94);display:grid;place-items:center;padding:12px}
 .pc-plein img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
 .pc-plein button{position:absolute;top:max(14px,env(safe-area-inset-top));right:14px;width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:18px}
@@ -2435,6 +2457,8 @@ function vueAccueil(){
   if (E.sous === 'chat')       return retour('Accueil', 'fermeSous()') + vueChat();
   /* 05/11/2026 — l'assiduité des joueurs sur la plateforme (p3v_assiduite.js). */
   if (E.sous === 'assiduite')  return vueAssiduite();
+  /* 17/11/2026 — les vidéos des matchs complets (p3x_videos_match.js). */
+  if (E.sous === 'videos')     return vueVideosMatch();
 
   /* 27/10/2026 — DT, dirigeants, head coach : l'accueil allégé (p3o_accueil.js). */
   if (ACCUEIL_LEGER(E.role)) return vueAccueilLeger();
@@ -2452,7 +2476,7 @@ function vueAccueil(){
   /* 03/11/2026 : un message non lu du Président, du DT ou du head coach passe
      avant tout le reste (voir messagesPrioritaires, p3d_collectif.js). */
   const prio = E.role === 'jr' && messagesPrioritaires().length ? carteMessagesJoueur() + '<!--notif-->' : '';
-  return `<div class="dsk2"><div class="dsk-g">${prio}${carteFatigueJoueur()}${carteMonEcheance()}${carteFeuilleMatch()}
+  return `<div class="dsk2"><div class="dsk-g">${prio}${carteFatigueJoueur()}${carteMonEcheance()}${carteFeuilleMatch()}${carteVideosJoueur()}
   <div class="banniere">
     <div class="ban-sur">${esc(C.instance)}</div>
     <div class="ban-titre">${esc(C.nom)}</div>
@@ -8327,6 +8351,7 @@ const LIB_TABLE = {
   exercices_variantes:'Adaptation d\'exercice', systemes:'Système du playbook',
   push_abonnements:'Abonnement aux notifications',
   notif_preferences:'Réglages des notifications',
+  videos_match:'Vidéo de match',
 };
 const libTable = t => LIB_TABLE[t] || t;
 
@@ -12395,6 +12420,7 @@ function vueAccueilLeger(){
   </div><div class="dsk-d">
   ${carteAujourdhui()}
   ${rubriqueAssiduite()}
+  ${rubriqueVideosMatch()}
   ${tuilesAccueil()}
   ${raccourcisAccueil()}
   ${lignePartenaire()}
@@ -13715,6 +13741,252 @@ function redessineFil(){
   rendVue();
   const tb = document.getElementById('chatTexte');
   if (tb && brouillon != null) tb.value = brouillon;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LES VIDÉOS DES MATCHS COMPLETS (liens Google Drive)           (17/11/2026)
+
+   Fathy : « ajoute un endroit au DT pour entreposer les liens Drive pour que
+   le DT partage les vidéos de matchs complets. Une fois le lien déposé, je
+   veux que les joueurs aient accès à la vidéo et que, s'ils veulent, ils
+   puissent même télécharger le match complet et faire leur découpe ».
+
+   - DT : sur son accueil, la rubrique « Vidéos des matchs » → l'écran où il
+     colle le lien Drive (intitulé et date pré-remplis par le dernier match
+     du planning), choisit l'équipe, et partage. Il peut retirer un lien.
+   - Joueurs : sur leur accueil, la carte « Vidéo du dernier match » avec
+     Regarder (lecteur Drive dans la plateforme) et Télécharger (le fichier
+     complet, pour faire sa découpe) ; « Tous les matchs » ouvre la liste.
+   - Staff : la même liste, en lecture (rubrique de l'accueil léger, onglet
+     Vidéos de l'analyste).
+   - La base décide (maj_2026-11-17_videos_match.sql) : le DT seul écrit ; un
+     joueur ne voit que son équipe et les vidéos « toutes équipes » ; seuls
+     les liens drive.google.com passent.
+   - La vidéo reste sur le Drive du club. Pour que les joueurs l'ouvrent, le
+     fichier doit être partagé « Tous les utilisateurs disposant du lien » :
+     l'écran du DT le rappelle.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const PEUT_VIDEOS_MATCH = r => r === 'dt';
+const VM = {charge: '', brouillon: null};
+
+/* ───────────────────────── le lien Drive */
+function driveInfo(url){
+  const u = String(url || '').trim();
+  if (!/^https:\/\/drive\.google\.com\//.test(u)) return null;
+  let m = /\/file\/d\/([A-Za-z0-9_-]{10,})/.exec(u) || /[?&]id=([A-Za-z0-9_-]{10,})/.exec(u);
+  if (m) return {type: 'fichier', id: m[1],
+    voir: `https://drive.google.com/file/d/${m[1]}/view`,
+    lecteur: `https://drive.google.com/file/d/${m[1]}/preview`,
+    telecharger: `https://drive.google.com/uc?export=download&id=${m[1]}`};
+  m = /\/folders\/([A-Za-z0-9_-]{10,})/.exec(u);
+  if (m) return {type: 'dossier', id: m[1], voir: `https://drive.google.com/drive/folders/${m[1]}`};
+  return null;
+}
+
+/* ───────────────────────── les données */
+const versVideo = v => ({id: v.id, eq: v.equipe_code || '', titre: v.titre || '', date: String(v.date_match || '').slice(0, 10), lien: v.lien || ''});
+
+async function chargeVideosMatch(){
+  if (VM.charge === 'en cours') return;
+  VM.charge = 'en cours';
+  try {
+    if (typeof enLigne === 'function' && enLigne() && SOURCE.clubId){
+      const l = await api('videos_match?select=id,equipe_code,titre,date_match,lien&club_id=eq.' + SOURCE.clubId + '&order=date_match.desc&limit=200') || [];
+      DB.videos = l.map(versVideo);
+    } else if (!DB.videos){
+      /* Démonstration : deux matchs fictifs (liens d'exemple, sans vidéo réelle). */
+      const eq = (DB.equipes[0] || {}).id || 'pro';
+      DB.videos = [
+        {id: 'vm-demo-1', eq, titre: 'Contre ABC', date: decaleJour(AUJ(), -3), lien: 'https://drive.google.com/file/d/1DEMOabcdefghijklmnop/view'},
+        {id: 'vm-demo-2', eq: '', titre: 'Contre GLOBAL', date: decaleJour(AUJ(), -10), lien: 'https://drive.google.com/file/d/1DEMOqrstuvwxyz012345/view'}
+      ];
+    }
+    VM.charge = 'ok';
+  } catch (e){
+    VM.charge = 'erreur';
+  }
+  if (E.role && (!E.sous || E.sous === 'videos')) rendVue();
+}
+const _connexionVideos = connexion;
+connexion = function(){ const r = _connexionVideos.apply(this, arguments); VM.charge = ''; setTimeout(chargeVideosMatch, 0); return r; };
+
+/* Les vidéos que voit la personne connectée (la base a déjà fait le tri en
+   ligne ; en démonstration, on le refait ici). */
+function videosVisibles(){
+  const l = (DB.videos || []).slice();
+  const mine = E.role === 'jr' ? l.filter(v => !v.eq || v.eq === (E.joueur || {}).equipe) : l;
+  return mine.sort((a, b) => b.date.localeCompare(a.date));
+}
+const libEqVideo = v => v.eq ? nomEq(v.eq) : 'Toutes les équipes';
+
+/* Le dernier match inscrit au planning, pour pré-remplir le formulaire. */
+function dernierMatchPlanning(){
+  if (typeof creneauxDe !== 'function' || typeof lundiDe !== 'function') return null;
+  const auj = AUJ(), debut = decaleJour(auj, -21);
+  const lundis = [];
+  for (let d = lundiDe(debut); d <= auj; d = decaleJour(d, 7)) lundis.push(d);
+  let best = null;
+  (typeof equipesMatch === 'function' ? equipesMatch() : DB.equipes || []).forEach(e => lundis.forEach(l => creneauxDe(e.id, l).forEach(c => {
+    if (c.type === 'Match' && c.jour <= auj && c.jour >= debut && (!best || c.jour > best.jour))
+      best = {jour: c.jour, eq: e.id, adv: typeof advDeCreneau === 'function' ? advDeCreneau(c) : ''};
+  })));
+  return best;
+}
+
+/* ───────────────────────── regarder, télécharger */
+function regarderVideo(id){
+  const v = (DB.videos || []).find(x => x.id === id);
+  const d = v && driveInfo(v.lien);
+  if (!d) return toast('Lien Drive illisible');
+  if (d.type === 'dossier'){ window.open(d.voir, '_blank', 'noopener'); return; }
+  const z = document.createElement('div');
+  z.className = 'vm-plein'; z.id = 'vmPlein';
+  z.innerHTML = `<div class="vm-tete"><b>${esc(v.titre)}</b><span>${esc(libJour(v.date))}</span>
+      <button type="button" aria-label="Fermer" onclick="document.getElementById('vmPlein').remove()">✕</button></div>
+    <div class="vm-cadre"><iframe src="${esc(d.lecteur)}" allow="autoplay; fullscreen" allowfullscreen title="${esc(v.titre)}"></iframe></div>
+    <div class="vm-pied">
+      <a class="bouton fant" href="${esc(d.voir)}" target="_blank" rel="noopener">Ouvrir dans Drive</a>
+      <a class="bouton plein" href="${esc(d.telecharger)}" target="_blank" rel="noopener">Télécharger</a>
+    </div>
+    <p class="vm-note">La vidéo ne s'affiche pas ? Le fichier n'est peut-être pas encore partagé « Tous les utilisateurs disposant du lien », ou Drive le prépare encore : « Ouvrir dans Drive ».</p>`;
+  document.body.appendChild(z);
+}
+function boutonsVideo(v){
+  const d = driveInfo(v.lien);
+  if (!d) return '<p class="carte-note">Lien Drive illisible.</p>';
+  if (d.type === 'dossier') return `<div class="vm-btns"><a class="bouton plein" href="${esc(d.voir)}" target="_blank" rel="noopener">Ouvrir le dossier Drive</a></div>`;
+  return `<div class="vm-btns">
+    <button class="bouton plein" onclick="regarderVideo('${esc(v.id)}')">▶ Regarder</button>
+    <a class="bouton fant" href="${esc(d.telecharger)}" target="_blank" rel="noopener">⬇ Télécharger</a>
+  </div>`;
+}
+
+/* ───────────────────────── la carte du joueur (accueil) */
+function carteVideosJoueur(){
+  if (E.role !== 'jr') return '';
+  const l = videosVisibles();
+  if (!l.length) return '';
+  const v = l[0];
+  return `<div class="section-titre">Vidéo du dernier match</div>
+  <div class="carte vm-carte">
+    <div class="carte-tete"><div class="carte-titre">${esc(v.titre)}</div>
+      <span class="etiq pousse">${esc(libJour(v.date))}</span></div>
+    <p class="carte-note" style="margin:4px 0 10px">Le match complet. Regarde-le ici, ou télécharge-le pour faire ta découpe (fichier lourd : de préférence en wifi).</p>
+    ${boutonsVideo(v)}
+    ${l.length > 1 ? `<button class="acc-lien" style="margin-top:10px;padding:0" onclick="ouvreSous('videos')">Tous les matchs (${l.length}) ›</button>` : ''}
+  </div>`;
+}
+
+/* ───────────────────────── la rubrique de l'accueil léger (DT, dirigeants, head coach) */
+function rubriqueVideosMatch(){
+  const l = videosVisibles();
+  const dt = PEUT_VIDEOS_MATCH(E.role);
+  if (!l.length && !dt) return '';
+  return `<div class="section-titre">Vidéos des matchs</div>
+  <div class="carte vm-rub" role="button" tabindex="0" onclick="ouvreSous('videos')">
+    ${l.length ? l.slice(0, 3).map(v => `<div class="vm-l"><span class="mono">${esc(jourFr(v.date).slice(0, 5))}</span><span>${esc(v.titre)}<small> · ${esc(libEqVideo(v))}</small></span></div>`).join('')
+      : '<p class="carte-note">Aucun match partagé pour l\'instant.</p>'}
+    <span class="as-rub-voir" style="margin-top:8px">${dt ? 'Ajouter un match, voir tout ›' : 'Voir tous les matchs ›'}</span>
+  </div>`;
+}
+
+/* ───────────────────────── l'écran (sous « videos ») */
+function vueVideosMatch(){
+  if (E.role === 'iv') return `${retour('Accueil', 'fermeSous()')}<div class="vide">Réservé au club.</div>`;
+  if (!VM.charge) setTimeout(chargeVideosMatch, 0);
+  const dt = PEUT_VIDEOS_MATCH(E.role), l = videosVisibles();
+  return `${retour('Accueil', 'fermeSous()')}
+  <h1 class="vue-titre">Vidéos des matchs</h1>
+  <p class="vue-sous">${E.role === 'jr' ? 'Les matchs complets partagés par le DT. Regarde-les ici, ou télécharge-les pour faire ta découpe.' : 'Les matchs complets, partagés par le DT aux joueurs.'}</p>
+  ${dt ? formulaireVideoMatch() : ''}
+  <div class="section-titre">${l.length} match${l.length > 1 ? 's' : ''}</div>
+  ${l.length ? l.map(v => `<div class="carte vm-carte">
+      <div class="carte-tete"><div class="carte-titre">${esc(v.titre)}</div>
+        <span class="etiq pousse">${esc(libJour(v.date))}</span></div>
+      ${E.role === 'jr' ? '' : `<p class="carte-note" style="margin:2px 0 8px">${esc(libEqVideo(v))}</p>`}
+      ${boutonsVideo(v)}
+      ${dt ? `<button class="acc-lien" style="margin-top:10px;padding:0;color:var(--danger)" onclick="confirmeRetraitVideo('${esc(v.id)}')">Retirer ce lien</button>` : ''}
+    </div>`).join('')
+    : `<div class="carte"><p class="msg-txt">${VM.charge === 'en cours' ? 'Chargement…' : 'Aucun match partagé pour l\'instant.'}</p></div>`}`;
+}
+
+function formulaireVideoMatch(){
+  const b = VM.brouillon || (() => {
+    const m = dernierMatchPlanning();
+    return {titre: m && m.adv ? 'Contre ' + m.adv : '', date: m ? m.jour : AUJ(), eq: m ? m.eq : ((DB.equipes[0] || {}).id || ''), lien: ''};
+  })();
+  VM.brouillon = b;
+  const eqs = DB.equipes || [];
+  return `<div class="carte">
+    <div class="carte-titre" style="font-size:16px">Partager un match</div>
+    <label class="vm-lab">Lien Google Drive de la vidéo
+      <input class="champ" id="vmLien" type="url" inputmode="url" placeholder="https://drive.google.com/file/d/…" value="${esc(b.lien)}" oninput="VM.brouillon.lien=this.value"></label>
+    <label class="vm-lab">Match
+      <input class="champ" id="vmTitre" maxlength="120" placeholder="Contre …" value="${esc(b.titre)}" oninput="VM.brouillon.titre=this.value"></label>
+    <div class="g2">
+      <label class="vm-lab">Date
+        <input class="champ" id="vmDate" type="date" value="${esc(b.date)}" onchange="VM.brouillon.date=this.value"></label>
+      <label class="vm-lab">Pour
+        <select class="champ" id="vmEq" onchange="VM.brouillon.eq=this.value">
+          ${eqs.map(e => `<option value="${esc(e.id)}" ${b.eq === e.id ? 'selected' : ''}>${esc(e.nom)}</option>`).join('')}
+          <option value="" ${!b.eq ? 'selected' : ''}>Toutes les équipes</option>
+        </select></label>
+    </div>
+    <p class="carte-note vm-aide">Dans Drive : clic droit sur la vidéo → Partager → Accès général : <b>« Tous les utilisateurs disposant du lien »</b> (Lecteur) → Copier le lien. Sans ce réglage, les joueurs ne pourront ni la voir ni la télécharger.</p>
+    <button class="bouton plein" style="margin-top:12px;width:100%" onclick="ajouteVideoMatch()">Partager aux joueurs</button>
+  </div>`;
+}
+
+function ajouteVideoMatch(){
+  if (!PEUT_VIDEOS_MATCH(E.role)) return;
+  const lien = ($('#vmLien').value || '').trim(), titre = ($('#vmTitre').value || '').trim();
+  const date = $('#vmDate').value, eq = $('#vmEq').value;
+  if (!driveInfo(lien)) return toast('Colle un lien Google Drive (drive.google.com)');
+  if (!titre) return toast('Indique le match (ex. « Contre ABC »)');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return toast('Indique la date du match');
+  const id = nouvelId();
+  DB.videos = DB.videos || [];
+  DB.videos.unshift({id, eq, titre, date, lien});
+  enregistrer('videos_match', {id, equipe_code: eq || null, titre, date_match: date, lien});
+  VM.brouillon = null;
+  rendVue();
+  toast('Match partagé aux joueurs');
+}
+
+function confirmeRetraitVideo(id){
+  const v = (DB.videos || []).find(x => x.id === id);
+  if (!v) return;
+  ouvreFeuille(`
+    <div class="feuille-titre">Retirer ce lien ?</div>
+    <div class="feuille-sous">« ${esc(v.titre)} » ne sera plus proposé aux joueurs. La vidéo reste sur ton Drive.</div>
+    <div class="g2" style="margin-top:14px">
+      <button class="bouton fant plein" onclick="fermeFeuille()">Annuler</button>
+      <button class="bouton plein bouton-danger" onclick="retireVideo('${esc(id)}')">Retirer</button>
+    </div>`);
+}
+function retireVideo(id){
+  fermeFeuille();
+  if (!PEUT_VIDEOS_MATCH(E.role)) return;
+  DB.videos = (DB.videos || []).filter(x => x.id !== id);
+  supprimer('videos_match', 'id=eq.' + id);
+  rendVue();
+  toast('Lien retiré');
+}
+
+/* ───────────────────────── l'onglet Vidéos de l'analyste : les matchs en tête */
+const _vueVideosAnalyste = typeof vueVideos === 'function' ? vueVideos : null;
+if (_vueVideosAnalyste){
+  vueVideos = function(){
+    if (!VM.charge) setTimeout(chargeVideosMatch, 0);
+    const l = videosVisibles();
+    const bloc = l.length ? `<div class="section-titre">Matchs complets</div>${l.slice(0, 5).map(v => `<div class="carte vm-carte">
+        <div class="carte-tete"><div class="carte-titre">${esc(v.titre)}</div><span class="etiq pousse">${esc(libJour(v.date))}</span></div>
+        <p class="carte-note" style="margin:2px 0 8px">${esc(libEqVideo(v))}</p>${boutonsVideo(v)}</div>`).join('')}` : '';
+    return bloc + _vueVideosAnalyste.apply(this, arguments);
+  };
+  /* Le plan des onglets garde la fonction d'origine : on l'y remplace. */
+  Object.values(PLAN).forEach(p => p.forEach(o => { if (o[2] === _vueVideosAnalyste) o[2] = vueVideos; }));
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
