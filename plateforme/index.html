@@ -13768,7 +13768,11 @@ function redessineFil(){
    ══════════════════════════════════════════════════════════════════════════ */
 
 const PEUT_VIDEOS_MATCH = r => r === 'dt';
-const VM = {charge: '', brouillon: null};
+/* 17/11/2026 (22 h 40) : la liste vit dans VM.liste, PAS dans DB. Le
+   chargement du club remplace l'objet DB entier après la connexion : rangée
+   dans DB, la liste lue était aussitôt effacée — le DT partageait un match,
+   personne ne le voyait. */
+const VM = {charge: '', brouillon: null, liste: null, lu: 0};
 
 /* ───────────────────────── le lien Drive */
 function driveInfo(url){
@@ -13791,13 +13795,22 @@ async function chargeVideosMatch(){
   if (VM.charge === 'en cours') return;
   VM.charge = 'en cours';
   try {
-    if (typeof enLigne === 'function' && enLigne() && SOURCE.clubId){
+    const enL = typeof enLigne === 'function' && enLigne();
+    if (enL && !SOURCE.clubId){
+      /* Connecté, mais le club n'est pas encore chargé : on réessaie. Jamais
+         les matchs de démonstration en production. */
+      VM.charge = '';
+      setTimeout(chargeVideosMatch, 1500);
+      return;
+    }
+    if (enL){
       const l = await api('videos_match?select=id,equipe_code,titre,date_match,lien&club_id=eq.' + SOURCE.clubId + '&order=date_match.desc&limit=200') || [];
-      DB.videos = l.map(versVideo);
-    } else if (!DB.videos){
+      VM.liste = l.map(versVideo);
+      VM.lu = Date.now();
+    } else if (!VM.liste){
       /* Démonstration : deux matchs fictifs (liens d'exemple, sans vidéo réelle). */
       const eq = (DB.equipes[0] || {}).id || 'pro';
-      DB.videos = [
+      VM.liste = [
         {id: 'vm-demo-1', eq, titre: 'Contre ABC', date: decaleJour(AUJ(), -3), lien: 'https://drive.google.com/file/d/1DEMOabcdefghijklmnop/view'},
         {id: 'vm-demo-2', eq: '', titre: 'Contre GLOBAL', date: decaleJour(AUJ(), -10), lien: 'https://drive.google.com/file/d/1DEMOqrstuvwxyz012345/view'}
       ];
@@ -13809,12 +13822,16 @@ async function chargeVideosMatch(){
   if (E.role && (!E.sous || E.sous === 'videos')) rendVue();
 }
 const _connexionVideos = connexion;
-connexion = function(){ const r = _connexionVideos.apply(this, arguments); VM.charge = ''; setTimeout(chargeVideosMatch, 0); return r; };
+connexion = function(){ const r = _connexionVideos.apply(this, arguments); VM.charge = ''; if (typeof enLigne === 'function' && enLigne()) VM.liste = null; setTimeout(chargeVideosMatch, 0); return r; };
+/* Un match partagé par le DT apparaît au retour sur l'application (relu au plus toutes les 2 min). */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && E.role && VM.charge !== 'en cours' && Date.now() - VM.lu > 120000){ VM.charge = ''; chargeVideosMatch(); }
+});
 
 /* Les vidéos que voit la personne connectée (la base a déjà fait le tri en
    ligne ; en démonstration, on le refait ici). */
 function videosVisibles(){
-  const l = (DB.videos || []).slice();
+  const l = (VM.liste || []).slice();
   const mine = E.role === 'jr' ? l.filter(v => !v.eq || v.eq === (E.joueur || {}).equipe) : l;
   return mine.sort((a, b) => b.date.localeCompare(a.date));
 }
@@ -13836,7 +13853,7 @@ function dernierMatchPlanning(){
 
 /* ───────────────────────── regarder, télécharger */
 function regarderVideo(id){
-  const v = (DB.videos || []).find(x => x.id === id);
+  const v = (VM.liste || []).find(x => x.id === id);
   const d = v && driveInfo(v.lien);
   if (!d) return toast('Lien Drive illisible');
   if (d.type === 'dossier'){ window.open(d.voir, '_blank', 'noopener'); return; }
@@ -13946,8 +13963,8 @@ function ajouteVideoMatch(){
   if (!titre) return toast('Indique le match (ex. « Contre ABC »)');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return toast('Indique la date du match');
   const id = nouvelId();
-  DB.videos = DB.videos || [];
-  DB.videos.unshift({id, eq, titre, date, lien});
+  VM.liste = VM.liste || [];
+  VM.liste.unshift({id, eq, titre, date, lien});
   enregistrer('videos_match', {id, equipe_code: eq || null, titre, date_match: date, lien});
   VM.brouillon = null;
   rendVue();
@@ -13955,7 +13972,7 @@ function ajouteVideoMatch(){
 }
 
 function confirmeRetraitVideo(id){
-  const v = (DB.videos || []).find(x => x.id === id);
+  const v = (VM.liste || []).find(x => x.id === id);
   if (!v) return;
   ouvreFeuille(`
     <div class="feuille-titre">Retirer ce lien ?</div>
@@ -13968,7 +13985,7 @@ function confirmeRetraitVideo(id){
 function retireVideo(id){
   fermeFeuille();
   if (!PEUT_VIDEOS_MATCH(E.role)) return;
-  DB.videos = (DB.videos || []).filter(x => x.id !== id);
+  VM.liste = (VM.liste || []).filter(x => x.id !== id);
   supprimer('videos_match', 'id=eq.' + id);
   rendVue();
   toast('Lien retiré');
