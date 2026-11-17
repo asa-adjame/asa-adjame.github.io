@@ -473,6 +473,18 @@ html.wa-ouvert,html.wa-ouvert body{overflow:hidden;overscroll-behavior:none}
 .as-d.ok{background:var(--physique)}.as-d.ko{background:var(--danger);opacity:.75}.as-d.auj{outline:1px solid var(--or);outline-offset:1px}
 .as-score{display:flex;flex-direction:column;align-items:flex-end;flex:0 0 auto}
 .as-score b{font-family:var(--titre);font-size:22px;line-height:1}.as-score small{font-size:11.5px;color:var(--gris);font-family:var(--mono)}
+/* 17/11/2026 — modifier ou supprimer un message (p3w_messages_modif.js) */
+.chat-b[data-id]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.chat-b .chat-bulle{transition:transform .15s,filter .15s}
+.chat-b.appui .chat-bulle{transform:scale(.97);filter:brightness(1.15)}
+.chat-suppr{display:flex;align-items:center;gap:6px;font-style:italic;color:var(--gris)!important}
+.chat-modif{font-style:italic}
+.mm-apercu{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.05);font-size:14px;line-height:1.4;color:var(--gris);white-space:pre-wrap;word-break:break-word;margin-top:8px}
+.mm-actions{display:grid;gap:6px;margin-top:12px}
+.mm-act{display:flex;align-items:center;gap:12px;width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--ligne);background:var(--surface);color:var(--texte);font:inherit;font-size:15px;font-weight:600;text-align:left;cursor:pointer}
+.mm-act:active{border-color:var(--or)}
+.mm-act.danger{color:var(--danger)}
+.mm-champ{font-size:16px;min-height:96px;margin-top:10px}
 .pc-plein{position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.94);display:grid;place-items:center;padding:12px}
 .pc-plein img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
 .pc-plein button{position:absolute;top:max(14px,env(safe-area-inset-top));right:14px;width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:18px}
@@ -4634,7 +4646,7 @@ function vueChat(){
         <span class="chat-av" style="background:${couleur}">${esc(court)}</span>
         <span class="ct-m">
           <b>${esc(titre)}</b>
-          <small>${der ? esc(((estMoi(der.auteur) ? 'Toi : ' : '') + der.texte).slice(0, 70)) : esc(sous)}</small>
+          <small>${der ? esc(((estMoi(der.auteur) ? 'Toi : ' : '') + txtMsg(der)).slice(0, 70)) : esc(sous)}</small>
         </span>
         <span class="ct-d">${der ? `<small>${esc(der.date === AUJ_FR() ? der.heure : String(der.date).slice(0, 5))}</small>` : ''}
           ${n ? `<i class="ct-n">${n > 9 ? '9+' : n}</i>` : ''}</span>
@@ -4684,6 +4696,7 @@ function trieQuand(q){
    par le joueur est marquée comme telle. */
 /* wa = conversation plein écran : le jour est dans le séparateur, la bulle ne
    porte que l'heure ; mes messages sans avatar ni nom, comme dans WhatsApp. */
+const icoSuppr = () => '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg>';
 function bulleChat(c, wa){
   const a = auteurChat(c.auteur);
   const r = a.r, moi = estMoi(c.auteur);
@@ -4697,20 +4710,25 @@ function bulleChat(c, wa){
   const nomAff = vuJoueur
     ? `<b class="chat-fonction">${esc(a.fonction || 'Le staff')}</b>${a.nom ? ` <span class="chat-nom2">· ${esc(a.nom)}</span>` : ''}`
     : esc(a.nom || (a.joueur ? 'Joueur' : 'Membre du staff'));
-  if (wa) return `<div class="chat-b wa-b ${moi ? 'moi' : ''}">
+  /* 17/11/2026 : supprimé, modifié, et l'identifiant pour l'appui long (p3w). */
+  const corps = c.supprime ? `<p class="chat-txt chat-suppr">${icoSuppr()}Message supprimé</p>`
+    : `${photoBulle(c)}${legendePhoto(c) ? `<p class="chat-txt">${esc(legendePhoto(c))}</p>` : ''}`;
+  const modif = c.modifie && !c.supprime ? '<span class="chat-modif">modifié · </span>' : '';
+  const did = `data-id="${esc(c.id)}"`;
+  if (wa) return `<div class="chat-b wa-b ${moi ? 'moi' : ''}" ${did}>
     ${moi ? '' : `<span class="chat-av" style="background:${r.couleur}">${esc(a.joueur ? (a.numero || 'JR') : (vuJoueur && a.role === 'dg') ? (/^pr[ée]s/i.test(a.fonction || '') ? 'PR' : 'DIR') : r.court)}</span>`}
     <div class="chat-bulle">
       ${moi && !annonce ? '' : `<div class="chat-nom" style="color:${r.couleur}">${nomAff}${a.externe ? ' · externe' : ''}${annonce ? ` · <span style="color:var(--or)">annonce ${c.fil === FIL_TOUS ? 'à tous' : 'à ton équipe'}</span>` : ''}</div>`}
-      ${photoBulle(c)}${legendePhoto(c) ? `<p class="chat-txt">${esc(legendePhoto(c))}</p>` : ''}
-      <div class="chat-h">${c.heure && c.heure !== '—' ? esc(c.heure) : esc(c.date)}</div>
+      ${corps}
+      <div class="chat-h">${modif}${c.heure && c.heure !== '—' ? esc(c.heure) : esc(c.date)}</div>
     </div>
   </div>`;
-  return `<div class="chat-b ${moi ? 'moi' : ''}">
+  return `<div class="chat-b ${moi ? 'moi' : ''}" ${did}>
     <span class="chat-av" style="background:${r.couleur}">${esc(a.joueur ? (a.numero || 'JR') : r.court)}</span>
     <div class="chat-bulle">
       <div class="chat-nom" style="color:${r.couleur}">${nomAff}${a.externe ? ' · externe' : ''}${annonce ? ` · <span style="color:var(--or)">annonce ${c.fil === FIL_TOUS ? 'à tous' : 'à ton équipe'}</span>` : ''}</div>
-      ${photoBulle(c)}${legendePhoto(c) ? `<p class="chat-txt">${esc(legendePhoto(c))}</p>` : ''}
-      <div class="chat-h">${esc(c.date)}${c.heure && c.heure !== '—' ? ' · ' + esc(c.heure) : ''}</div>
+      ${corps}
+      <div class="chat-h">${modif}${esc(c.date)}${c.heure && c.heure !== '—' ? ' · ' + esc(c.heure) : ''}</div>
     </div>
   </div>`;
 }
@@ -4782,7 +4800,7 @@ function vueMessagesJoueur(){
     return {quand: der ? (der.date + ' ' + der.heure) : '', html: `<button class="ct-l" onclick="ouvreConv('${esc(c)}')">
       <span class="chat-av" style="background:${info.av.c}">${esc(info.av.t)}</span>
       <span class="ct-m"><b>${esc(info.titre)}</b>
-        <small>${der ? esc(((estMoi(der.auteur) ? 'Toi : ' : '') + der.texte).slice(0, 70)) : esc(info.ligne)}</small></span>
+        <small>${der ? esc(((estMoi(der.auteur) ? 'Toi : ' : '') + txtMsg(der)).slice(0, 70)) : esc(info.ligne)}</small></span>
       <span class="ct-d">${der ? `<small>${esc(der.date === AUJ_FR() ? der.heure : String(der.date).slice(0, 5))}</small>` : ''}
         ${n ? `<i class="ct-n">${n > 9 ? '9+' : n}</i>` : ''}</span>
     </button>`};
@@ -4830,7 +4848,7 @@ function nonLusJoueur(){ return E.role === 'jr' ? convsJoueur().reduce((a, c) =>
 function messagesPrioritaires(){
   if (E.role !== 'jr') return [];
   return convsJoueur().flatMap(c => { const n = nonLusChat(c); return n ? filDe(c).slice(-n) : []; })
-    .filter(c => !estMoi(c.auteur) && !c.systeme && DIRECTION_CLUB.includes(auteurChat(c.auteur).role))
+    .filter(c => !estMoi(c.auteur) && !c.systeme && !c.supprime && DIRECTION_CLUB.includes(auteurChat(c.auteur).role))
     .sort((a, b) => String(a.t || '').localeCompare(String(b.t || '')) || trieQuand(a.date + ' ' + a.heure) - trieQuand(b.date + ' ' + b.heure));
 }
 function carteMessagesJoueur(){
@@ -4856,7 +4874,7 @@ function carteMessagesJoueur(){
   return `<div class="carte" style="${n ? 'border-color:var(--or)' : ''}">
     <div class="carte-tete"><div class="carte-titre">Chat</div>
       ${n ? `<span class="etiq pleine pousse" style="background:var(--or)">${n} nouveau${n > 1 ? 'x' : ''}</span>` : ''}</div>
-    <p class="msg-txt">${der ? esc((estMoi(der.auteur) ? 'Toi : ' : (auteurChat(der.auteur).fonction || 'Le staff') + ' : ') + der.texte).slice(0, 110) : 'Écris en privé au staff et à la direction.'}</p>
+    <p class="msg-txt">${der ? esc((estMoi(der.auteur) ? 'Toi : ' : (auteurChat(der.auteur).fonction || 'Le staff') + ' : ') + txtMsg(der)).slice(0, 110) : 'Écris en privé au staff et à la direction.'}</p>
     <button class="bouton ${n ? 'plein' : 'fant'} plein" style="margin-top:11px" onclick="ouvreChatJoueur()">${n ? 'Lire' : 'Ouvrir le chat'}</button>
   </div>`;
 }
@@ -8395,7 +8413,8 @@ async function enregistrer(table, ligne, surConflit){
    Ici on envoie un vrai PATCH, limité par un filtre. Il passe par la même file
    durable que tout le reste : hors ligne, il attend. */
 async function modifier(table, filtre, champs){
-  if (typeof LECTURE_SEULE === 'function' && LECTURE_SEULE()){ toast('Compte dirigeant : lecture seule'); return false; }
+  /* 17/11/2026 : le président modifie ou supprime SES messages (la base le vérifie). */
+  if (typeof LECTURE_SEULE === 'function' && LECTURE_SEULE() && !(E.role === 'dg' && table === 'messages')){ toast('Compte dirigeant : lecture seule'); return false; }
   await FA.pousser({
     table, filtre, methode: 'PATCH',
     corps: champs,
@@ -9020,7 +9039,9 @@ const versChat = c => ({
   dest: c.destinataire_id || '',       // 28/10/2026 : message privé
   fil: c.joueur_id || '',              // 03/11/2026 : fil joueur (id), « tous » ou « eq:<code> »
   t: c.envoye_le || '',                // 03/11/2026 : repère pour ne relire que les nouveaux
-  photo: c.photo_id || ''              // 05/11/2026 : photo jointe (table photos_chat)
+  photo: c.photo_id || '',             // 05/11/2026 : photo jointe (table photos_chat)
+  modifie: c.modifie_le || '',         // 17/11/2026 : modifié par son auteur
+  supprime: !!c.supprime               // 17/11/2026 : supprimé par son auteur
 });
 
 /* LES NOUVEAUX MESSAGES, APPLICATION OUVERTE (03/11/2026).
@@ -9031,18 +9052,37 @@ const versChat = c => ({
    Appelé à chaque retour sur l'application, à l'arrivée d'une notification,
    et toutes les 60 s tant que l'écran est allumé. */
 let RELECTURE_EN_COURS = false;
+let REPERE_MODIF = '';
 async function rafraichitMessages(){
   if (RELECTURE_EN_COURS || !E.role || E.role === 'iv' || !enLigne() || !SOURCE.clubId || !DB.chat) return 0;
   RELECTURE_EN_COURS = true;
   try {
     const dernier = DB.chat.reduce((m, c) => (c.t && c.t > m) ? c.t : m, '');
-    const l = await api('messages?select=*&club_id=eq.' + SOURCE.clubId +
-      (dernier ? '&envoye_le=gt.' + encodeURIComponent(dernier) : '') + '&order=envoye_le.asc&limit=200');
+    /* 17/11/2026 : on relit aussi les messages MODIFIÉS ou SUPPRIMÉS depuis le
+       dernier passage. Le repère part de dix minutes avant la première
+       relecture (les modifications faites juste après le chargement). */
+    if (!REPERE_MODIF) REPERE_MODIF = new Date(maintenant().getTime() - 10 * 60000).toISOString();
+    REPERE_MODIF = DB.chat.reduce((m, c) => (c.modifie && c.modifie > m) ? c.modifie : m, REPERE_MODIF);
+    const q = encodeURIComponent;
+    const filtre = dernier
+      ? '&or=(envoye_le.gt.' + q(dernier) + ',modifie_le.gt.' + q(REPERE_MODIF) + ')'
+      : '';
+    const l = await api('messages?select=*&club_id=eq.' + SOURCE.clubId + filtre + '&order=envoye_le.asc&limit=200');
     const connus = new Set(DB.chat.map(c => c.id));
     let n = 0;
     (l || []).forEach(c => {
       const m = versChat(c);
-      if (connus.has(m.id)){ const x = DB.chat.find(y => y.id === m.id); if (x && !x.t) x.t = m.t; return; }
+      if (connus.has(m.id)){
+        const x = DB.chat.find(y => y.id === m.id);
+        if (!x) return;
+        if (!x.t) x.t = m.t;
+        if (m.supprime){ DB.chat.splice(DB.chat.indexOf(x), 1); n++; return; }   // supprimé ailleurs : il disparaît
+        if (m.modifie && m.modifie !== x.modifie){
+          x.texte = m.texte; x.modifie = m.modifie; x.photo = m.photo; n++;
+        }
+        return;
+      }
+      if (m.supprime) return;                       // jamais affiché
       DB.chat.push(m); n++;
     });
     if (n) apresNouveauxMessages();
@@ -9540,7 +9580,7 @@ async function chargerSupabase(){
     })),
     espacesPub: DB.espacesPub,
     // Le fil se lit dans l'ordre du temps ; on l'a demandé à rebours pour n'en prendre que la fin.
-    chat: (msgs || []).slice().reverse().map(versChat),
+    chat: (msgs || []).slice().reverse().map(versChat).filter(c => !c.supprime),   // 17/11 : un message supprimé ne laisse aucune trace
     planning: (planningBase || []).map(w => ({
       equipe: w.equipe_code, lundi: String(w.lundi).slice(0, 10),
       creneaux: Array.isArray(w.creneaux) ? w.creneaux : []
@@ -13471,6 +13511,210 @@ function rubriqueAssiduite(){
     <div class="as-rub-barre"><i style="width:${js.length ? Math.round(ouverts * 100 / js.length) : 0}%"></i></div>
     <span class="as-rub-voir">Voir qui, joueur par joueur ›</span>
   </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MODIFIER OU SUPPRIMER UN MESSAGE                              (17/11/2026)
+
+   Fathy : « ajoute la possibilité, après un clic long sur un message, de
+   modifier ou de supprimer un message ».
+
+   - Appui long (≈ 0,5 s) sur une bulle, ou clic droit sur ordinateur : un
+     menu s'ouvre. Sur SES messages : Modifier, Copier, Supprimer. Sur ceux
+     des autres : Copier seulement.
+   - Modifier : le texte (ou la légende d'une photo) dans une fenêtre ; la
+     citation « ↩︎ » d'une réponse privée reste en tête, intacte. Le message
+     porte ensuite la mention « modifié ».
+   - Supprimer : après confirmation, le message DISPARAÎT de la conversation
+     chez tout le monde, sans trace (« je veux pas de trace "message
+     supprimé" », 17/11). En base, il reste marqué supprimé, texte vidé et
+     photo détachée : c'est ce qui permet aux autres téléphones de le retirer.
+   - La base décide (maj_2026-11-17_messages_modifier.sql) : seul l'auteur,
+     seul le texte, jamais un message système, pas de retour en arrière
+     après suppression. Aucune notification ne repart.
+   - Les autres appareils voient la modification à leur prochaine relecture
+     des messages (au retour sur l'application, à une notification, ou
+     toutes les 60 s) : rafraichitMessages relit aussi les messages modifiés.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const APPUI_LONG_MS = 480;
+let APPUI = null, APPUI_FAIT = 0;
+
+/* Le texte d'un message tel qu'il s'affiche en aperçu (listes, cartes). */
+const txtMsg = c => c && c.supprime ? 'Message supprimé' : String((c && c.texte) || '');
+
+/* ───────────────────────── l'appui long */
+function annuleAppui(){
+  if (!APPUI) return;
+  clearTimeout(APPUI.t);
+  if (APPUI.b) APPUI.b.classList.remove('appui');
+  APPUI = null;
+}
+document.addEventListener('pointerdown', ev => {
+  if (ev.button > 0) return;
+  const b = ev.target.closest && ev.target.closest('.chat-b[data-id]');
+  if (!b) return;
+  annuleAppui();
+  APPUI = {b, x: ev.clientX, y: ev.clientY, t: setTimeout(() => {
+    APPUI_FAIT = Date.now();
+    try { if (navigator.vibrate) navigator.vibrate(12); } catch (e){}
+    const id = b.dataset.id;
+    annuleAppui();
+    menuMessage(id);
+  }, APPUI_LONG_MS)};
+  b.classList.add('appui');
+}, {passive: true});
+document.addEventListener('pointermove', ev => {
+  if (APPUI && (Math.abs(ev.clientX - APPUI.x) > 10 || Math.abs(ev.clientY - APPUI.y) > 10)) annuleAppui();
+}, {passive: true});
+['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, annuleAppui, {passive: true}));
+document.addEventListener('scroll', annuleAppui, {passive: true, capture: true});
+/* Clic droit (ordinateur) ; sur Android, l'appui long déclenche aussi cet
+   événement : on ne rouvre pas un menu déjà ouvert. */
+document.addEventListener('contextmenu', ev => {
+  const b = ev.target.closest && ev.target.closest('.chat-b[data-id]');
+  if (!b) return;
+  ev.preventDefault();
+  if (Date.now() - APPUI_FAIT < 900) return;
+  annuleAppui();
+  APPUI_FAIT = Date.now();
+  menuMessage(b.dataset.id);
+});
+/* Le doigt qui se lève après un appui long ne doit pas « cliquer » (ouvrir
+   la photo en plein écran, par exemple). */
+document.addEventListener('click', ev => {
+  if (Date.now() - APPUI_FAIT < 700 && ev.target.closest && ev.target.closest('.chat-b')){
+    ev.preventDefault(); ev.stopPropagation();
+  }
+}, true);
+
+/* ───────────────────────── le menu */
+function menuMessage(id){
+  const c = (DB.chat || []).find(x => x.id === id);
+  if (!c || c.systeme || c.supprime) return;
+  const moi = estMoi(c.auteur);
+  const txt = partiesMessage(c).corps;
+  if (!moi && !txt) return;
+  const apercu = c.photo ? '📷 ' + (txt || 'Photo') : txt;
+  ouvreFeuille(`
+    <div class="feuille-titre">Message</div>
+    <div class="mm-apercu">${esc(apercu.slice(0, 160))}${apercu.length > 160 ? '…' : ''}</div>
+    <div class="mm-actions">
+      ${moi ? `<button class="mm-act" onclick="modifieMessage('${esc(id)}')">${icoMm('crayon')}<span>Modifier</span></button>` : ''}
+      ${txt ? `<button class="mm-act" onclick="copieMessage('${esc(id)}')">${icoMm('copier')}<span>Copier le texte</span></button>` : ''}
+      ${moi ? `<button class="mm-act danger" onclick="confirmeSuppression('${esc(id)}')">${icoMm('poubelle')}<span>Supprimer</span></button>` : ''}
+    </div>
+    <button class="bouton fant plein" style="margin-top:10px" onclick="fermeFeuille()">Annuler</button>`);
+}
+function icoMm(n){
+  const d = {
+    crayon: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+    copier: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+    poubelle: '<path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/>'
+  }[n];
+  return `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+}
+
+/* Un message se lit en deux morceaux : la citation d'une réponse privée
+   (« ↩︎ « … » » + retour à la ligne), qui ne se modifie pas, et le corps.
+   Pour une photo, le corps est la légende (sans « 📷 », sans « Photo »). */
+function partiesMessage(c){
+  const t = String(c.texte || '');
+  const m = /^(↩︎ « [\s\S]*? »\n)/.exec(t);
+  const citation = m ? m[1] : '';
+  let corps = t.slice(citation.length);
+  if (c.photo){
+    corps = corps.replace(/^📷 /, '');
+    if (corps === 'Photo') corps = '';
+  }
+  return {citation, corps};
+}
+
+function copieMessage(id){
+  const c = (DB.chat || []).find(x => x.id === id);
+  if (!c) return;
+  const t = partiesMessage(c).corps;
+  const fini = () => { fermeFeuille(); toast('Texte copié'); };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(fini, () => copieSecours(t, fini)); return; }
+  } catch (e){}
+  copieSecours(t, fini);
+}
+function copieSecours(t, fini){
+  const z = document.createElement('textarea');
+  z.value = t; z.setAttribute('readonly', ''); z.style.position = 'fixed'; z.style.opacity = '0';
+  document.body.appendChild(z); z.select();
+  try { document.execCommand('copy'); } catch (e){}
+  z.remove(); fini();
+}
+
+/* ───────────────────────── modifier */
+function modifieMessage(id){
+  const c = (DB.chat || []).find(x => x.id === id);
+  if (!c || !estMoi(c.auteur) || c.supprime) return;
+  const p = partiesMessage(c);
+  ouvreFeuille(`
+    <div class="feuille-titre">Modifier le message</div>
+    ${p.citation ? `<div class="mm-apercu" style="margin-bottom:8px">${esc(p.citation.trim())}</div>` : ''}
+    <textarea class="champ mm-champ" id="mmTexte" rows="4" placeholder="${c.photo ? 'Légende de la photo (facultative)' : 'Ton message'}">${esc(p.corps)}</textarea>
+    <p class="carte-note" style="margin:6px 0 0">Le message portera la mention « modifié ». Aucune notification ne repart.</p>
+    <div class="g2" style="margin-top:12px">
+      <button class="bouton fant plein" onclick="fermeFeuille()">Annuler</button>
+      <button class="bouton plein" onclick="enregistreModifMessage('${esc(id)}')">Enregistrer</button>
+    </div>`);
+  setTimeout(() => { const z = document.getElementById('mmTexte'); if (z){ z.focus(); z.setSelectionRange(z.value.length, z.value.length); } }, 50);
+}
+function enregistreModifMessage(id){
+  const c = (DB.chat || []).find(x => x.id === id);
+  const z = document.getElementById('mmTexte');
+  if (!c || !z) return fermeFeuille();
+  const t = z.value.trim();
+  if (!t && !c.photo){ toast('Message vide : utilise plutôt « Supprimer »'); return; }
+  const p = partiesMessage(c);
+  const texte = p.citation + (c.photo ? PREFIXE_PHOTO + (t || 'Photo') : t);
+  fermeFeuille();
+  if (texte === c.texte) return;
+  c.texte = texte;
+  c.modifie = new Date().toISOString();
+  modifier('messages', 'id=eq.' + id, {texte});
+  redessineFil();
+  toast('Message modifié');
+}
+
+/* ───────────────────────── supprimer */
+function confirmeSuppression(id){
+  const c = (DB.chat || []).find(x => x.id === id);
+  if (!c || !estMoi(c.auteur)) return;
+  ouvreFeuille(`
+    <div class="feuille-titre">Supprimer ce message ?</div>
+    <div class="feuille-sous">Il disparaîtra de la conversation chez tout le monde${c.photo ? ', photo comprise' : ''}. Impossible de revenir en arrière.</div>
+    <div class="g2" style="margin-top:14px">
+      <button class="bouton fant plein" onclick="fermeFeuille()">Annuler</button>
+      <button class="bouton plein bouton-danger" onclick="supprimeMessage('${esc(id)}')">Supprimer</button>
+    </div>`);
+}
+function supprimeMessage(id){
+  const c = (DB.chat || []).find(x => x.id === id);
+  fermeFeuille();
+  if (!c || !estMoi(c.auteur) || c.supprime) return;
+  /* Retiré de l'appareil tout de suite ; la base le marque, les autres
+     appareils le retirent à leur prochaine relecture. */
+  DB.chat.splice(DB.chat.indexOf(c), 1);
+  modifier('messages', 'id=eq.' + id, {supprime: true});
+  redessineFil();
+  toast('Message supprimé');
+}
+
+/* Redessiner le fil ouvert sans fermer le clavier ni perdre la saisie. */
+function redessineFil(){
+  if (document.getElementById('wa') && typeof waMajFil === 'function' && E.chatAvec){
+    waMajFil(filDe(E.chatAvec));
+    return;
+  }
+  const ta = document.getElementById('chatTexte'), brouillon = ta ? ta.value : null;
+  rendVue();
+  const tb = document.getElementById('chatTexte');
+  if (tb && brouillon != null) tb.value = brouillon;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
