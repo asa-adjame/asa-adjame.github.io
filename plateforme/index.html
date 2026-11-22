@@ -1117,6 +1117,25 @@ table.tab tr.nous{background:rgba(255,178,70,.12)}
 .acc-j:first-child{border-top:0;padding-top:2px}
 .acc-j>.mono{font-size:10.5px;color:var(--gris);text-transform:uppercase;letter-spacing:.05em;padding-top:2px}
 .acc-lien{background:none;border:0;color:var(--or);font:inherit;font-size:12.5px;padding:0 0 0 6px;cursor:pointer}
+/* Accueil DT, dirigeants, head coach — 22/11/2026 : groupes, et moins de vide */
+.acc-grp{font-family:var(--titre);font-size:19px;letter-spacing:1.5px;color:var(--or);margin:0 0 10px;
+  padding-bottom:5px;border-bottom:1px solid rgba(255,178,70,.35)}
+.acc-bloc{margin-bottom:18px}
+.acc-bloc>:first-child{margin-top:0}
+.acc-cols .section-titre{margin:12px 0 7px}
+.acc-cols .acc-grp + .section-titre{margin-top:0}
+.acc-cols .banniere{margin-bottom:10px}
+.acc-cols .g3 + .carte,.acc-cols .g4 + .carte{margin-top:10px}
+.acc-rt{font-family:var(--titre);font-size:13px;letter-spacing:2px;color:var(--gris);margin:-2px 0 9px}
+.acc-cols .acc-bloc>:last-child,.acc-cols .acc-grp ~ :last-child{margin-bottom:0}
+.acc-cols .ban-titre{font-size:26px;line-height:1.05}
+.acc-cols .as-rub-voir{margin-top:8px!important}
+.acc-cols .as-rub-barre{margin:10px 0 8px}
+@media screen and (min-width:1100px){
+  #app.on>.vue>.acc-cols{max-width:none}
+  .acc-cols{columns:2;column-gap:22px}
+  .acc-bloc{break-inside:avoid;display:inline-block;width:100%;vertical-align:top}
+}
 .acc-racc{display:flex;flex-wrap:wrap;gap:8px}
 .acc-racc button{background:var(--surface);border:1px solid var(--ligne);color:var(--texte);border-radius:999px;
   padding:9px 14px;font:inherit;font-size:13px;cursor:pointer}
@@ -12470,20 +12489,15 @@ function rubriqueFatigue(){
   ], 'Voir les 7 derniers jours');
 }
 
-function rubriquesAccueil(){
-  const r = [];
-  if (E.role === 'dt'){
-    r.push(rubriqueStaff(), rubriqueRapportPresident());
-    if (peutImprimerBadges()) r.push(rubriqueBadges());
-    r.push(rubriquePartenaires());
-  }
-  if (E.role === 'dg') r.push(rubriqueRapportsDT());
-  /* 02/11/2026 : le head coach écrit au médical, mais l'onglet n'est pas dans sa barre. */
-  if (E.role === 'hc') r.push(rubriqueMedical());
-  r.push(rubriqueFatigue());
-  return r.join('');
-}
-
+/* 22/11/2026 — Fathy : « réorganise la page ». Les rubriques sont rangées par
+   thème, sous un titre de groupe : l'équipe, le staff et les rapports, le club. */
+const groupe = (titre, blocs) => {
+  /* le titre de chaque rubrique passe DANS sa carte : une ligne de moins par rubrique */
+  const h = blocs.filter(Boolean).join('').replace(
+    /<div class="section-titre">([\s\S]*?)<\/div>\s*<div class="carte([^"]*)"([^>]*)>/g,
+    '<div class="carte$2"$3><div class="acc-rt">$1</div>');
+  return h.trim() ? `<div class="acc-grp">${esc(titre)}</div>${h}` : '';
+};
 /* 7. Le partenaire principal, sur une ligne. */
 /* 28/10/2026 — Fathy : « je ne trouve plus la possibilité de changer ou
    modifier les sponsors ». Pour le DT, la ligne elle-même ouvre la gestion
@@ -12499,21 +12513,22 @@ function lignePartenaire(){
 }
 
 function vueAccueilLeger(){
-  /* 01/11/2026 : sur ordinateur, deux colonnes (.dsk2) — ce qui attend et le
-     championnat à gauche, la journée et les rubriques à droite. */
-  return `<div class="dsk2"><div class="dsk-g">
-  ${carteMonEcheance()}
-  ${blocATraiter()}
-  ${banniereLegere()}
-  ${carteProchainMatch(DB.championnat.prochain)}
-  </div><div class="dsk-d">
-  ${carteAujourdhui()}
-  ${rubriqueAssiduite()}
-  ${rubriqueVideosMatch()}
-  ${tuilesAccueil()}
-  ${rubriquesAccueil()}
-  ${E.role === 'dt' ? '' : lignePartenaire()}
-  </div></div>`;
+  /* 22/11/2026 — Fathy : « la compétition, le championnat en premier ; je veux
+     juste moins d'espace vide ». Chaque bloc est une pièce (.acc-bloc) ; sur
+     ordinateur, le navigateur les répartit sur deux colonnes équilibrées
+     (.acc-cols) au lieu de deux colonnes fixes dont l'une finissait bien
+     plus tôt que l'autre. Sur téléphone, les blocs se suivent, plus serrés. */
+  const dt = E.role === 'dt', dg = E.role === 'dg', hc = E.role === 'hc';
+  const bloc = h => h && h.trim() ? `<div class="acc-bloc">${h}</div>` : '';
+  return `<div class="acc-cols">
+  ${bloc(groupe('Compétition', [banniereLegere(), carteProchainMatch(DB.championnat.prochain), rubriqueVideosMatch()]))}
+  ${bloc(carteMonEcheance() + blocATraiter())}
+  ${bloc(carteAujourdhui())}
+  ${bloc(groupe(hc ? nomEq(E.equipe) : 'Équipe', [tuilesAccueil().replace(/^\s*<div class="section-titre">[^<]*<\/div>/, ''),
+     rubriqueAssiduite(), rubriqueFatigue(), hc && rubriqueMedical()]))}
+  ${bloc(groupe('Staff et rapports', [dt && rubriqueStaff(), dt && rubriqueRapportPresident(), dg && rubriqueRapportsDT()]))}
+  ${bloc(groupe('Club', [dt ? rubriquePartenaires() : lignePartenaire(), dt && peutImprimerBadges() && rubriqueBadges()]))}
+  </div>`;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
