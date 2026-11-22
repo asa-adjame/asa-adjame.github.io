@@ -462,6 +462,7 @@ html.wa-ouvert,html.wa-ouvert body{overflow:hidden;overscroll-behavior:none}
 .as-rub-l{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .as-rub-l div{display:flex;flex-direction:column;gap:3px}
 .as-rub-l b{font-family:var(--titre);font-size:30px;line-height:1}.as-rub-l b small{font-size:16px;color:var(--gris);margin-left:1px}
+.as-rub-l b.mot{font-size:21px;line-height:30px}
 .as-rub-l span{font-size:12px;color:var(--gris);line-height:1.25}
 .as-rub-barre{height:6px;border-radius:3px;background:rgba(255,255,255,.08);margin:12px 0 10px;overflow:hidden}
 .as-rub-barre i{display:block;height:100%;background:var(--physique);border-radius:3px}
@@ -12230,7 +12231,7 @@ function blocCalendrierAccueil(){
    3. le prochain match (inchangé) ;
    4. Aujourd'hui  — UNE carte : planning, appel, échéances, fatigue → calendrier ;
    5. les tuiles ;
-   6. Raccourcis   — les écrans du rôle, en petits boutons ;
+   6. Rubriques    — les écrans du rôle, chacun en carte résumée (22/11) ;
    7. le partenaire principal, sur une ligne (sa visibilité reste due).
 
    Les autres rôles gardent leur accueil. Rien n'est recalculé ici : tout
@@ -12375,24 +12376,112 @@ function tuilesAccueil(){
   </div>`;
 }
 
-/* 6. Les écrans du rôle, en raccourcis. */
-function raccourcisAccueil(){
-  const b = [];
+/* 6. Les écrans du rôle, en RUBRIQUES.
+   22/11/2026 — Fathy : « je ne veux plus de raccourci, je veux que chaque
+   raccourci soit une rubrique dans la page d'accueil ». Chaque ancien bouton
+   devient une carte : un titre, deux ou trois chiffres qui disent où on en
+   est, et toute la carte s'ouvre au toucher (même forme que l'assiduité). */
+function rubrique(titre, action, chiffres, voir, corps){
+  return `<div class="section-titre">${esc(titre)}</div>
+  <div class="carte as-rub" role="button" tabindex="0" onclick="${action}">
+    ${chiffres && chiffres.length ? `<div class="as-rub-l">${chiffres.map(([v, l, c]) =>
+      `<div><b${/^[A-Za-zÀ-ÿ]/.test(String(v)) ? ' class="mot"' : ''}${c ? ` style="color:${c}"` : ''}>${v}</b><span>${l}</span></div>`).join('')}</div>` : ''}
+    ${corps || ''}
+    <span class="as-rub-voir" style="margin-top:10px">${esc(voir)} ›</span>
+  </div>`;
+}
+
+function rubriqueStaff(){
+  const eq = (DB.staff || []).filter(m => m.id !== 'dt' && m.role !== 'dt');
+  const objs = eq.map(objectifsDe);
+  const tous = [].concat(...objs);
+  const moyA = tous.length ? Math.round(tous.reduce((s, o) => s + (+o.avancement || 0), 0) / tous.length) : null;
+  const sans = objs.filter(o => !o.length).length;
+  return rubrique('Staff', `ouvreSous('staff')`, [
+    [eq.length, 'membres<br>du staff'],
+    [moyA == null ? '—' : moyA + '<small>%</small>', 'avancement<br>des objectifs', moyA == null ? '' : 'var(--physique)'],
+    [sans, 'sans objectif<br>du mois', sans ? 'var(--alerte)' : 'var(--physique)']
+  ], 'Voir les objectifs de chacun');
+}
+
+function rubriqueRapportPresident(){
+  const R = DB.rapport || {};
+  const envoye = R.statut === 'envoyé';
+  return rubrique('Rapport au président', `E.rapVue='president';vaVers(indexOnglet('Rapports'))`, [
+    [envoye ? 'Envoyé' : 'Brouillon', esc(R.periode || 'mois en cours'), envoye ? 'var(--physique)' : 'var(--or)'],
+    [(R.points || []).length, 'points<br>rédigés'],
+    [(R.historique || []).length, 'rapports<br>déjà envoyés']
+  ], envoye ? 'Relire le rapport' : 'Continuer le rapport');
+}
+
+function rubriqueBadges(){
+  const n = joueursAttendus().length;
+  return rubrique('Badges', `ouvreSous('badges')`, null, 'Préparer les badges',
+    `<p class="msg-txt">Un badge par joueur — ${n} joueur${n > 1 ? 's' : ''}. Les codes ne se chargent qu'à
+     l'ouverture de l'écran, et repartent quand tu le quittes.</p>`);
+}
+
+function rubriquePartenaires(){
+  const ps = DB.sponsors || [], p = ps[0];
+  return rubrique('Partenaires', `ouvreSous('sponsors')`, null, ps.length ? 'Modifier, ajouter, supprimer' : 'Ajouter un partenaire',
+    ps.length ? `<div class="acc-spo" style="--c:${esc(p.couleur || 'var(--or)')};margin:0;border:0;padding:0;background:none">
+      <span>${esc(p.niveau || 'Partenaire')}</span><b>${esc(p.nom || '')}</b></div>
+      ${ps.length > 1 ? `<p class="carte-note" style="margin-top:6px">et ${ps.length - 1} autre${ps.length > 2 ? 's' : ''}</p>` : ''}`
+      : '<p class="carte-note">Aucun partenaire enregistré.</p>');
+}
+
+function rubriqueRapportsDT(){
+  const fs = DB.rapportsMembres || [], p = periodeDuJour();
+  const R = DB.rapport || {};
+  const envoye = R.statut === 'envoyé';
+  return rubrique('Rapports du DT', `E.rapVue='fiches';vaVers(indexOnglet('Rapports'))`, [
+    [fs.length, 'fiches<br>transmises'],
+    [fs.filter(r => r.periode === p).length, 'fiches<br>ce mois-ci'],
+    [envoye ? 'Reçu' : '—', envoye ? 'rapport<br>' + esc(R.periode || '') : 'aucun rapport<br>mensuel', envoye ? 'var(--physique)' : '']
+  ], 'Lire les fiches et les rapports');
+}
+
+function rubriqueMedical(){
+  const m = DB.medical || [];
+  const indispo = m.filter(x => x.statut === 'Indisponible');
+  const adapte = m.filter(x => x.statut === 'Reprise adaptée').length;
+  const suivis = m.filter(x => x.statut !== 'Rétabli').length;
+  const noms = indispo.slice(0, 3).map(x => (parId(x.joueur) || {}).nom).filter(Boolean);
+  return rubrique('Médical', `ouvreSous('medical')`, [
+    [indispo.length, 'indispo-<br>nibles', indispo.length ? 'var(--danger)' : 'var(--physique)'],
+    [adapte, 'reprise<br>adaptée', adapte ? 'var(--alerte)' : ''],
+    [suivis, 'joueurs<br>suivis']
+  ], 'Voir le secteur médical',
+    noms.length ? `<p class="carte-note" style="margin-top:8px">Indisponible${noms.length > 1 ? 's' : ''} : ${noms.map(esc).join(', ')}${indispo.length > 3 ? '…' : ''}</p>` : '');
+}
+
+/* La fatigue : la dernière échéance (mercredi ou dimanche), pas forcément aujourd'hui. */
+function rubriqueFatigue(){
+  let d = AUJ();
+  while (![0, 3].includes(jourSemaine(d))) d = decaleJour(d, -1);
+  const js = joueursAttendus().filter(j => j.equipe === E.equipe);
+  const f = fatigueDu(d).filter(x => js.some(j => j.id === x.joueur));
+  const moyF = f.length ? f.reduce((s, x) => s + x.note, 0) / f.length : null;
+  const hauts = f.filter(x => x.note >= 7).length;
+  return rubrique('Fatigue des joueurs', `ouvreSous('fatigue')`, [
+    [f.length + `<small>/${js.length}</small>`, 'ont noté<br>' + esc(NOMS_JOURS[jourSemaine(d)]) + (d === AUJ() ? '' : ' ' + esc(jourFr(d).slice(0, 5)))],
+    [moyF == null ? '—' : moyF.toFixed(1), 'moyenne<br>sur 10', moyF == null ? '' : couleurFatigue(Math.round(moyF))],
+    [hauts, 'à 7<br>ou plus', hauts ? 'var(--danger)' : 'var(--physique)']
+  ], 'Voir les 7 derniers jours');
+}
+
+function rubriquesAccueil(){
+  const r = [];
   if (E.role === 'dt'){
-    b.push(['Staff', `ouvreSous('staff')`]);
-    b.push(['Rapport au président', `E.rapVue='president';vaVers(indexOnglet('Rapports'))`]);
-    if (peutImprimerBadges()) b.push(['Badges', `ouvreSous('badges')`]);
-    b.push(['Gérer les partenaires', `ouvreSous('sponsors')`]);
+    r.push(rubriqueStaff(), rubriqueRapportPresident());
+    if (peutImprimerBadges()) r.push(rubriqueBadges());
+    r.push(rubriquePartenaires());
   }
-  if (E.role === 'dg'){
-    b.push(['Rapports du DT', `E.rapVue='fiches';vaVers(indexOnglet('Rapports'))`]);
-  }
-  /* Le head coach : ses relances sont dans « À traiter », pas en double ici.
-     02/11/2026 : il écrit au médical, mais l'onglet n'est pas dans sa barre. */
-  if (E.role === 'hc') b.push(['Médical', `ouvreSous('medical')`]);
-  b.push(['Fatigue, 7 jours', `ouvreSous('fatigue')`]);
-  return `<div class="section-titre">Raccourcis</div>
-  <div class="acc-racc">${b.map(([t, a]) => `<button onclick="${a}">${esc(t)}</button>`).join('')}</div>`;
+  if (E.role === 'dg') r.push(rubriqueRapportsDT());
+  /* 02/11/2026 : le head coach écrit au médical, mais l'onglet n'est pas dans sa barre. */
+  if (E.role === 'hc') r.push(rubriqueMedical());
+  r.push(rubriqueFatigue());
+  return r.join('');
 }
 
 /* 7. Le partenaire principal, sur une ligne. */
@@ -12411,7 +12500,7 @@ function lignePartenaire(){
 
 function vueAccueilLeger(){
   /* 01/11/2026 : sur ordinateur, deux colonnes (.dsk2) — ce qui attend et le
-     championnat à gauche, la journée et les raccourcis à droite. */
+     championnat à gauche, la journée et les rubriques à droite. */
   return `<div class="dsk2"><div class="dsk-g">
   ${carteMonEcheance()}
   ${blocATraiter()}
@@ -12422,8 +12511,8 @@ function vueAccueilLeger(){
   ${rubriqueAssiduite()}
   ${rubriqueVideosMatch()}
   ${tuilesAccueil()}
-  ${raccourcisAccueil()}
-  ${lignePartenaire()}
+  ${rubriquesAccueil()}
+  ${E.role === 'dt' ? '' : lignePartenaire()}
   </div></div>`;
 }
 
