@@ -9,12 +9,12 @@
    C'est son seul rôle : garder une copie de la page pour pouvoir la servir
    sans réseau. Il ne met en cache AUCUNE donnée du club.
 
-   914776705eb5 est remplacé à la construction par l'empreinte du fichier
+   f351dbab5e1f est remplacé à la construction par l'empreinte du fichier
    produit. Un nouveau dépôt change l'empreinte, donc le nom du cache, donc
    l'ancienne copie est effacée : une mise à jour ne reste jamais coincée.
    ══════════════════════════════════════════════════════════════════════════ */
 
-const CACHE = 'asa-plateforme-914776705eb5';
+const CACHE = 'asa-plateforme-f351dbab5e1f';
 
 /* UNE seule entrée, et c'est volontaire.
 
