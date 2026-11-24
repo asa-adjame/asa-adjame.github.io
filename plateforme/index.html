@@ -768,6 +768,98 @@ html.wa-ouvert,html.wa-ouvert body{overflow:hidden;overscroll-behavior:none}
 .a4-conf{background:#1A1A18;color:#F5D9A8;border-radius:3px;padding:1.6mm 3mm;font-size:10px;
   letter-spacing:.4px}
 
+
+/* ─────────────────────────────── briefing d'après-match (22/11/2026) */
+.br-carte .br-c-t{font-family:var(--titre);font-size:21px;letter-spacing:1px}
+.br-carte .br-c-t small{font-family:var(--mono);font-size:11px;color:var(--gris);letter-spacing:0;margin-left:6px}
+.br-mots{display:flex;flex-wrap:wrap;gap:7px}
+.br-mots span{border:1px solid var(--or);color:var(--or);border-radius:999px;padding:4px 11px;font-size:12.5px;font-weight:700}
+.br-etat{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;padding:9px 13px;
+  border-radius:12px;border:1px dashed var(--or);color:var(--or);font-size:13px}
+.br-etat.pub{border-style:solid;border-color:rgba(76,175,80,.5);color:var(--physique)}
+.br-etat .hf-b{color:var(--or)}
+.br-ban .ban-titre{font-size:34px}
+.br-score{font-size:15px;margin-top:6px}.br-score .mono{font-size:20px;margin-left:6px}
+.br-ban-b{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.br-ban-b .bouton{flex:1 1 auto;padding:10px 12px}
+.br-sec{font-family:var(--titre);font-size:19px;letter-spacing:1.2px;color:var(--or);margin:20px 0 8px}
+.br-g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.br-g2 .carte+.carte{margin-top:0}
+.br-k{padding:13px}.br-k-t{font-weight:700;font-size:14px;margin-bottom:6px}
+.br-k.ok .br-k-t{color:var(--physique)}.br-k.ko .br-k-t{color:var(--danger)}.br-k.or .br-k-t{color:var(--or)}
+.br-ul{margin:0;padding-left:17px;font-size:13px;line-height:1.45}.br-ul li+li{margin-top:3px}
+.br-axes{font-size:13px;margin-top:10px;line-height:1.45}
+.br-msg{background:#0B1530;border-color:rgba(255,178,70,.45)}
+.br-msg-t{font-family:var(--titre);font-size:13px;letter-spacing:2px;color:var(--or);margin-bottom:6px}
+.br-msg p{font-weight:700;font-size:15px;line-height:1.4}
+.br-cle,.br-pri{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--ligne);font-size:13.5px}
+.br-cle:last-child,.br-pri:last-child{border-bottom:0}
+.br-cle>span:nth-child(2){flex:1}.br-cle b{font-size:12px;white-space:nowrap}
+.br-n{width:22px;height:22px;border-radius:50%;background:rgba(255,178,70,.15);color:var(--or);display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
+.br-pri b{font-family:var(--titre);font-size:26px;color:var(--or);width:22px;flex:none;text-align:center}
+.br-concl{margin-top:16px;background:#0B1530;border-color:rgba(255,178,70,.45)}
+.br-concl-p{font-family:var(--titre);font-size:24px;letter-spacing:.8px;line-height:1.15;margin-bottom:10px}
+.br-cle-e{padding:9px 0;border-bottom:1px solid var(--ligne);font-size:13.5px}.br-cle-e:last-child{border-bottom:0}
+.br-tri{display:flex;gap:6px;margin-top:7px}
+.br-tri button{flex:1;border:1px solid var(--ligne);border-radius:9px;padding:7px 4px;font-size:12.5px;color:var(--gris);background:none}
+.br-tri button.actif.oui{border-color:var(--physique);color:var(--physique);background:rgba(76,175,80,.1)}
+.br-tri button.actif.partiel{border-color:var(--alerte);color:var(--alerte);background:rgba(255,178,70,.1)}
+.br-tri button.actif.non{border-color:var(--danger);color:var(--danger);background:rgba(229,57,53,.1)}
+.br-ta{min-height:3.2em;resize:vertical;line-height:1.45;field-sizing:content;max-height:60vh}
+@media screen and (max-width:560px){ .br-g2{grid-template-columns:minmax(0,1fr)} }
+@media screen and (min-width:1100px){ #app.on>.vue>.br-page{max-width:1000px} }
+
+/* ─────────────────────────────── résultats de la Ligue d'Or (23/11/2026) */
+.lg-photo{display:block;text-align:center;cursor:pointer}
+.lg-alerte{font-size:12.5px;color:var(--alerte);border:1px solid rgba(255,178,70,.4);border-radius:10px;padding:8px 11px;margin:0 0 10px}
+.lg-l{padding:11px 13px}.lg-l.douteux{border-color:var(--alerte);box-shadow:0 0 0 1px rgba(255,178,70,.35) inset}
+.lg-l.ign{opacity:.55;padding:9px 13px}
+.lg-ign{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--gris)}
+.lg-g{display:grid;grid-template-columns:minmax(0,1fr) 74px;gap:8px;margin-bottom:7px}
+.lg-s{text-align:center;font-size:18px;font-weight:700;padding:8px 6px}
+.lg-sel{padding:9px 10px}
+.lg-pied{display:flex;gap:8px;align-items:center}.lg-f{flex:1;padding:7px 9px;font-size:12.5px}
+
+/* le diaporama : 16:9, aux couleurs du PDF du DT (nuit / crème / ambre) */
+.dp-pile{padding:16px 0 30px}
+.dp{width:min(96vw,1100px);aspect-ratio:16/9;margin:16px auto;box-shadow:0 6px 26px rgba(0,0,0,.18);
+  background:#F5F2EC;color:#111827;font-family:Arial,Helvetica,sans-serif;padding:5.5% 6.5% 0;position:relative;
+  display:flex;flex-direction:column;overflow:hidden;font-size:clamp(9px,1.45vw,16px)}
+.dp.nuit{background:#0B1530;color:#F5F2EC}
+.dp h2{font-size:2.9em;font-weight:800;margin:0 0 .75em;letter-spacing:-.3px;line-height:1.08}
+.dp h3{font-size:1.45em;font-weight:800;margin:0 0 .5em}.dp h3.or{color:#B26B00}
+.dp ul{margin:0;padding-left:1.15em;font-size:1.35em;line-height:1.5}
+.dp p{margin:0;font-size:1.35em;line-height:1.45}
+.dp-k{background:#fff;border:1px solid #E7E2D8;border-radius:.8em;padding:1.7em 2em}
+.dp-k.nuit{background:#111A2E;border-color:#111A2E;color:#F5F2EC;display:flex;flex-direction:column;justify-content:center}
+.dp-g2,.dp-g3,.dp-g1{display:grid;gap:1.4em;flex:1;min-height:0;margin-bottom:1em}
+.dp-g2{grid-template-columns:1fr 1fr;grid-auto-rows:1fr}.dp-g3{grid-template-columns:repeat(3,1fr)}.dp-g1{grid-template-columns:1fr}
+.dp-g2.focus{grid-template-columns:1.45fr 1fr}
+.dp-mc{color:#E8A33D;font-weight:800;font-size:1.25em;margin-bottom:.6em}
+.dp-mt{font-size:1.65em!important;font-weight:800;line-height:1.35}
+.dp-axes{font-weight:800;font-size:1.35em;margin:.2em 0 1em}
+.dp-pri{display:flex;flex-direction:column;gap:.9em;flex:1;margin-bottom:1em}
+.dp-pl{background:#fff;border:1px solid #E7E2D8;border-radius:.8em;display:flex;align-items:center;gap:2em;padding:1em 2em;flex:1}
+.dp-pl b{color:#E8A33D;font-size:2.8em;width:.8em}.dp-pl span{font-size:1.35em;flex:1}
+.dp-pl em{font-style:normal;font-weight:800;font-size:1.1em}.dp-pl em.oui{color:#2E7D32}.dp-pl em.partiel{color:#B26B00}.dp-pl em.non{color:#C62828}
+.dp-pied{display:flex;justify-content:space-between;color:#6B7280;font-size:1.1em;padding:1em 0 1.6em;margin-top:auto}
+.dp.une{flex-direction:row;align-items:center;justify-content:space-between;padding:0 6.5%}
+.dp-sur{color:#E8A33D;font-weight:800;font-size:1.5em;letter-spacing:.3px;text-transform:uppercase;margin-bottom:.6em}
+.dp-titre{font-size:7em;font-weight:900;line-height:1;letter-spacing:-1px;margin-bottom:.25em}
+.dp-sous{font-size:1.75em;color:#C9CED8;margin-top:.35em}
+.dp-logo{width:24%;height:auto;flex:none}
+.dp-concl{margin:auto 0}
+.dp-cp{font-size:3em;font-weight:800;line-height:1.15;margin-bottom:.8em}
+.dp-mots{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4em}
+.dp-mots span{border:2px solid #E8A33D;border-radius:.6em;color:#E8A33D;font-weight:800;font-size:2.2em;padding:.55em .6em}
+.dp-note{color:#C9CED8;margin-top:1.4em!important}
+@page diapo{size:338.67mm 190.5mm;margin:0}
+@media print{
+  .dp-pile{padding:0}
+  .dp{page:diapo;width:338.67mm;height:190.5mm;aspect-ratio:auto;margin:0;box-shadow:none;font-size:17px;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;break-after:page}
+  .dp:last-child{break-after:auto}
+}
+
 @page{size:A4 portrait;margin:0}
 @media print{
   html,body{margin:0;padding:0;background:#fff}
@@ -2371,6 +2463,7 @@ function rendNav(){
   ).join('');
 }
 function vaVers(i){
+  E.hcVue = null;   // 22/11/2026 : on quitte l'écran du coach ouvert depuis l'accueil
   E.onglet = i; E.fiche = null; E.quiz = null; E.sous = null;
   const lib = (PLAN[E.role][i] || [])[1];
   // 28/10/2026 : l'onglet Chat s'ouvre sur la liste des contacts ; une conversation se marque lue quand on l'ouvre.
@@ -2449,6 +2542,8 @@ const retour = (lib, fn) =>
 /* ═══════════════════════════════════ ACCUEIL — commun à tous ═══════════════════════════════════ */
 
 function vueAccueil(){
+  /* 22/11/2026 — le DT aussi head coach : l'écran Équipe ou Quiz ouvert depuis son accueil. */
+  if (E.hcVue && typeof CASQUETTE_COACH === 'function' && CASQUETTE_COACH()) return vueCasquetteCoach();
   if (E.sous === 'sponsors')   return vueSponsors();
   if (E.sous === 'rapport')    return vueRapport();
   if (E.sous === 'classement') return vueClassement();
@@ -2479,6 +2574,13 @@ function vueAccueil(){
   if (E.sous === 'assiduite')  return vueAssiduite();
   /* 17/11/2026 — les vidéos des matchs complets (p3x_videos_match.js). */
   if (E.sous === 'videos')     return vueVideosMatch();
+  /* 22/11/2026 — le briefing d'après-match (p3y_briefing.js). */
+  if (E.sous === 'briefing')      return vueBriefing();
+  if (E.sous === 'briefing-edit') return vueBriefingEdit();
+  if (E.sous === 'briefings')     return vueBriefings();
+  /* 23/11/2026 — les résultats de la Ligue d'Or et le classement calculé (p3ya_ligue.js). */
+  if (E.sous === 'ligue')           return vueLigue();
+  if (E.sous === 'ligue-relecture') return vueLigueRelecture();
 
   /* 27/10/2026 — DT, dirigeants, head coach : l'accueil allégé (p3o_accueil.js). */
   if (ACCUEIL_LEGER(E.role)) return vueAccueilLeger();
@@ -2496,7 +2598,7 @@ function vueAccueil(){
   /* 03/11/2026 : un message non lu du Président, du DT ou du head coach passe
      avant tout le reste (voir messagesPrioritaires, p3d_collectif.js). */
   const prio = E.role === 'jr' && messagesPrioritaires().length ? carteMessagesJoueur() + '<!--notif-->' : '';
-  return `<div class="dsk2"><div class="dsk-g">${prio}${carteFatigueJoueur()}${carteMonEcheance()}${carteFeuilleMatch()}${carteVideosJoueur()}
+  return `<div class="dsk2"><div class="dsk-g">${prio}${carteFatigueJoueur()}${carteMonEcheance()}${carteFeuilleMatch()}${carteLigueAs()}${carteBriefingJoueur()}${carteVideosJoueur()}
   <div class="banniere">
     <div class="ban-sur">${esc(C.instance)}</div>
     <div class="ban-titre">${esc(C.nom)}</div>
@@ -2852,15 +2954,16 @@ function vueClassement(){
   const C = DB.championnat;
   return `${retour('Accueil', 'fermeSous()')}
   <h1 class="vue-titre">Classement et résultats</h1>
-  <p class="vue-sous">${esc(C.nom)} · ${esc(C.instance)} · après ${C.journee} journées.</p>
+  <p class="vue-sous">${esc(C.nom)} · ${esc(C.instance)} · après ${C.journee} journée${C.journee > 1 ? 's' : ''}.</p>
+  ${C.classementCalcule ? `<p class="carte-note" style="margin:-6px 0 10px">Calculé à partir des résultats saisis : victoire 2 pts, défaite 1, forfait 0 ; à égalité, confrontation directe.${PEUT_LIGUE(E.role) ? ` <button class="acc-lien" onclick="ouvreSous('ligue')">Résultats de la Ligue d'Or ›</button>` : ''}</p>` : ''}
   <div class="dsk2"><div class="dsk-g">
   <div class="tab-enrob"><table class="tab">
-    <thead><tr><th>#</th><th>Équipe</th><th class="num">J</th><th class="num">V</th><th class="num">D</th>
+    <thead><tr><th>#</th><th>Équipe</th>${C.classementCalcule ? '<th class="num">Pts</th>' : ''}<th class="num">J</th><th class="num">V</th><th class="num">D</th>
       <th class="num">Marqués</th><th class="num">Encaissés</th><th class="num">Diff.</th></tr></thead>
     <tbody>${C.classement.map((l,i) => `<tr class="${l.nous?'nous':''}">
       <td class="mono">${i+1}</td>
-      <td class="tab-nom">${esc(l.equipe)}</td>
-      <td class="num">${l.j}</td><td class="num">${l.v}</td><td class="num">${l.d}</td>
+      <td class="tab-nom">${esc(l.equipe)}${l.depart ? `<div class="carte-note" style="font-size:10px">${esc(l.depart)}</div>` : ''}</td>
+      ${C.classementCalcule ? `<td class="num"><b>${l.pts}</b></td>` : ''}<td class="num">${l.j}</td><td class="num">${l.v}</td><td class="num">${l.d}</td>
       <td class="num">${l.pp}</td><td class="num">${l.pc}</td>
       <td class="num" style="color:${(l.pp-l.pc)>=0?'var(--physique)':'var(--danger)'}">${(l.pp-l.pc)>=0?'+':''}${l.pp-l.pc}</td>
     </tr>`).join('')}</tbody>
@@ -2877,7 +2980,7 @@ function listeResultats(){
   if (!R.length) return '';
   const dt = PEUT_SUPPR_RESULTAT();
   return `<div class="section-titre">Derniers résultats</div>
-  ${dt ? `<p class="carte-note" style="margin:-4px 0 10px">Envoyés par le classeur Championnat. Touche un résultat pour le supprimer (doublon, essai).</p>` : ''}
+  ${dt ? `<p class="carte-note" style="margin:-4px 0 10px">Envoyés par le classeur Championnat ou saisis dans les résultats de la Ligue d'Or. Touche un résultat pour le supprimer ou le corriger.</p>` : ''}
   <div class="carte" style="padding:6px 14px">
     ${R.map((r, i) => {
       const g = r.pour > r.contre;
@@ -2906,6 +3009,12 @@ let RESULTAT_VISE = null;   /* la clé du résultat montré dans la confirmation
 function demandeSuppressionResultat(i){
   const r = ((DB.championnat || {}).resultats || [])[i];
   if (!r || !PEUT_SUPPR_RESULTAT()) return;
+  /* 23/11/2026 — un résultat saisi dans « Résultats de la Ligue d'Or » se
+     corrige là-bas, avec sa journée (il ne vient pas du classeur). */
+  if (r._ligue && typeof ouvreJourneeLigue === 'function'){
+    toast('Ce résultat vient de la saisie de la Ligue d\'Or : corrige-le dans sa journée');
+    return ouvreJourneeLigue(journeeDuTour(r.tour) || 0);
+  }
   RESULTAT_VISE = cleResultat(r);
   ouvreFeuille(`<div class="feuille-titre">Supprimer ce résultat ?</div>
     <div class="feuille-sous">${esc(r.adversaire)} · ${r.pour} – ${r.contre} · ${esc(r.date)}</div>
@@ -2923,7 +3032,9 @@ function supprimeResultat(i){
   if (!R[i] || cleResultat(R[i]) !== vise){ fermeFeuille(); return toast('La liste a changé : réessaie'); }
   const reste = R.filter((_, k) => k !== i);
   DB.championnat.resultats = reste;
-  modifier('championnat', 'club_id=not.is.null', {resultats: reste});
+  /* 23/11/2026 : n'envoyer que la liste du classeur, jamais les résultats
+     ajoutés à l'affichage par la saisie de la Ligue d'Or (_ligue). */
+  modifier('championnat', 'club_id=not.is.null', {resultats: reste.filter(x => !x._ligue)});
   fermeFeuille(); toast('Résultat supprimé'); rendVue();
 }
 
@@ -8371,7 +8482,7 @@ const LIB_TABLE = {
   exercices_variantes:'Adaptation d\'exercice', systemes:'Système du playbook',
   push_abonnements:'Abonnement aux notifications',
   notif_preferences:'Réglages des notifications',
-  videos_match:'Vidéo de match',
+  videos_match:'Vidéo de match', briefings:'Briefing d\'après-match', resultats_ligue:'Résultat de la Ligue d\'Or',
 };
 const libTable = t => LIB_TABLE[t] || t;
 
@@ -12037,7 +12148,8 @@ const ECH_DEBUT = '2026-10-26';
 function echeancesDu(jour){
   if (jour < ECH_DEBUT) return [];
   const js = jourSemaine(jour), vis = echeancesVisibles();
-  return ECHEANCES.filter(e => vis.includes(e.type) && e.jours.includes(js))
+  /* 22/11/2026 : DT aussi head coach → le retour du mardi est en pause. */
+  return ECHEANCES.filter(e => vis.includes(e.type) && e.jours.includes(js) && !(e.type === 'hc' && typeof CUMUL_DT_HC !== 'undefined' && CUMUL_DT_HC))
                   .map(e => Object.assign({e}, etatEcheance(e.type, jour)));
 }
 
@@ -12258,6 +12370,48 @@ function blocCalendrierAccueil(){
    ══════════════════════════════════════════════════════════════════════════ */
 
 const ACCUEIL_LEGER = r => ['dt', 'dg', 'hc'].includes(r);
+
+/* ══════════════ LE DT, AUSSI HEAD COACH (option A, 22/11/2026)
+   Le head coach part ; le DT cumule les deux rôles. Fathy : « prépare tout,
+   je te donnerai mon signal ». L'interrupteur reste ÉTEINT jusque-là : le
+   head coach ne doit rien voir changer avant d'être prévenu.
+
+   Allumé :
+   - le DT garde ses six onglets ; les deux écrans du head coach qu'il n'a
+     pas (Équipe, Quiz) arrivent en rubriques sur son accueil, groupe Équipe ;
+   - l'échéance du mardi « Retour du head coach » est mise en pause (le DT ne
+     se rend pas de comptes à lui-même) : plus dans À traiter, plus dans le
+     tableau des dirigeants. Rien n'est effacé : on rallume pour un nouveau coach.
+   Le reste suit seul quand le head coach sort de l'effectif (fiche, rapport). */
+var CUMUL_DT_HC = false;
+const CASQUETTE_COACH = () => CUMUL_DT_HC && E.role === 'dt';
+
+function rubriqueEquipeCoach(){
+  if (!CASQUETTE_COACH()) return '';
+  const js = parEq(E.equipe);
+  return rubrique('Mon équipe — vue du coach', `E.hcVue='equipe';E.sous=null;rendVue();window.scrollTo(0,0)`, [
+    [js.length, 'joueurs'],
+    [js.length ? moy(js.map(note1)).toFixed(1) : '—', 'niveau<br>moyen'],
+    [moyTirGroupe(js).pct + '<small>%</small>', 'challenge<br>de tir', 'var(--or)']
+  ], 'Stats, domaines, playbook, exercices');
+}
+function rubriqueQuizCoach(){
+  if (!CASQUETTE_COACH()) return '';
+  const qs = (DB.quiz || []).filter(q => E.equipes.includes(q.equipe));
+  let attendus = 0, faits = 0;
+  qs.forEach(q => (q.joueurs || []).forEach(id => { const j = parId(id); if (!j) return; attendus++; if ((j.quizFaits || {})[q.id]) faits++; }));
+  return rubrique('Quiz vision de jeu', `E.hcVue='quiz';E.sous=null;rendVue();window.scrollTo(0,0)`, [
+    [qs.length, 'quiz<br>posés'],
+    [faits + `<small>/${attendus}</small>`, 'réponses<br>reçues', attendus && faits < attendus ? 'var(--alerte)' : 'var(--physique)'],
+    [Math.max(0, attendus - faits), 'en<br>attente', attendus - faits ? 'var(--alerte)' : 'var(--physique)']
+  ], 'Créer un quiz, voir les réponses');
+}
+/* L'écran du coach, ouvert depuis l'accueil. Ses propres sous-écrans
+   (exercices, playbook, création de quiz) gardent leur E.sous habituel. */
+function vueCasquetteCoach(){
+  const quitter = `E.hcVue=null;E.sous=null;rendVue();window.scrollTo(0,0)`;
+  return (E.sous ? '' : retour('Accueil', quitter)) + (E.hcVue === 'quiz' ? vueQuizCoach() : vueEquipe());
+}
 
 /* 1. Ce qui attend quelqu'un. Chaque ligne mène à l'écran où on le règle. */
 function blocATraiter(){
@@ -12521,11 +12675,11 @@ function vueAccueilLeger(){
   const dt = E.role === 'dt', dg = E.role === 'dg', hc = E.role === 'hc';
   const bloc = h => h && h.trim() ? `<div class="acc-bloc">${h}</div>` : '';
   return `<div class="acc-cols">
-  ${bloc(groupe('Compétition', [banniereLegere(), carteProchainMatch(DB.championnat.prochain), rubriqueVideosMatch()]))}
+  ${bloc(groupe('Compétition', [banniereLegere(), carteProchainMatch(DB.championnat.prochain), rubriqueLigue(), rubriqueBriefing(), carteBriefingJoueur(), rubriqueVideosMatch()]))}
   ${bloc(carteMonEcheance() + blocATraiter())}
   ${bloc(carteAujourdhui())}
   ${bloc(groupe(hc ? nomEq(E.equipe) : 'Équipe', [tuilesAccueil().replace(/^\s*<div class="section-titre">[^<]*<\/div>/, ''),
-     rubriqueAssiduite(), rubriqueFatigue(), hc && rubriqueMedical()]))}
+     rubriqueEquipeCoach(), rubriqueQuizCoach(), rubriqueAssiduite(), rubriqueFatigue(), hc && rubriqueMedical()]))}
   ${bloc(groupe('Staff et rapports', [dt && rubriqueStaff(), dt && rubriqueRapportPresident(), dg && rubriqueRapportsDT()]))}
   ${bloc(groupe('Club', [dt ? rubriquePartenaires() : lignePartenaire(), dt && peutImprimerBadges() && rubriqueBadges()]))}
   </div>`;
@@ -14108,6 +14262,789 @@ if (_vueVideosAnalyste){
   };
   /* Le plan des onglets garde la fonction d'origine : on l'y remplace. */
   Object.values(PLAN).forEach(p => p.forEach(o => { if (o[2] === _vueVideosAnalyste) o[2] = vueVideos; }));
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BRIEFING D'APRÈS-MATCH                                        (22/11/2026)
+
+   Fathy : « le head coach va bientôt se faire virer et le DT va devenir DT et
+   head coach. Le DT veut un moyen de faire un récap du match passé, un peu
+   comme ceci » — un diaporama de 8 pages, « JCA – ASA, présenté par le
+   directeur technique ». Usage prévu : la présentation du (futur) coach aux
+   joueurs, il s'en sert comme support. Deux formats : une page dans l'appli,
+   et un diaporama PDF à projeter.
+
+   - Le DT (et le head coach, s'il y en a un) rédige depuis son accueil.
+   - Brouillon : visible du rédacteur seul. Publié : les joueurs de l'équipe,
+     le staff et les dirigeants le lisent ; les invités, non.
+   - Les rubriques reprennent celles du PDF : bilan (ce qui a fonctionné, ce qui
+     nous a freinés, axes majeurs), attaque, un point focus avec son message
+     clé, défense, à conserver, priorités de travail, conclusion.
+   - La plateforme ajoute ce qu'elle sait déjà : le score, les 3 clés prévues
+     à la préparation (le rédacteur coche si elles ont été tenues), le lien vers
+     les stats et vers la vidéo du match.
+
+   Saisie pensée pour un téléphone : une ligne = un point. Pour les rubriques à
+   cartes, « Titre : texte », et des « ; » pour plusieurs puces dans une carte.
+
+   La liste vit dans BR, PAS dans DB (même leçon que VM et ASSI) : le
+   chargement du club remplace l'objet DB entier.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const PEUT_BRIEFING = r => r === 'dt' || r === 'hc';
+const LIT_BRIEFING  = r => r !== 'iv';
+const BR = {liste: null, charge: '', edite: null, ouvert: null};
+
+/* ───────────────────────── les données */
+const versBriefing = b => ({
+  id: b.id, eq: b.equipe_code || '', date: String(b.date_match || '').slice(0, 10),
+  adversaire: b.adversaire || '', statut: b.statut || 'brouillon',
+  contenu: b.contenu || {}, auteur: b.auteur_role || '', publieLe: String(b.publie_le || '').slice(0, 10)
+});
+
+async function chargeBriefings(){
+  if (BR.charge === 'en cours') return;
+  BR.charge = 'en cours';
+  try {
+    const enL = typeof enLigne === 'function' && enLigne();
+    if (enL && !SOURCE.clubId){ BR.charge = ''; setTimeout(chargeBriefings, 1500); return; }
+    if (enL){
+      const l = await api('briefings?select=id,equipe_code,date_match,adversaire,statut,contenu,auteur_role,publie_le&club_id=eq.'
+        + SOURCE.clubId + '&order=date_match.desc&limit=100') || [];
+      BR.liste = l.map(versBriefing);
+    } else if (!BR.liste){
+      BR.liste = briefingsDemo();
+    }
+    BR.charge = 'ok';
+  } catch (e){ BR.charge = 'erreur'; }
+  if (E.onglet === 0) rendVue();
+}
+
+/* La démonstration : le briefing réel du DT contre la JCA (son PDF), publié. */
+function briefingsDemo(){
+  const eq = (DB.equipes[0] || {}).id || 'pro';
+  return [{id: 'br-demo-jca', eq, date: '2026-10-31', adversaire: 'JCA', statut: 'publié', auteur: 'dt', publieLe: '2026-11-02',
+    contenu: {
+      cles: [{t: 'Ralentir le jeu de relance', ok: 'non'}, {t: 'Gagner la bataille du rebond', ok: 'partiel'}, {t: 'Privilégier le early et le jeu rapide', ok: 'oui'}],
+      fonctionne: 'Séquences intéressantes dans le secteur intérieur\nPhases de défense collective',
+      freine: 'Manque de jeu collectif\nChoix offensifs parfois précipités\nInsuffisances défensives',
+      axes: 'Organisation offensive, sélection des tirs, circulation du ballon, rigueur défensive.',
+      attaque: 'Circulation : Moins de dribbles inutiles, un ballon qui circule plus vite.\nMouvement : Développer le jeu sans ballon et améliorer le spacing.\nConnexion : Mieux relier joueurs extérieurs et joueurs intérieurs.\nSystèmes : Impliquer davantage l\'ensemble de l\'équipe.',
+      focusTitre: 'Tirs à trois points : vigilance sur les arrières',
+      focus: 'Privilégier les tirs ouverts, construits collectivement\nSi l\'adresse est faible, varier : pénétrations, jeu intérieur, mi-distance\nÉviter les tirs précipités, chercher le joueur le mieux placé\nLa qualité du tir prime sur le nombre de tentatives',
+      message: 'Ne pas confondre vitesse d\'exécution et précipitation. Chaque tir doit être justifié par la situation de jeu.',
+      defense: 'Attitudes : Engagement, concentration, constance ; Plus actifs sur le porteur, en contrôlant distances et appuis ; Communication, aides, rotations\nOrientation : Orienter selon les consignes collectives ; Protéger l\'axe central ; Coordonner défenseur sur le ballon et aides\nContestation et repli : Contester sans faute inutile ; Écran de retard et rebond ; Repli immédiat après tir manqué ou perte de balle',
+      conserver: 'Secteur intérieur : Un vrai potentiel dans les duels et les prises de position.\nRebonds : Des progrès grâce aux écrans de retard, à confirmer.\nDéfense de zone : Des séquences qui ont perturbé l\'adversaire.\nInitiatives collectives : Aperçues en fin de rencontre.',
+      priorites: 'Construire le jeu collectif : plus de passes, de mouvement et de spacing\nAméliorer la sélection des tirs et varier les solutions si l\'adresse baisse\nRenforcer les fondamentaux défensifs : orientation, aides, rotations, repli\nResponsabiliser chaque joueur, en attaque comme en défense',
+      conclusion: 'Gagner en maturité, en discipline et en solidarité.',
+      mots: 'Discipline, Engagement, Collectif',
+      note: 'Une attention particulière sera portée aux arrières sur leurs tirs à trois points.'
+    }}];
+}
+
+/* ───────────────────────── lecture du texte saisi */
+const lignesDe = t => String(t || '').split('\n').map(s => s.trim().replace(/^[-•·*]\s*/, '')).filter(Boolean);
+/* « Titre : texte ; texte » → {t, x:[...]} */
+const cartesDe = t => lignesDe(t).map(l => {
+  const m = /^(.{1,48}?)\s?:\s+(.*)$/.exec(l);
+  const titre = m ? m[1].trim() : '';
+  const reste = m ? m[2] : l;
+  return {t: titre, x: reste.split(/\s*;\s+/).map(s => s.trim()).filter(Boolean)};
+});
+const motsDe = t => String(t || '').split(/[,·\n]/).map(s => s.trim()).filter(Boolean).slice(0, 4);
+const memeAdv = (a, b) => String(a || '').trim().toUpperCase() === String(b || '').trim().toUpperCase();
+
+/* ───────────────────────── le match d'un briefing */
+function infosMatch(b){
+  const tous = [];
+  (DB.rencontres || []).forEach(r => tous.push({iso: isoMatch(r.date), adversaire: r.adversaire, pour: +r.pour || 0, contre: +r.contre || 0, id: r.id}));
+  ((DB.championnat || {}).resultats || []).forEach(r => tous.push({iso: isoMatch(r.date), adversaire: r.adversaire, pour: +r.pour || 0, contre: +r.contre || 0}));
+  const m = tous.filter(x => x.iso === b.date && memeAdv(x.adversaire, b.adversaire))
+    .sort((a, c) => (c.id ? 1 : 0) - (a.id ? 1 : 0))[0] || null;
+  const v = (VM.liste || []).find(x => x.date === b.date && (!x.eq || !b.eq || x.eq === b.eq));
+  return {score: m ? {pour: m.pour, contre: m.contre} : null, rencontre: (m && m.id) || null, video: v || null};
+}
+
+/* Les clés prévues à la préparation de ce match (onglet PREPA_MATCH). */
+function clesPrevues(eq, iso, adv){
+  const p = (DB.prepaMatch || []).find(m => (!eq || !m.equipe || m.equipe === eq)
+    && isoMatch(m.date) === iso && memeAdv(m.adversaire, adv));
+  return p ? (p.cles || []).map(x => String(x || '').replace(/^\s*\d+[.)]\s*/, '').trim()).filter(Boolean) : [];
+}
+
+const briefingDu = (eq, iso, adv) => (BR.liste || []).find(b => b.eq === eq && b.date === iso && memeAdv(b.adversaire, adv));
+
+function briefingsVisibles(){
+  const l = BR.liste || [];
+  const eqs = E.role === 'jr' ? [E.joueur && E.joueur.equipe].filter(Boolean) : (E.equipes || []);
+  return l.filter(b => (PEUT_BRIEFING(E.role) || b.statut === 'publié') && (!b.eq || !eqs.length || eqs.includes(b.eq)))
+          .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+/* ───────────────────────── la rubrique de l'accueil (DT / head coach) */
+function rubriqueBriefing(){
+  if (!PEUT_BRIEFING(E.role)) return '';
+  if (!BR.charge) setTimeout(chargeBriefings, 0);
+  const dm = dernierMatch(E.equipe);
+  const b = dm && briefingDu(E.equipe, dm.iso, dm.adversaire);
+  const nb = briefingsVisibles().filter(x => x.statut === 'publié').length;
+  const etat = !dm ? ['—', ''] : !b ? ['À faire', 'var(--alerte)'] : b.statut === 'publié' ? ['Publié', 'var(--physique)'] : ['Brouillon', 'var(--or)'];
+  const action = dm ? `ouvreBriefingEdit('${esc(E.equipe)}','${esc(dm.iso)}','${esc(String(dm.adversaire).replace(/'/g, ''))}')` : `ouvreSous('briefings')`;
+  return rubrique('Briefing d\'après-match', action, [
+    [etat[0], dm ? 'contre ' + esc(dm.adversaire) + '<br>' + esc(jourFr(dm.iso).slice(0, 5)) : 'aucun match<br>joué', etat[1]],
+    [dm ? `${dm.pour}–${dm.contre}` : '—', 'score', dm ? (dm.pour > dm.contre ? 'var(--physique)' : 'var(--danger)') : ''],
+    [nb, 'briefing' + (nb > 1 ? 's' : '') + '<br>publié' + (nb > 1 ? 's' : '')]
+  ], !dm ? 'Voir les briefings' : !b ? 'Rédiger le briefing' : b.statut === 'publié' ? 'Relire ou modifier' : 'Reprendre le brouillon',
+  nb ? `<button class="acc-lien" style="margin-top:8px" onclick="event.stopPropagation();ouvreSous('briefings')">Tous les briefings ›</button>` : '');
+}
+
+/* La carte des lecteurs (joueur, staff qui ne rédige pas, dirigeant) : le dernier publié. */
+function carteBriefingJoueur(){
+  if (!LIT_BRIEFING(E.role) || PEUT_BRIEFING(E.role)) return '';
+  if (!BR.charge) setTimeout(chargeBriefings, 0);
+  const b = briefingsVisibles()[0];
+  if (!b) return '';
+  const c = b.contenu || {}, mots = motsDe(c.mots);
+  return `<div class="section-titre">Briefing d'après-match</div>
+  <div class="carte as-rub br-carte" role="button" tabindex="0" onclick="ouvreBriefing('${esc(b.id)}')">
+    <div class="br-c-t">${esc(b.adversaire)} — ASA <small>${esc(jourFr(b.date).slice(0, 5))}</small></div>
+    ${c.conclusion ? `<p class="msg-txt" style="margin-top:6px">${esc(c.conclusion)}</p>` : ''}
+    ${mots.length ? `<div class="br-mots" style="margin-top:9px">${mots.map(m => `<span>${esc(m)}</span>`).join('')}</div>` : ''}
+    <span class="as-rub-voir" style="margin-top:10px">Lire le briefing ›</span>
+  </div>`;
+}
+
+/* ───────────────────────── ouvrir */
+function ouvreBriefing(id){ BR.ouvert = id; ouvreSous('briefing'); }
+function ouvreBriefingEdit(eq, iso, adv){
+  if (!PEUT_BRIEFING(E.role)) return;
+  const b = briefingDu(eq, iso, adv);
+  const prev = clesPrevues(eq, iso, adv);
+  BR.edite = b ? JSON.parse(JSON.stringify(b)) : {id: null, eq, date: iso, adversaire: adv, statut: 'brouillon', auteur: E.role,
+    contenu: {cles: []}};
+  const c = BR.edite.contenu; c.cles = c.cles || [];
+  /* des clés ajoutées au classeur après coup */
+  prev.forEach(t => { if (!c.cles.some(k => k.t === t)) c.cles.push({t, ok: ''}); });
+  ouvreSous('briefing-edit');
+}
+
+/* ───────────────────────── la liste */
+function vueBriefings(){
+  if (!BR.charge) setTimeout(chargeBriefings, 0);
+  const l = briefingsVisibles();
+  return `${retour('Accueil', 'fermeSous()')}
+  <h1 class="vue-titre">Briefings d'après-match</h1>
+  <p class="vue-sous">${PEUT_BRIEFING(E.role) ? 'Publiés ou en brouillon.' : 'Le retour du coach sur chaque match.'}</p>
+  ${l.length ? `<div class="carte" style="padding:4px 14px">${l.map(b => `<button class="fm-l" onclick="ouvreBriefing('${esc(b.id)}')">
+      <span class="mono fm-d">${dateCourte(b.date)}</span>
+      <span class="fm-a"><b>${esc(b.adversaire)} — ASA</b><small>${b.statut === 'publié' ? 'publié' : 'brouillon, visible de toi seul'}</small></span>
+      <span class="jl-fleche">›</span></button>`).join('')}</div>` : '<div class="vide">Aucun briefing pour l\'instant.</div>'}`;
+}
+
+/* ───────────────────────── la page de lecture */
+const COUL_CLE = {oui: 'var(--physique)', partiel: 'var(--alerte)', non: 'var(--danger)'};
+const LIB_CLE  = {oui: 'tenue', partiel: 'en partie', non: 'pas tenue'};
+
+function corpsBriefing(b){
+  const c = b.contenu || {}, im = infosMatch(b);
+  const sec = (t, h) => h ? `<div class="br-sec">${esc(t)}</div>${h}` : '';
+  const liste = t => { const l = lignesDe(t); return l.length ? `<ul class="br-ul">${l.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''; };
+  const cartes = (t, cl) => { const l = cartesDe(t); return l.length ? `<div class="br-g2">${l.map(k => `<div class="carte br-k ${cl || ''}">
+      ${k.t ? `<div class="br-k-t">${esc(k.t)}</div>` : ''}${k.x.length > 1 ? `<ul class="br-ul">${k.x.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : `<p class="msg-txt">${esc(k.x[0] || '')}</p>`}</div>`).join('')}</div>` : ''; };
+  const cles = (c.cles || []).filter(k => k.t);
+  const pri = lignesDe(c.priorites), mots = motsDe(c.mots);
+  const g = im.score && im.score.pour > im.score.contre;
+  return `<div class="banniere br-ban">
+    <div class="ban-sur">Briefing d'après-match · ${esc(nomEq(b.eq))} · ${esc(jourFr(b.date))}</div>
+    <div class="ban-titre">${esc(b.adversaire)} — ASA</div>
+    ${im.score ? `<div class="br-score"><b style="color:${g ? 'var(--physique)' : 'var(--danger)'}">${g ? 'Victoire' : 'Défaite'}</b> <span class="mono">${im.score.pour}–${im.score.contre}</span></div>` : ''}
+    <div class="br-ban-b">
+      ${im.rencontre ? `<button class="bouton fant" onclick="ouvreRencontre('${esc(im.rencontre)}')">Stats du match</button>` : ''}
+      ${im.video ? `<button class="bouton fant" onclick="regarderVideo('${esc(im.video.id)}')">Revoir le match</button>` : ''}
+      <button class="bouton" onclick="diaporamaBriefing('${esc(b.id || '')}')">Diaporama (PDF)</button>
+    </div>
+  </div>
+  ${cles.length ? sec('Les clés du match', `<div class="carte" style="padding:6px 14px">${cles.map((k, i) => `<div class="br-cle">
+      <span class="br-n">${i + 1}</span><span>${esc(k.t)}</span>
+      ${k.ok ? `<b style="color:${COUL_CLE[k.ok]}">${LIB_CLE[k.ok]}</b>` : '<b style="color:var(--gris2)">—</b>'}</div>`).join('')}</div>`) : ''}
+  ${(lignesDe(c.fonctionne).length || lignesDe(c.freine).length) ? sec('Bilan général', `<div class="br-g2">
+      <div class="carte br-k ok"><div class="br-k-t">Ce qui a fonctionné</div>${liste(c.fonctionne) || '<p class="carte-note">—</p>'}</div>
+      <div class="carte br-k ko"><div class="br-k-t">Ce qui nous a freinés</div>${liste(c.freine) || '<p class="carte-note">—</p>'}</div></div>
+      ${c.axes ? `<p class="br-axes"><b>Axes majeurs :</b> ${esc(c.axes)}</p>` : ''}`) : ''}
+  ${sec('Attaque', cartes(c.attaque))}
+  ${(c.focusTitre || lignesDe(c.focus).length || c.message) ? sec(c.focusTitre || 'Point focus', `<div class="br-g2 focus">
+      ${lignesDe(c.focus).length ? `<div class="carte br-k">${liste(c.focus)}</div>` : ''}
+      ${c.message ? `<div class="carte br-msg"><div class="br-msg-t">Message clé</div><p>${esc(c.message)}</p></div>` : ''}</div>`) : ''}
+  ${sec('Points à corriger en défense', cartes(c.defense, 'or'))}
+  ${sec('Points positifs à conserver', cartes(c.conserver))}
+  ${pri.length ? sec('Priorités de travail', `<div class="carte" style="padding:4px 14px">${pri.map((p, i) => `<div class="br-pri"><b>${i + 1}</b><span>${esc(p)}</span></div>`).join('')}</div>`) : ''}
+  ${(c.conclusion || mots.length || c.note) ? `<div class="carte br-concl">
+      <div class="br-msg-t">Conclusion ${b.auteur === 'hc' ? 'du coach' : 'du directeur technique'}</div>
+      ${c.conclusion ? `<div class="br-concl-p">${esc(c.conclusion)}</div>` : ''}
+      ${mots.length ? `<div class="br-mots">${mots.map(m => `<span>${esc(m)}</span>`).join('')}</div>` : ''}
+      ${c.note ? `<p class="carte-note" style="margin-top:10px">${esc(c.note)}</p>` : ''}</div>` : ''}`;
+}
+
+function vueBriefing(){
+  if (!BR.charge) setTimeout(chargeBriefings, 0);
+  const b = (BR.liste || []).find(x => x.id === BR.ouvert);
+  if (!b) return `${retour('Accueil', 'fermeSous()')}<div class="vide">${BR.charge === 'ok' ? 'Briefing introuvable.' : 'Chargement…'}</div>`;
+  if (b.statut !== 'publié' && !PEUT_BRIEFING(E.role)) return `${retour('Accueil', 'fermeSous()')}<div class="vide">Ce briefing n'est pas encore publié.</div>`;
+  return `${retour('Accueil', 'fermeSous()')}
+  ${PEUT_BRIEFING(E.role) ? `<div class="br-etat ${b.statut === 'publié' ? 'pub' : ''}">
+      <span>${b.statut === 'publié' ? 'Publié — les joueurs le lisent' : 'Brouillon — visible de toi seul'}</span>
+      <button class="hf-b" onclick="ouvreBriefingEdit('${esc(b.eq)}','${esc(b.date)}','${esc(String(b.adversaire).replace(/'/g, ''))}')">Modifier ›</button></div>` : ''}
+  <div class="br-page">${corpsBriefing(b)}</div>
+  <button class="bouton fant plein" style="margin-top:14px" onclick="ouvreSous('briefings')">Tous les briefings</button>`;
+}
+
+/* ───────────────────────── la rédaction */
+const CHAMPS_BR = [
+  ['fonctionne', 'Ce qui a fonctionné', 'Un point par ligne', 3],
+  ['freine', 'Ce qui nous a freinés', 'Un point par ligne', 3],
+  ['axes', 'Axes majeurs', 'Une phrase — ex. : organisation offensive, sélection des tirs…', 2],
+  ['attaque', 'Attaque', 'Une carte par ligne : « Titre : texte »\nCirculation : moins de dribbles inutiles…', 4],
+  ['focusTitre', 'Point focus — titre', 'ex. : Tirs à trois points : vigilance sur les arrières', 1],
+  ['focus', 'Point focus — consignes', 'Une consigne par ligne', 3],
+  ['message', 'Message clé', 'La phrase que les joueurs doivent retenir', 2],
+  ['defense', 'Points à corriger en défense', 'Une carte par ligne : « Titre : point ; point ; point »', 4],
+  ['conserver', 'Points positifs à conserver', 'Une carte par ligne : « Titre : texte »', 4],
+  ['priorites', 'Priorités de travail', 'Une priorité par ligne, dans l\'ordre (4 au plus conseillé)', 4],
+  ['conclusion', 'Conclusion', 'La phrase de fin', 2],
+  ['mots', 'Trois mots', 'Discipline, Engagement, Collectif', 1],
+  ['note', 'Note finale', 'Facultatif — une attention particulière…', 2]
+];
+
+function vueBriefingEdit(){
+  const b = BR.edite;
+  if (!b || !PEUT_BRIEFING(E.role)) return `${retour('Accueil', 'fermeSous()')}<div class="vide">Rien à rédiger.</div>`;
+  const c = b.contenu, im = infosMatch(b);
+  return `${retour('Accueil', 'fermeSous()')}
+  <h1 class="vue-titre">Briefing — ${esc(b.adversaire)}</h1>
+  <p class="vue-sous">${esc(nomEq(b.eq))} · ${esc(jourFr(b.date))}${im.score ? ` · ${im.score.pour}–${im.score.contre}` : ''}.
+    Une ligne = un point. Les joueurs ne voient rien avant « Publier ».</p>
+
+  ${(c.cles || []).length ? `<div class="carte">
+    <div class="carte-titre" style="margin-bottom:6px">Les clés du match</div>
+    <p class="carte-note" style="margin-bottom:8px">Prévues à la préparation. Ont-elles été tenues ?</p>
+    ${c.cles.map((k, i) => `<div class="br-cle-e"><span>${i + 1}. ${esc(k.t)}</span><div class="br-tri">${['oui', 'partiel', 'non'].map(v =>
+      `<button class="${k.ok === v ? 'actif ' + v : ''}" onclick="cleBriefing(${i},'${v}')">${LIB_CLE[v]}</button>`).join('')}</div></div>`).join('')}
+  </div>` : `<p class="carte-note">Aucune clé du match trouvée à la préparation (classeur, onglet 4_PREPA_MATCH).</p>`}
+
+  ${CHAMPS_BR.map(([k, lib, ph, n]) => `<label class="label" for="br_${k}" style="margin-top:14px">${esc(lib)}</label>
+    ${n === 1 ? `<input class="champ" id="br_${k}" placeholder="${esc(ph)}" value="${esc(c[k] || '')}" oninput="BR.edite.contenu.${k}=this.value">`
+      : `<textarea class="champ br-ta" id="br_${k}" rows="${n}" placeholder="${esc(ph)}" oninput="BR.edite.contenu.${k}=this.value">${esc(c[k] || '')}</textarea>`}`).join('')}
+
+  <div class="g2" style="margin-top:16px">
+    <button class="bouton fant" onclick="enregistreBriefing(false)">Enregistrer le brouillon</button>
+    <button class="bouton fant" onclick="diaporamaBriefing(null)">Aperçu du diaporama</button>
+  </div>
+  <button class="bouton plein" style="margin-top:10px" onclick="enregistreBriefing(true)">${b.statut === 'publié' ? 'Mettre à jour la version publiée' : 'Publier aux joueurs'}</button>
+  <p class="carte-note" style="margin-top:8px;text-align:center">Publié, il apparaît sur l'accueil des joueurs de l'équipe, du staff et des dirigeants.</p>`;
+}
+
+function cleBriefing(i, v){
+  const k = BR.edite.contenu.cles[i];
+  k.ok = k.ok === v ? '' : v;
+  const y = window.scrollY; rendVue(); window.scrollTo(0, y);
+}
+
+async function enregistreBriefing(publier){
+  const b = BR.edite;
+  if (!b) return;
+  const c = b.contenu;
+  if (publier && !lignesDe(c.fonctionne).length && !lignesDe(c.freine).length && !c.conclusion && !lignesDe(c.priorites).length){
+    toast('Écris au moins le bilan, les priorités ou la conclusion'); return;
+  }
+  if (!b.id) b.id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'br-' + Date.now();
+  if (publier){ b.statut = 'publié'; b.publieLe = AUJ(); }
+  b.auteur = b.auteur || E.role;
+  const ligne = {id: b.id, equipe_code: b.eq || null, date_match: b.date, adversaire: b.adversaire,
+    statut: b.statut, contenu: c, auteur_role: b.auteur};
+  if (publier) ligne.publie_le = new Date().toISOString();
+  BR.liste = (BR.liste || []).filter(x => x.id !== b.id).concat([JSON.parse(JSON.stringify(b))]);
+  await enregistrer('briefings', ligne, 'id');
+  if (publier && typeof journalChat === 'function') journalChat(`a publié le briefing d'après-match — ${b.adversaire} – ASA`);
+  toast(publier ? 'Briefing publié' : 'Brouillon enregistré');
+  if (publier){ BR.ouvert = b.id; E.sous = 'briefing'; rendVue(); window.scrollTo(0, 0); }
+}
+
+/* ───────────────────────── le diaporama (impression 16:9) */
+function diaporamaBriefing(id){
+  const b = id ? (BR.liste || []).find(x => x.id === id) : BR.edite;
+  if (!b) return;
+  const c = b.contenu || {}, im = infosMatch(b);
+  const tot = [];
+  const ul = l => `<ul>${l.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`;
+  const cartesDp = (t, or) => cartesDe(t).map(k => `<div class="dp-k">${k.t ? `<h3${or ? ' class="or"' : ''}>${esc(k.t)}</h3>` : ''}${k.x.length > 1 ? ul(k.x) : `<p>${esc(k.x[0] || '')}</p>`}</div>`).join('');
+  const page = (cl, h) => tot.push({cl, h});
+  const logo = logoSrc();
+  const par = b.auteur === 'hc' ? 'le coach' : 'le directeur technique';
+
+  page('nuit une', `<div><div class="dp-sur">Rapport de briefing d'après-match</div>
+      <div class="dp-titre">${esc(b.adversaire)} – ASA</div>
+      <div class="dp-sous">${esc(jourFr(b.date))}${im.score ? ` · ${im.score.pour}–${im.score.contre}` : ''}</div>
+      <div class="dp-sous">Présenté par ${par}</div></div>
+      ${logo ? `<img class="dp-logo" src="${logo}" alt="ASA">` : ''}`);
+  const cles = (c.cles || []).filter(k => k.t);
+  if (cles.length) page('clair', `<h2>Les clés du match</h2><div class="dp-pri">${cles.map((k, i) => `<div class="dp-pl"><b>${i + 1}</b><span>${esc(k.t)}</span>${k.ok ? `<em class="${k.ok}">${LIB_CLE[k.ok]}</em>` : ''}</div>`).join('')}</div>`);
+  if (lignesDe(c.fonctionne).length || lignesDe(c.freine).length)
+    page('clair', `<h2>Bilan général du match</h2><div class="dp-g2 haut"><div class="dp-k"><h3 class="or">Ce qui a fonctionné</h3>${ul(lignesDe(c.fonctionne))}</div>
+      <div class="dp-k"><h3 class="or">Ce qui nous a freinés</h3>${ul(lignesDe(c.freine))}</div></div>${c.axes ? `<p class="dp-axes">Axes majeurs : ${esc(c.axes)}</p>` : ''}`);
+  if (cartesDe(c.attaque).length) page('clair', `<h2>Attaque : jeu collectif et organisation</h2><div class="dp-g2">${cartesDp(c.attaque)}</div>`);
+  if (c.focusTitre || lignesDe(c.focus).length || c.message)
+    page('clair', `<h2>${esc(c.focusTitre || 'Point focus')}</h2><div class="dp-g2 focus haut">${lignesDe(c.focus).length ? `<div class="dp-k">${ul(lignesDe(c.focus))}</div>` : ''}
+      ${c.message ? `<div class="dp-k nuit"><div class="dp-mc">Message clé</div><p class="dp-mt">${esc(c.message)}</p></div>` : ''}</div>`);
+  if (cartesDe(c.defense).length) page('clair', `<h2>Points à corriger en défense</h2><div class="dp-g${Math.min(3, cartesDe(c.defense).length)} haut">${cartesDp(c.defense, true)}</div>`);
+  if (cartesDe(c.conserver).length) page('clair', `<h2>Points positifs à conserver</h2><div class="dp-g2">${cartesDp(c.conserver)}</div>`);
+  if (lignesDe(c.priorites).length) page('clair', `<h2>Priorités de travail</h2><div class="dp-pri">${lignesDe(c.priorites).map((p, i) => `<div class="dp-pl"><b>${i + 1}</b><span>${esc(p)}</span></div>`).join('')}</div>`);
+  if (c.conclusion || motsDe(c.mots).length || c.note)
+    page('nuit', `<div class="dp-concl"><div class="dp-sur">Conclusion du ${b.auteur === 'hc' ? 'coach' : 'directeur technique'}</div>
+      <div class="dp-cp">${esc(c.conclusion || '')}</div>
+      <div class="dp-mots">${motsDe(c.mots).map(m => `<span>${esc(m)}</span>`).join('')}</div>
+      ${c.note ? `<p class="dp-note">${esc(c.note)}</p>` : ''}</div>`);
+
+  const n = tot.length;
+  const html = tot.map((p, i) => `<section class="dp ${p.cl}">${p.h}${p.cl === 'clair'
+    ? `<div class="dp-pied"><span>${esc(b.adversaire)} – ASA | Briefing d'après-match</span><span>${i + 1} / ${n}</span></div>` : ''}</section>`).join('');
+  ouvreImpression(`Briefing — ${b.adversaire}`, `<div class="dp-pile">${html}</div>`,
+    'Format diapositive 16:9. « Imprimer », puis « Enregistrer au format PDF » : le fichier se projette ou s\'envoie tel quel.');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RÉSULTATS DE LA LIGUE D'OR ET CLASSEMENT CALCULÉ             (23/11/2026)
+
+   Fathy : « je reçois ce genre de photo de résultat global du championnat,
+   serait-il possible d'automatiser les scores de fin de match, le goal
+   average et le classement ? »
+   Réponses du 23/11 :
+   - la photo : l'affiche fédérale de la journée (programme, puis résultats) ;
+   - qui l'envoie : le DT et Oumar (assistant administratif) — un rôle de
+     plus viendra peut-être, plus tard ;
+   - le barème : 2 points la victoire, 1 la défaite, 0 le forfait, puis les
+     confrontations directes ;
+   - « il faut impérativement garder les matchs déjà enregistrés ; on est déjà
+     en retard, il y a des matchs que je n'ai pas rentrés » → saisie à la main
+     possible pour rattraper, et les résultats déjà connus de l'ASA sont repris.
+
+   Principe : on enregistre TOUS les matchs de la Ligue d'Or hommes (pas
+   seulement ceux de l'ASA), et le classement se calcule à partir d'eux. Le
+   classeur Championnat AA garde le nom de la compétition et le calendrier de
+   l'ASA ; son onglet Classement ne sert plus.
+
+   La photo est lue par l'IA (même chemin que la feuille de match), puis
+   RELUE par la personne : rien ne s'enregistre sans elle. Une affiche de
+   PROGRAMME (des « VS », pas de score) donne quand même les affiches, l'heure
+   et la salle ; les scores se tapent après le match ou viennent de l'affiche
+   des résultats.
+
+   Les données vivent dans RL, PAS dans DB (leçon de VM, ASSI, BR).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const PEUT_LIGUE = r => r === 'dt' || r === 'as';
+const RL = {liste: null, charge: '', edite: null};
+const LIGUE_PAR_JOURNEE = 6;          // 12 clubs → 6 matchs par journée
+
+/* Les 12 clubs de la Ligue d'Or hommes (calendrier fédéral 2026-2027) et les
+   noms sous lesquels ils apparaissent sur les affiches. */
+const LIGUE_CLUBS = [
+  ['ASA', ['ASA', 'ASA ADJAME', 'ASSOCIATION SPORTIVE ADJAME', 'AS ADJAME']],
+  ['JCA', ['JCA', 'JEUNESSE CLUB ABIDJAN', 'JEUNESSE CLUB D ABIDJAN']],
+  ['CBA', ['CBA', 'CLUB BASKET ABIDJAN']],
+  ['ABC', ['ABC', 'ABC FIGHTERS', 'AFRICA BASKET CLUB']],
+  ['ABI SNIPERS', ['ABI SNIPERS', 'SNIPERS', 'ABISNIPER', 'ABISNIPERS', 'ABIDJAN BASKETBALL INSTITUT']],
+  ['WARRIORS', ['WARRIORS']],
+  ['GLOBAL', ['GLOBAL', 'DJARAGUES', 'GLOBAL BASKET CLUB', 'DJARAGUES GLOBAL BASKET CLUB']],
+  ['SOA', ['SOA', 'STADE OLYMPIQUE ABIDJAN']],
+  ['FUSION', ['FUSION', 'FUSION BASKETBALL']],
+  ['AZUR', ['AZUR']],
+  ['HYPERSONICS', ['HYPERSONICS', 'HYPERSONIC', 'HYPERSONICS ABIDJAN']],
+  ['INJS', ['INJS']]
+];
+const normNom = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+
+/* Les clubs de la compétition : ceux du classement reçu du classeur, sinon la
+   liste fédérale. */
+function clubsLigue(){
+  const C = DB.championnat || {};
+  const noms = (C.classementClasseur || C.classement || []).map(l => l.equipe).filter(Boolean);
+  return noms.length >= 8 ? noms : LIGUE_CLUBS.map(c => c[0]);
+}
+const nousLigue = () => ((DB.championnat.classementClasseur || DB.championnat.classement || []).find(l => l.nous) || {}).equipe || 'ASA';
+
+/* Rattache un nom lu sur l'affiche à un club. Renvoie '' si rien ne colle. */
+function clubDe(nom){
+  const n = normNom(nom);
+  if (!n) return '';
+  const clubs = clubsLigue();
+  const exact = clubs.find(c => normNom(c) === n);
+  if (exact) return exact;
+  for (const [ref, alias] of LIGUE_CLUBS){
+    if (alias.some(a => n === a || (` ${n} `).includes(` ${a} `))){
+      return clubs.find(c => normNom(c) === ref) || clubs.find(c => (` ${normNom(c)} `).includes(` ${ref} `)) || ref;
+    }
+  }
+  return clubs.find(c => (` ${n} `).includes(` ${normNom(c)} `)) || '';
+}
+
+/* ───────────────────────── les données */
+const versLigue = m => ({id: m.id, journee: m.journee == null ? null : +m.journee, date: String(m.date_match || '').slice(0, 10),
+  dom: m.domicile || '', ext: m.exterieur || '', sd: m.score_dom == null ? null : +m.score_dom,
+  se: m.score_ext == null ? null : +m.score_ext, forfait: m.forfait || '', heure: m.heure || '', salle: m.salle || ''});
+
+async function chargeLigue(){
+  if (RL.charge === 'en cours') return;
+  RL.charge = 'en cours';
+  try {
+    const enL = typeof enLigne === 'function' && enLigne();
+    if (enL && !SOURCE.clubId){ RL.charge = ''; setTimeout(chargeLigue, 1500); return; }
+    if (enL){
+      const l = await api('resultats_ligue?select=id,journee,date_match,domicile,exterieur,score_dom,score_ext,forfait,heure,salle&club_id=eq.'
+        + SOURCE.clubId + '&order=date_match.asc&limit=400') || [];
+      RL.liste = l.map(versLigue);
+    } else if (!RL.liste){
+      RL.liste = [];
+    }
+    repriseResultatsASA();
+    RL.charge = 'ok';
+  } catch (e){ RL.charge = 'erreur'; }
+  if (E.onglet === 0) rendVue();
+}
+
+/* Les résultats de championnat de l'ASA déjà enregistrés (classeur, feuilles
+   de match) entrent dans la liste s'ils n'y sont pas : rien de ce qui est
+   déjà saisi n'est perdu. Amicaux et coupe restent hors classement. */
+function repriseResultatsASA(){
+  const nous = nousLigue();
+  ((DB.championnat || {}).resultatsClasseur || (DB.championnat || {}).resultats || []).forEach(r => {
+    const comp = normNom(r.competition || '');
+    if (comp && comp !== 'CHAMPIONNAT') return;
+    const adv = clubDe(r.adversaire);
+    if (!adv || adv === nous) return;
+    const iso = isoMatch(r.date);
+    if (RL.liste.some(m => m.date === iso && [m.dom, m.ext].includes(adv))) return;
+    RL.liste.push({id: 'asa-' + iso + '-' + normNom(adv).replace(/ /g, '-'), journee: journeeDuTour(r.tour), date: iso,
+      dom: r.domicile ? nous : adv, ext: r.domicile ? adv : nous,
+      sd: r.domicile ? +r.pour : +r.contre, se: r.domicile ? +r.contre : +r.pour, forfait: '', heure: '', salle: '', repris: true});
+  });
+}
+const journeeDuTour = t => { const m = /J\s*(\d+)/i.exec(String(t || '')); return m ? +m[1] : null; };
+const joue = m => !!m.forfait || (m.sd != null && m.se != null && !isNaN(m.sd) && !isNaN(m.se) && m.sd !== m.se);
+
+/* ───────────────────────── le classement (FIBA : 2-1-0, puis confrontations directes) */
+function issueLigue(m){
+  if (m.forfait === 'dom') return {g: m.ext, p: m.dom, gp: 20, pp: 0, f: true};   // forfait : 20-0
+  if (m.forfait === 'ext') return {g: m.dom, p: m.ext, gp: 20, pp: 0, f: true};
+  return m.sd > m.se ? {g: m.dom, p: m.ext, gp: m.sd, pp: m.se} : {g: m.ext, p: m.dom, gp: m.se, pp: m.sd};
+}
+function classementLigue(){
+  const clubs = clubsLigue(), nous = nousLigue();
+  const ms = (RL.liste || []).filter(joue);
+  const st = {};
+  const ligne = c => st[c] = st[c] || {equipe: c, j: 0, v: 0, d: 0, pts: 0, pp: 0, pc: 0, nous: c === nous};
+  clubs.forEach(ligne);
+  ms.forEach(m => {
+    const r = issueLigue(m), g = ligne(r.g), p = ligne(r.p);
+    g.j++; g.v++; g.pts += 2; g.pp += r.gp; g.pc += r.pp;
+    p.j++; p.d++; p.pts += r.f ? 0 : 1; p.pp += r.pp; p.pc += r.gp;
+  });
+  /* Égalité de points : mini-classement des matchs entre les équipes à
+     égalité (points, puis différence, puis points marqués), puis différence
+     générale, puis points marqués. */
+  const groupes = {};
+  Object.values(st).forEach(l => (groupes[l.pts] = groupes[l.pts] || []).push(l));
+  const ordre = [];
+  Object.keys(groupes).map(Number).sort((a, b) => b - a).forEach(p => {
+    const g = groupes[p];
+    if (g.length > 1){
+      const noms = g.map(l => l.equipe), mini = {};
+      noms.forEach(n => mini[n] = {pts: 0, diff: 0, pp: 0, n: 0});
+      ms.filter(m => noms.includes(m.dom) && noms.includes(m.ext)).forEach(m => {
+        const r = issueLigue(m);
+        mini[r.g].pts += 2; mini[r.p].pts += r.f ? 0 : 1; mini[r.g].n++; mini[r.p].n++;
+        mini[r.g].diff += r.gp - r.pp; mini[r.p].diff += r.pp - r.gp;
+        mini[r.g].pp += r.gp; mini[r.p].pp += r.pp;
+      });
+      g.sort((a, b) => mini[b.equipe].pts - mini[a.equipe].pts || mini[b.equipe].diff - mini[a.equipe].diff
+        || mini[b.equipe].pp - mini[a.equipe].pp || (b.pp - b.pc) - (a.pp - a.pc) || b.pp - a.pp || a.equipe.localeCompare(b.equipe));
+      if (p > 0) g.forEach(l => l.depart = mini[l.equipe].n ? `confrontation directe : ${mini[l.equipe].diff >= 0 ? '+' : ''}${mini[l.equipe].diff}` : '');
+    }
+    ordre.push(...g);
+  });
+  return ordre;
+}
+
+/* Combien de résultats manquent, journée par journée (pour rattraper le retard). */
+function etatJournees(){
+  const parJ = {};
+  (RL.liste || []).forEach(m => { const j = m.journee || 0; (parJ[j] = parJ[j] || []).push(m); });
+  const max = Math.max(0, ...Object.keys(parJ).map(Number));
+  const l = [];
+  for (let j = 1; j <= max; j++){
+    const ms = parJ[j] || [];
+    l.push({j, n: ms.length, joues: ms.filter(joue).length, date: (ms.find(m => m.date) || {}).date || ''});
+  }
+  if (parJ[0]) l.push({j: 0, n: parJ[0].length, joues: parJ[0].filter(joue).length, date: ''});
+  return l;
+}
+
+/* Le classement calculé remplace celui du classeur dès qu'un résultat existe,
+   la journée en cours suit les matchs enregistrés, et les résultats de l'ASA
+   saisis ici rejoignent la liste des derniers résultats. Appelé avant chaque
+   affichage : DB est remplacé à chaque chargement du club. On garde à côté ce
+   que le classeur a envoyé, pour que le calcul reparte toujours de lui. */
+function appliqueLigue(){
+  const C = DB.championnat;
+  if (!C || !RL.liste) return;
+  /* Le classement du classeur : gardé à part tant que le tableau affiché n'est
+     pas celui qu'on a calculé (un nouveau chargement du club en apporte un
+     autre, qui redevient la référence des noms de clubs). */
+  if (!C.classementClasseur || (C.classement && C.classement !== C._clCalcule)) C.classementClasseur = (C.classement || []).slice();
+  /* Les résultats : on ne garde AUCUNE copie. On retire seulement ce qu'on a
+     ajouté nous-mêmes (_ligue) puis on le remet : un résultat ajouté ou
+     supprimé ailleurs entre deux affichages reste tel quel. */
+  const propres = (C.resultats || []).filter(r => !r._ligue);
+  if (!C.resultatsClasseur || C.resultats !== C._resCalcules) C.resultatsClasseur = propres.slice();
+  /* La reprise des résultats de l'ASA se refait à chaque fois depuis la liste
+     ACTUELLE du classeur : un résultat que le classeur a retiré (ou que le DT
+     a supprimé) ne revient pas par ici. */
+  RL.liste = RL.liste.filter(m => !m.repris);
+  repriseResultatsASA();
+  if (!RL.liste.some(joue)){ C.resultats = propres; return; }
+  C.classement = C._clCalcule = classementLigue().map(l => ({equipe: l.equipe, j: l.j, v: l.v, d: l.d, pp: l.pp, pc: l.pc, pts: l.pts, nous: !!l.nous, depart: l.depart || ''}));
+  C.classementCalcule = true;
+  const jj = RL.liste.filter(joue).map(m => m.journee || 0);
+  C.journee = Math.max(...jj, 0);
+  const nous = nousLigue();
+  const res = propres.slice();
+  RL.liste.filter(m => joue(m) && !m.forfait && !m.repris && [m.dom, m.ext].includes(nous)).forEach(m => {
+    const dom = m.dom === nous, adv = dom ? m.ext : m.dom;
+    if (res.some(r => isoMatch(r.date) === m.date && clubDe(r.adversaire) === adv)) return;
+    res.push({adversaire: adv, date: dateFrDe(m.date), domicile: dom, pour: dom ? m.sd : m.se, contre: dom ? m.se : m.sd,
+      competition: 'Championnat', tour: m.journee ? 'J' + m.journee : '', _ligue: true});
+  });
+  C.resultats = C._resCalcules = res.sort((a, b) => isoMatch(b.date).localeCompare(isoMatch(a.date)));
+}
+const dateFrDe = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '';
+
+/* rendVue applique d'abord le classement calculé (enveloppe). */
+(function(){
+  const orig = rendVue;
+  rendVue = function(){ try { appliqueLigue(); } catch (e) {} return orig.apply(this, arguments); };
+})();
+
+/* ───────────────────────── la rubrique de l'accueil */
+function rubriqueLigue(){
+  if (!PEUT_LIGUE(E.role)) return '';
+  if (!RL.charge) setTimeout(chargeLigue, 0);
+  const ej = etatJournees().filter(x => x.j > 0);
+  const manque = ej.reduce((s, x) => s + Math.max(0, LIGUE_PAR_JOURNEE - x.joues), 0);
+  const der = ej.filter(x => x.joues).slice(-1)[0];
+  return rubrique('Résultats de la Ligue d\'Or', `ouvreSous('ligue')`, [
+    [der ? 'J' + der.j : '—', 'dernière<br>journée saisie'],
+    [(RL.liste || []).filter(joue).length, 'résultats<br>enregistrés'],
+    [manque, 'résultats<br>manquants', manque ? 'var(--alerte)' : 'var(--physique)']
+  ], 'Photo de la journée ou saisie à la main');
+}
+/* Oumar n'a pas l'accueil allégé : la même rubrique, en tête de son accueil. */
+function carteLigueAs(){ return E.role === 'as' ? rubriqueLigue() : ''; }
+
+/* ───────────────────────── l'écran principal */
+function vueLigue(){
+  if (!RL.charge) setTimeout(chargeLigue, 0);
+  const ej = etatJournees();
+  const cl = classementLigue();
+  const nous = nousLigue();
+  const incomplet = ej.some(x => x.j && x.joues < LIGUE_PAR_JOURNEE);
+  return `${retour('Accueil', 'fermeSous()')}
+  <h1 class="vue-titre">Ligue d'Or — résultats</h1>
+  <p class="vue-sous">Tous les matchs de chaque journée, pas seulement ceux de l'ASA : c'est ce qui fait le classement.</p>
+
+  <label class="bouton plein lg-photo">Photo de la journée — résultats ou programme
+    <input type="file" accept="image/*" onchange="lisAfficheLigue(this)" hidden></label>
+  <button class="bouton fant plein" style="margin-top:8px" onclick="nouvelleJourneeMain()">+ Saisir une journée à la main</button>
+
+  <div class="section-titre">Journées enregistrées</div>
+  ${ej.length ? `<div class="carte" style="padding:4px 14px">${ej.map(x => `<button class="fm-l" onclick="ouvreJourneeLigue(${x.j})">
+      <span class="mono fm-d">${x.j ? 'J' + x.j : '—'}</span>
+      <span class="fm-a"><b>${x.j ? 'Journée ' + x.j : 'Sans numéro de journée'}${x.date ? ' · ' + esc(jourFr(x.date).slice(0, 5)) : ''}</b>
+        <small style="color:${x.joues >= LIGUE_PAR_JOURNEE ? 'var(--physique)' : 'var(--alerte)'}">${x.joues}/${LIGUE_PAR_JOURNEE} résultats${x.n > x.joues ? ` · ${x.n - x.joues} sans score` : ''}</small></span>
+      <span class="jl-fleche">›</span></button>`).join('')}</div>` : '<div class="vide">Aucun match enregistré.</div>'}
+
+  <div class="section-titre">Classement calculé</div>
+  <p class="carte-note" style="margin:-4px 0 8px">Victoire 2 pts · défaite 1 · forfait 0. À égalité : confrontation directe, puis différence générale.</p>
+  ${incomplet ? `<p class="lg-alerte">Il manque des résultats : le classement ne sera juste qu'une fois toutes les journées complètes.</p>` : ''}
+  <div class="tab-enrob"><table class="tab">
+    <thead><tr><th>#</th><th>Équipe</th><th class="num">Pts</th><th class="num">J</th><th class="num">V</th><th class="num">D</th><th class="num">Diff.</th></tr></thead>
+    <tbody>${cl.map((l, i) => `<tr class="${l.equipe === nous ? 'nous' : ''}"><td class="mono">${i + 1}</td>
+      <td class="tab-nom">${esc(l.equipe)}${l.depart ? `<div class="carte-note" style="font-size:10px">${esc(l.depart)}</div>` : ''}</td>
+      <td class="num"><b>${l.pts}</b></td><td class="num">${l.j}</td><td class="num">${l.v}</td><td class="num">${l.d}</td>
+      <td class="num" style="color:${l.pp - l.pc >= 0 ? 'var(--physique)' : 'var(--danger)'}">${l.pp - l.pc >= 0 ? '+' : ''}${l.pp - l.pc}</td></tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+/* ───────────────────────── lire l'affiche */
+async function lisAfficheLigue(input){
+  const f = input.files && input.files[0];
+  if (!f) return;
+  toast('Lecture de l\'affiche…');
+  let lu = null;
+  try {
+    const enL = typeof enLigne === 'function' && enLigne();
+    if (enL){
+      const b64 = await new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = ko; r.readAsDataURL(f); });
+      lu = await appelFonction('asa-resultats', {image: b64, type: f.type || 'image/jpeg', clubs: clubsLigue()});
+    } else {
+      lu = lectureDemoLigue();
+    }
+  } catch (e){ toast((e && e.message ? e.message + ' ' : '') + 'Tu peux saisir la journée à la main.'); return; }
+  finally { input.value = ''; }
+  if (!lu || !Array.isArray(lu.matchs) || !lu.matchs.length){ toast('Affiche illisible — saisis la journée à la main'); return; }
+  RL.edite = journeeDepuisLecture(lu);
+  ouvreSous('ligue-relecture');
+}
+/* Même chemin que la feuille de match (lisFeuille, p3k_match.js) : réseau
+   vérifié, session renouvelée, 90 s, et la raison du refus dite en clair. */
+async function appelFonction(nom, corps){
+  if (!(await reseauDispo())) throw new Error('Pas de réseau : garde la photo et recommence dès que le réseau revient.');
+  await rafraichitSession();
+  let d;
+  try {
+    const r = await fetchBorne(SOURCE.url + '/functions/v1/' + nom, {method: 'POST', headers: entetesASA(),
+      body: JSON.stringify({image: corps.image, media_type: corps.type, clubs: corps.clubs})}, 90000);
+    /* Fonction pas encore déployée : on le dit, la saisie à la main reste là. */
+    if (r.status === 404) throw new Error('La lecture automatique des affiches arrive bientôt.');
+    d = await r.json().catch(() => null);
+  } catch (e){ throw new Error(e && /arrive bientôt/.test(e.message) ? e.message : 'Le serveur de lecture ne répond pas.'); }
+  if (!d || !d.ok){
+    const raisons = {role: 'Ton rôle ne permet pas d\'enregistrer les résultats.', cle: 'La lecture automatique n\'est pas activée sur le serveur.',
+      illisible: 'L\'affiche n\'a pas pu être lue.', session: 'Ta session a expiré. Reconnecte-toi puis recommence.'};
+    throw new Error(raisons[(d || {}).raison] || 'La lecture a échoué.');
+  }
+  return d.lecture;
+}
+
+/* La démonstration : ce que l'IA rend pour l'affiche du 21/11 (un programme). */
+function lectureDemoLigue(){
+  return {type: 'programme', journee: 3, date: '2026-11-21', salle: 'Palais des sports de Treichville',
+    matchs: [
+      {categorie: 'Dames', domicile: 'NCA', exterieur: 'CSA Treichville', heure: '11:00', score_dom: null, score_ext: null, sur: true},
+      {categorie: 'Hommes', domicile: 'CBA', exterieur: 'Djaragues Global Basket Club', heure: '13:00', score_dom: null, score_ext: null, sur: true},
+      {categorie: 'Hommes', domicile: 'Warriors', exterieur: 'Snipers', heure: '15:00', score_dom: null, score_ext: null, sur: false},
+      {categorie: 'Hommes', domicile: 'Fusion Basketball', exterieur: 'Azur', heure: '17:00', score_dom: null, score_ext: null, sur: true},
+      {categorie: 'Hommes', domicile: 'Hypersonics', exterieur: 'ASA', heure: '19:00', score_dom: null, score_ext: null, sur: true}
+    ]};
+}
+
+const ligneVide = () => ({lu: '', dom: '', ext: '', sd: '', se: '', heure: '', forfait: '', ignore: false, douteux: false, id: null});
+
+function journeeDepuisLecture(lu){
+  return {journee: lu.journee || null, date: lu.date || AUJ(), salle: lu.salle || '', type: lu.type === 'programme' ? 'programme' : 'resultats',
+    lignes: lu.matchs.map(m => {
+      const dom = clubDe(m.domicile), ext = clubDe(m.exterieur);
+      const dames = /DAME|FEMIN/i.test(m.categorie || '');
+      /* Un match déjà enregistré pour ce jour (affiche du programme reçue
+         avant) : on complète la même ligne au lieu d'en créer une autre. */
+      const deja = (RL.liste || []).find(x => x.date === (lu.date || '') && x.dom === dom && x.ext === ext);
+      return {lu: `${m.domicile || '?'} – ${m.exterieur || '?'}`, dom, ext,
+        sd: m.score_dom == null ? (deja && deja.sd != null ? String(deja.sd) : '') : String(m.score_dom),
+        se: m.score_ext == null ? (deja && deja.se != null ? String(deja.se) : '') : String(m.score_ext),
+        heure: m.heure || '', forfait: '', ignore: dames || (!dom && !ext),
+        raison: dames ? 'Dames' : (!dom && !ext ? 'club inconnu' : ''), douteux: m.sur === false || !dom || !ext, id: deja ? deja.id : null};
+    })};
+}
+
+function nouvelleJourneeMain(){
+  const j = Math.max(0, ...etatJournees().map(x => x.j)) + 1;
+  RL.edite = {journee: j, date: AUJ(), salle: '', type: 'main', lignes: Array.from({length: LIGUE_PAR_JOURNEE}, ligneVide)};
+  ouvreSous('ligue-relecture');
+}
+
+function ouvreJourneeLigue(j){
+  const ms = (RL.liste || []).filter(m => (m.journee || 0) === j);
+  const l = ms.map(m => ({lu: '', dom: m.dom, ext: m.ext, sd: m.sd == null ? '' : String(m.sd), se: m.se == null ? '' : String(m.se),
+    heure: m.heure, forfait: m.forfait, ignore: false, douteux: false, id: m.id}));
+  while (l.length < LIGUE_PAR_JOURNEE) l.push(ligneVide());
+  RL.edite = {journee: j || null, date: (ms.find(m => m.date) || {}).date || AUJ(), salle: (ms[0] || {}).salle || '', type: 'existante', j0: j, lignes: l};
+  ouvreSous('ligue-relecture');
+}
+
+/* ───────────────────────── la relecture (obligatoire) */
+function vueLigueRelecture(){
+  const J = RL.edite;
+  if (!J) return `${retour('Résultats', "ouvreSous('ligue')")}<div class="vide">Rien à relire.</div>`;
+  const clubs = clubsLigue();
+  const sel = (i, k) => `<select class="champ lg-sel" onchange="RL.edite.lignes[${i}].${k}=this.value;RL.edite.lignes[${i}].douteux=false;rendVueGarde()">
+      <option value="">— club —</option>${clubs.map(c => `<option ${J.lignes[i][k] === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>`;
+  const titre = J.type === 'programme' ? 'Programme lu' : J.type === 'resultats' ? 'Résultats lus' : 'Journée ' + (J.journee || '');
+  return `${retour('Résultats', "ouvreSous('ligue')")}
+  <h1 class="vue-titre">${titre}</h1>
+  <p class="vue-sous">${J.type === 'programme' ? 'Affiche de programme : pas encore de score. Les affiches sont prêtes ; tape les scores après les matchs, ou envoie l\'affiche des résultats.'
+    : J.type === 'resultats' ? 'Vérifie chaque ligne avant d\'enregistrer. En orange : ce que la lecture n\'a pas su trancher.' : 'Les deux équipes et le score de chaque match.'}</p>
+  <div class="g2">
+    <div><label class="label">Journée</label><input class="champ" type="number" min="1" max="40" value="${J.journee || ''}" oninput="RL.edite.journee=+this.value||null"></div>
+    <div><label class="label">Date</label><input class="champ" type="date" value="${esc(J.date)}" oninput="RL.edite.date=this.value"></div>
+  </div>
+  ${J.lignes.map((l, i) => `<div class="carte lg-l ${l.ignore ? 'ign' : ''} ${l.douteux && !l.ignore ? 'douteux' : ''}">
+    ${l.lu ? `<div class="carte-note mono" style="margin-bottom:7px">lu : ${esc(l.lu)}${l.heure ? ' · ' + esc(l.heure) : ''}${l.douteux && !l.ignore ? ' · <b style="color:var(--alerte)">à vérifier</b>' : ''}</div>` : ''}
+    ${l.ignore ? `<div class="lg-ign"><span>Ignoré${l.raison ? ' — ' + esc(l.raison) : ''}</span><button class="hf-b" onclick="RL.edite.lignes[${i}].ignore=false;rendVueGarde()">Garder</button></div>` : `
+    <div class="lg-g">${sel(i, 'dom')}<input class="champ lg-s mono" inputmode="numeric" placeholder="—" value="${esc(l.sd)}" oninput="RL.edite.lignes[${i}].sd=this.value"></div>
+    <div class="lg-g">${sel(i, 'ext')}<input class="champ lg-s mono" inputmode="numeric" placeholder="—" value="${esc(l.se)}" oninput="RL.edite.lignes[${i}].se=this.value"></div>
+    <div class="lg-pied">
+      <select class="champ lg-f" onchange="RL.edite.lignes[${i}].forfait=this.value">
+        <option value="" ${!l.forfait ? 'selected' : ''}>Match joué</option>
+        <option value="dom" ${l.forfait === 'dom' ? 'selected' : ''}>Forfait de l'équipe du haut</option>
+        <option value="ext" ${l.forfait === 'ext' ? 'selected' : ''}>Forfait de l'équipe du bas</option></select>
+      <button class="hf-b" onclick="RL.edite.lignes[${i}].ignore=true;RL.edite.lignes[${i}].raison='retiré';rendVueGarde()">Retirer</button>
+    </div>`}
+  </div>`).join('')}
+  <button class="bouton fant plein" onclick="RL.edite.lignes.push(ligneVide());rendVueGarde()">+ Un match</button>
+  <button class="bouton plein" style="margin-top:10px" onclick="enregistreJourneeLigue()">Enregistrer la journée</button>
+  <p class="carte-note" style="margin-top:8px;text-align:center">Un match sans score est gardé comme affiche ; il compte au classement dès que son score est tapé.</p>`;
+}
+function rendVueGarde(){ const y = window.scrollY; rendVue(); window.scrollTo(0, y); }
+
+async function enregistreJourneeLigue(){
+  const J = RL.edite;
+  if (!J) return;
+  const lignes = J.lignes.filter(l => !l.ignore && (l.dom || l.ext || l.sd !== '' || l.se !== ''));
+  if (!J.journee){ toast('Indique le numéro de la journée'); return; }
+  if (!lignes.length){ toast('Aucun match à enregistrer'); return; }
+  for (const l of lignes){
+    if (!l.dom || !l.ext){ toast('Choisis les deux équipes de chaque match'); return; }
+    if (l.dom === l.ext){ toast(`${l.dom} ne peut pas jouer contre lui-même`); return; }
+    const a = l.sd === '' ? null : +l.sd, b = l.se === '' ? null : +l.se;
+    if (!l.forfait && (a == null) !== (b == null)){ toast(`Score incomplet : ${l.dom} – ${l.ext}`); return; }
+    if (a != null && (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a > 250 || b > 250)){ toast(`Score impossible : ${l.dom} – ${l.ext}`); return; }
+    if (!l.forfait && a != null && a === b){ toast(`Pas de match nul au basket : ${l.dom} – ${l.ext}`); return; }
+  }
+  const vus = {};
+  for (const l of lignes) for (const c of [l.dom, l.ext]){ if (vus[c]){ toast(c + ' apparaît deux fois dans la journée'); return; } vus[c] = 1; }
+
+  const neuves = lignes.map(l => {
+    /* Le même match déjà enregistré (même id, ou même date et mêmes clubs) est
+       mis à jour, jamais doublé. Un résultat repris du classeur reçoit un vrai
+       identifiant la première fois qu'on le touche. */
+    const deja = (RL.liste || []).find(m => l.id && m.id === l.id) || (RL.liste || []).find(m => m.date === J.date && m.dom === l.dom && m.ext === l.ext);
+    const neuf = !deja || deja.repris;
+    return {id: neuf ? ((window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'rl-' + Math.random().toString(36).slice(2)) : deja.id,
+      journee: J.journee, date: J.date, dom: l.dom, ext: l.ext, sd: l.forfait ? null : (l.sd === '' ? null : +l.sd), se: l.forfait ? null : (l.se === '' ? null : +l.se),
+      forfait: l.forfait, heure: l.heure || (deja || {}).heure || '', salle: J.salle || (deja || {}).salle || '', remplace: deja ? deja.id : null};
+  });
+  const remplaces = neuves.map(n => n.remplace).filter(Boolean);
+  /* Une journée rouverte : les matchs retirés de l'écran sortent de la liste. */
+  const retires = J.type === 'existante' ? (RL.liste || []).filter(m => (m.journee || 0) === (J.j0 || 0) && !remplaces.includes(m.id)) : [];
+  RL.liste = (RL.liste || []).filter(m => !remplaces.includes(m.id) && !retires.includes(m))
+    .concat(neuves.map(n => { const c = Object.assign({}, n); delete c.remplace; return c; }));
+  for (const n of neuves){
+    await enregistrer('resultats_ligue', {id: n.id, journee: n.journee, date_match: n.date, domicile: n.dom, exterieur: n.ext,
+      score_dom: n.sd, score_ext: n.se, forfait: n.forfait || null, heure: n.heure || null, salle: n.salle || null}, 'id');
+  }
+  for (const m of retires) if (!m.repris && typeof supprimer === 'function') await supprimer('resultats_ligue', 'id=eq.' + m.id);
+  const nb = neuves.filter(joue).length;
+  toast(`Journée ${J.journee} enregistrée — ${nb} résultat${nb > 1 ? 's' : ''}`);
+  RL.edite = null;
+  ouvreSous('ligue');
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
