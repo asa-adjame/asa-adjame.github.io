@@ -14715,8 +14715,9 @@ async function chargeLigue(){
    de match) entrent dans la liste s'ils n'y sont pas : rien de ce qui est
    déjà saisi n'est perdu. Amicaux et coupe restent hors classement. */
 function repriseResultatsASA(){
-  const nous = nousLigue();
-  ((DB.championnat || {}).resultatsClasseur || (DB.championnat || {}).resultats || []).forEach(r => {
+  const nous = nousLigue(), C = DB.championnat || {};
+  const classeur = C.resultatsClasseur || C.resultats || [];
+  classeur.forEach(r => {
     const comp = normNom(r.competition || '');
     if (comp && comp !== 'CHAMPIONNAT') return;
     const adv = clubDe(r.adversaire);
@@ -14725,7 +14726,41 @@ function repriseResultatsASA(){
     if (RL.liste.some(m => m.date === iso && [m.dom, m.ext].includes(adv))) return;
     RL.liste.push({id: 'asa-' + iso + '-' + normNom(adv).replace(/ /g, '-'), journee: journeeDuTour(r.tour), date: iso,
       dom: r.domicile ? nous : adv, ext: r.domicile ? adv : nous,
-      sd: r.domicile ? +r.pour : +r.contre, se: r.domicile ? +r.contre : +r.pour, forfait: '', heure: '', salle: '', repris: true});
+      sd: r.domicile ? +r.pour : +r.contre, se: r.domicile ? +r.contre : +r.pour, forfait: '', heure: '', salle: '', repris: 'classeur'});
+  });
+  /* 24/11/2026 — Fathy : « la plateforme a bien inscrit le nouveau match dans
+     les feuilles de match mais rien de nouveau n'est présent dans le
+     classement ». La feuille de match d'Oumar (table rencontres) est un
+     résultat officiel : elle compte aussi, sans attendre le classeur.
+     - Elle ne dit ni la compétition, ni la journée, ni qui reçoit. On les prend
+       au calendrier quand une ligne porte la même date ET le même adversaire.
+     - Un match contre un club de la Ligue d'Or compte au championnat, sauf si
+       le calendrier le classe en coupe ou en amical ce jour-là, ou s'il a eu
+       lieu avant le premier match de championnat de la saison.
+     - Le classeur reste prioritaire : un même match (date + adversaire) n'est
+       compté qu'une fois. */
+  const cal = [].concat(classeur, C.aVenir || []);
+  const debut = cal.filter(r => normNom(r.competition || 'championnat') === 'CHAMPIONNAT').map(r => isoMatch(r.date)).filter(Boolean).sort()[0] || '';
+  (DB.rencontres || []).forEach(r => {
+    const adv = clubDe(r.adversaire);
+    const iso = String(r.date || '').slice(0, 10);
+    if (!adv || adv === nous || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
+    if (r.equipe && (DB.equipes || []).length > 1 && r.equipe !== (DB.equipes[0] || {}).id) return;   // l'équipe pro seulement
+    const ligneCal = cal.find(c => isoMatch(c.date) === iso && clubDe(c.adversaire) === adv);
+    const comp = normNom((ligneCal || {}).competition || 'championnat');
+    if (comp !== 'CHAMPIONNAT') return;
+    if (!ligneCal && debut && iso < debut) return;
+    if (RL.liste.some(m => m.date === iso && [m.dom, m.ext].includes(adv))) return;
+    const dom = ligneCal ? !!ligneCal.domicile : true;
+    const p = +r.pour || 0, c = +r.contre || 0;
+    if (p === c) return;
+    /* La journée : celle du calendrier, sinon celle des autres matchs déjà
+       saisis le même jour (affiche de la journée), sinon aucune : le DT la
+       donne en ouvrant « Sans numéro de journée ». */
+    const jSoeur = (RL.liste.find(m => m.date === iso && m.journee && !m.repris) || {}).journee || null;
+    RL.liste.push({id: 'fm-' + r.id, journee: (ligneCal && journeeDuTour(ligneCal.tour)) || jSoeur, date: iso,
+      dom: dom ? nous : adv, ext: dom ? adv : nous, sd: dom ? p : c, se: dom ? c : p,
+      forfait: '', heure: '', salle: '', repris: 'feuille'});
   });
 }
 const journeeDuTour = t => { const m = /J\s*(\d+)/i.exec(String(t || '')); return m ? +m[1] : null; };
@@ -14817,7 +14852,9 @@ function appliqueLigue(){
   C.journee = Math.max(...jj, 0);
   const nous = nousLigue();
   const res = propres.slice();
-  RL.liste.filter(m => joue(m) && !m.forfait && !m.repris && [m.dom, m.ext].includes(nous)).forEach(m => {
+  /* Les feuilles de match reprises rejoignent aussi les derniers résultats ;
+     celles du classeur y sont déjà. */
+  RL.liste.filter(m => joue(m) && !m.forfait && m.repris !== 'classeur' && [m.dom, m.ext].includes(nous)).forEach(m => {
     const dom = m.dom === nous, adv = dom ? m.ext : m.dom;
     if (res.some(r => isoMatch(r.date) === m.date && clubDe(r.adversaire) === adv)) return;
     res.push({adversaire: adv, date: dateFrDe(m.date), domicile: dom, pour: dom ? m.sd : m.se, contre: dom ? m.se : m.sd,
@@ -14860,8 +14897,9 @@ function vueLigue(){
   <h1 class="vue-titre">Ligue d'Or — résultats</h1>
   <p class="vue-sous">Tous les matchs de chaque journée, pas seulement ceux de l'ASA : c'est ce qui fait le classement.</p>
 
-  <label class="bouton plein lg-photo">Photo de la journée — résultats ou programme
-    <input type="file" accept="image/*" onchange="lisAfficheLigue(this)" hidden></label>
+  <label class="bouton plein lg-photo">Photos de la journée — résultats ou programme
+    <input type="file" accept="image/*" multiple onchange="lisAfficheLigue(this)" hidden></label>
+  <p class="carte-note" style="text-align:center;margin-top:5px">Les deux affiches d'une même journée peuvent être choisies ensemble.</p>
   <button class="bouton fant plein" style="margin-top:8px" onclick="nouvelleJourneeMain()">+ Saisir une journée à la main</button>
 
   <div class="section-titre">Journées enregistrées</div>
@@ -14884,24 +14922,45 @@ function vueLigue(){
 }
 
 /* ───────────────────────── lire l'affiche */
+/* 24/11/2026 — Fathy : « j'aurai à chaque fois 2 photos pour les scores, la
+   journée concernée y est inscrite ». On choisit les deux d'un coup (ou une
+   seule) : chaque affiche est lue, puis les matchs sont réunis dans UNE
+   relecture. La journée et la date viennent de la première affiche qui les
+   porte ; un même match lu deux fois n'apparaît qu'une fois. */
 async function lisAfficheLigue(input){
-  const f = input.files && input.files[0];
-  if (!f) return;
-  toast('Lecture de l\'affiche…');
-  let lu = null;
+  const fs = [...(input.files || [])].slice(0, 4);
+  if (!fs.length) return;
+  toast(fs.length > 1 ? `Lecture des ${fs.length} affiches…` : 'Lecture de l\'affiche…');
+  const lus = [];
   try {
     const enL = typeof enLigne === 'function' && enLigne();
-    if (enL){
-      const b64 = await new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = ko; r.readAsDataURL(f); });
-      lu = await appelFonction('asa-resultats', {image: b64, type: f.type || 'image/jpeg', clubs: clubsLigue()});
-    } else {
-      lu = lectureDemoLigue();
+    for (const f of fs){
+      if (enL){
+        const b64 = await new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = ko; r.readAsDataURL(f); });
+        lus.push(await appelFonction('asa-resultats', {image: b64, type: f.type || 'image/jpeg', clubs: clubsLigue()}));
+      } else {
+        lus.push(lectureDemoLigue(lus.length));
+      }
     }
   } catch (e){ toast((e && e.message ? e.message + ' ' : '') + 'Tu peux saisir la journée à la main.'); return; }
   finally { input.value = ''; }
-  if (!lu || !Array.isArray(lu.matchs) || !lu.matchs.length){ toast('Affiche illisible — saisis la journée à la main'); return; }
+  const lu = reunisLectures(lus.filter(l => l && Array.isArray(l.matchs)));
+  if (!lu.matchs.length){ toast('Affiche illisible — saisis la journée à la main'); return; }
   RL.edite = journeeDepuisLecture(lu);
   ouvreSous('ligue-relecture');
+}
+function reunisLectures(lus){
+  const tete = lus.find(l => l.journee) || lus[0] || {};
+  const matchs = [];
+  lus.forEach(l => l.matchs.forEach(m => {
+    const dom = clubDe(m.domicile), ext = clubDe(m.exterieur);
+    const deja = dom && ext && matchs.find(x => clubDe(x.domicile) === dom && clubDe(x.exterieur) === ext);
+    if (!deja) matchs.push(m);
+    else if (deja.score_dom == null && m.score_dom != null){ deja.score_dom = m.score_dom; deja.score_ext = m.score_ext; }
+  }));
+  const avecScore = matchs.some(m => m.score_dom != null);
+  return {type: avecScore ? 'resultats' : (lus.every(l => l.type === 'programme') ? 'programme' : 'resultats'),
+    journee: tete.journee || null, date: (lus.find(l => l.date) || {}).date || '', salle: (lus.find(l => l.salle) || {}).salle || '', matchs};
 }
 /* Même chemin que la feuille de match (lisFeuille, p3k_match.js) : réseau
    vérifié, session renouvelée, 90 s, et la raison du refus dite en clair. */
@@ -14925,7 +14984,12 @@ async function appelFonction(nom, corps){
 }
 
 /* La démonstration : ce que l'IA rend pour l'affiche du 21/11 (un programme). */
-function lectureDemoLigue(){
+function lectureDemoLigue(n){
+  /* La 2e affiche de la démonstration : des scores (exemple), pour montrer la
+     réunion de deux affiches de la même journée. */
+  if (n) return {type: 'resultats', journee: 3, date: '2026-11-21', salle: '',
+    matchs: [{categorie: 'Hommes', domicile: 'Hypersonics', exterieur: 'ASA', heure: '19:00', score_dom: 69, score_ext: 58, sur: true},
+             {categorie: 'Hommes', domicile: 'JCA', exterieur: 'ABC', heure: '', score_dom: 77, score_ext: 70, sur: true}]};
   return {type: 'programme', journee: 3, date: '2026-11-21', salle: 'Palais des sports de Treichville',
     matchs: [
       {categorie: 'Dames', domicile: 'NCA', exterieur: 'CSA Treichville', heure: '11:00', score_dom: null, score_ext: null, sur: true},
