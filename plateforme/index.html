@@ -817,7 +817,15 @@ html.wa-ouvert,html.wa-ouvert body{overflow:hidden;overscroll-behavior:none}
 .lg-g{display:grid;grid-template-columns:minmax(0,1fr) 74px;gap:8px;margin-bottom:7px}
 .lg-s{text-align:center;font-size:18px;font-weight:700;padding:8px 6px}
 .lg-sel{padding:9px 10px}
-.lg-pied{display:flex;gap:8px;align-items:center}.lg-f{flex:1;padding:7px 9px;font-size:12.5px}
+.lg-pied{display:flex;gap:8px;align-items:center}
+/* le classement tient en largeur sur un téléphone : la différence (goal average) reste visible */
+table.tab.lg-tab{min-width:0;width:100%;table-layout:fixed}
+table.tab.lg-tab th,table.tab.lg-tab td{padding:9px 4px;white-space:nowrap}
+.lg-tab th:nth-child(1),.lg-tab td:nth-child(1){width:26px}
+.lg-tab th:nth-child(2),.lg-tab td:nth-child(2){width:auto;overflow:hidden;text-overflow:ellipsis}
+.lg-tab th:nth-child(n+3),.lg-tab td:nth-child(n+3){width:34px}
+.lg-tab th:last-child,.lg-tab td:last-child{width:46px}
+.lg-tab .carte-note{white-space:normal}.lg-f{flex:1;padding:7px 9px;font-size:12.5px}
 
 /* le diaporama : 16:9, aux couleurs du PDF du DT (nuit / crème / ambre) */
 .dp-pile{padding:16px 0 30px}
@@ -14659,7 +14667,7 @@ const LIGUE_CLUBS = [
   ['FUSION', ['FUSION', 'FUSION BASKETBALL']],
   ['AZUR', ['AZUR']],
   ['HYPERSONICS', ['HYPERSONICS', 'HYPERSONIC', 'HYPERSONICS ABIDJAN']],
-  ['INJS', ['INJS']]
+  ['INJS', ['INJS', 'INSTITUT NATIONAL DE LA JEUNESSE ET DES SPORTS', 'INJS ABIDJAN']]
 ];
 const normNom = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
 
@@ -14912,7 +14920,7 @@ function vueLigue(){
   <div class="section-titre">Classement calculé</div>
   <p class="carte-note" style="margin:-4px 0 8px">Victoire 2 pts · défaite 1 · forfait 0. À égalité : confrontation directe, puis différence générale.</p>
   ${incomplet ? `<p class="lg-alerte">Il manque des résultats : le classement ne sera juste qu'une fois toutes les journées complètes.</p>` : ''}
-  <div class="tab-enrob"><table class="tab">
+  <div class="tab-enrob"><table class="tab lg-tab">
     <thead><tr><th>#</th><th>Équipe</th><th class="num">Pts</th><th class="num">J</th><th class="num">V</th><th class="num">D</th><th class="num">Diff.</th></tr></thead>
     <tbody>${cl.map((l, i) => `<tr class="${l.equipe === nous ? 'nous' : ''}"><td class="mono">${i + 1}</td>
       <td class="tab-nom">${esc(l.equipe)}${l.depart ? `<div class="carte-note" style="font-size:10px">${esc(l.depart)}</div>` : ''}</td>
@@ -14936,8 +14944,10 @@ async function lisAfficheLigue(input){
     const enL = typeof enLigne === 'function' && enLigne();
     for (const f of fs){
       if (enL){
-        const b64 = await new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = ko; r.readAsDataURL(f); });
-        lus.push(await appelFonction('asa-resultats', {image: b64, type: f.type || 'image/jpeg', clubs: clubsLigue()}));
+        /* Réduite comme la feuille de match (reduitPhoto, p3k_match.js) : 2 000 px,
+           JPEG 85 %. Une photo de téléphone brute dépasse la limite du serveur. */
+        const b64 = String(await reduitPhoto(f)).split(',')[1];
+        lus.push(await appelFonction('asa-resultats', {image: b64, type: 'image/jpeg', clubs: clubsLigue()}));
       } else {
         lus.push(lectureDemoLigue(lus.length));
       }
@@ -14952,7 +14962,9 @@ async function lisAfficheLigue(input){
 function reunisLectures(lus){
   const tete = lus.find(l => l.journee) || lus[0] || {};
   const matchs = [];
-  lus.forEach(l => l.matchs.forEach(m => {
+  lus.forEach(l => l.matchs.forEach(m0 => {
+    /* une journée peut s'étaler sur deux jours : chaque match garde la date de SON affiche */
+    const m = Object.assign({}, m0, {date: m0.date || l.date || ''});
     const dom = clubDe(m.domicile), ext = clubDe(m.exterieur);
     const deja = dom && ext && matchs.find(x => clubDe(x.domicile) === dom && clubDe(x.exterieur) === ext);
     if (!deja) matchs.push(m);
@@ -15009,8 +15021,8 @@ function journeeDepuisLecture(lu){
       const dames = /DAME|FEMIN/i.test(m.categorie || '');
       /* Un match déjà enregistré pour ce jour (affiche du programme reçue
          avant) : on complète la même ligne au lieu d'en créer une autre. */
-      const deja = (RL.liste || []).find(x => x.date === (lu.date || '') && x.dom === dom && x.ext === ext);
-      return {lu: `${m.domicile || '?'} – ${m.exterieur || '?'}`, dom, ext,
+      const deja = (RL.liste || []).find(x => x.date === (m.date || lu.date || '') && x.dom === dom && x.ext === ext);
+      return {lu: `${m.domicile || '?'} – ${m.exterieur || '?'}`, dom, ext, date: m.date && m.date !== (lu.date || '') ? m.date : '',
         sd: m.score_dom == null ? (deja && deja.sd != null ? String(deja.sd) : '') : String(m.score_dom),
         se: m.score_ext == null ? (deja && deja.se != null ? String(deja.se) : '') : String(m.score_ext),
         heure: m.heure || '', forfait: '', ignore: dames || (!dom && !ext),
@@ -15026,8 +15038,9 @@ function nouvelleJourneeMain(){
 
 function ouvreJourneeLigue(j){
   const ms = (RL.liste || []).filter(m => (m.journee || 0) === j);
+  const d0 = (ms.find(m => m.date) || {}).date || '';
   const l = ms.map(m => ({lu: '', dom: m.dom, ext: m.ext, sd: m.sd == null ? '' : String(m.sd), se: m.se == null ? '' : String(m.se),
-    heure: m.heure, forfait: m.forfait, ignore: false, douteux: false, id: m.id}));
+    heure: m.heure, forfait: m.forfait, ignore: false, douteux: false, id: m.id, date: m.date && m.date !== d0 ? m.date : ''}));
   while (l.length < LIGUE_PAR_JOURNEE) l.push(ligneVide());
   RL.edite = {journee: j || null, date: (ms.find(m => m.date) || {}).date || AUJ(), salle: (ms[0] || {}).salle || '', type: 'existante', j0: j, lignes: l};
   ouvreSous('ligue-relecture');
@@ -15050,7 +15063,7 @@ function vueLigueRelecture(){
     <div><label class="label">Date</label><input class="champ" type="date" value="${esc(J.date)}" oninput="RL.edite.date=this.value"></div>
   </div>
   ${J.lignes.map((l, i) => `<div class="carte lg-l ${l.ignore ? 'ign' : ''} ${l.douteux && !l.ignore ? 'douteux' : ''}">
-    ${l.lu ? `<div class="carte-note mono" style="margin-bottom:7px">lu : ${esc(l.lu)}${l.heure ? ' · ' + esc(l.heure) : ''}${l.douteux && !l.ignore ? ' · <b style="color:var(--alerte)">à vérifier</b>' : ''}</div>` : ''}
+    ${l.lu ? `<div class="carte-note mono" style="margin-bottom:7px">lu : ${esc(l.lu)}${l.date ? ' · ' + esc(jourFr(l.date).slice(0, 5)) : ''}${l.heure ? ' · ' + esc(l.heure) : ''}${l.douteux && !l.ignore ? ' · <b style="color:var(--alerte)">à vérifier</b>' : ''}</div>` : ''}
     ${l.ignore ? `<div class="lg-ign"><span>Ignoré${l.raison ? ' — ' + esc(l.raison) : ''}</span><button class="hf-b" onclick="RL.edite.lignes[${i}].ignore=false;rendVueGarde()">Garder</button></div>` : `
     <div class="lg-g">${sel(i, 'dom')}<input class="champ lg-s mono" inputmode="numeric" placeholder="—" value="${esc(l.sd)}" oninput="RL.edite.lignes[${i}].sd=this.value"></div>
     <div class="lg-g">${sel(i, 'ext')}<input class="champ lg-s mono" inputmode="numeric" placeholder="—" value="${esc(l.se)}" oninput="RL.edite.lignes[${i}].se=this.value"></div>
@@ -15089,10 +15102,11 @@ async function enregistreJourneeLigue(){
     /* Le même match déjà enregistré (même id, ou même date et mêmes clubs) est
        mis à jour, jamais doublé. Un résultat repris du classeur reçoit un vrai
        identifiant la première fois qu'on le touche. */
-    const deja = (RL.liste || []).find(m => l.id && m.id === l.id) || (RL.liste || []).find(m => m.date === J.date && m.dom === l.dom && m.ext === l.ext);
+    const dateL = l.date || J.date;
+    const deja = (RL.liste || []).find(m => l.id && m.id === l.id) || (RL.liste || []).find(m => m.date === dateL && m.dom === l.dom && m.ext === l.ext);
     const neuf = !deja || deja.repris;
     return {id: neuf ? ((window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'rl-' + Math.random().toString(36).slice(2)) : deja.id,
-      journee: J.journee, date: J.date, dom: l.dom, ext: l.ext, sd: l.forfait ? null : (l.sd === '' ? null : +l.sd), se: l.forfait ? null : (l.se === '' ? null : +l.se),
+      journee: J.journee, date: dateL, dom: l.dom, ext: l.ext, sd: l.forfait ? null : (l.sd === '' ? null : +l.sd), se: l.forfait ? null : (l.se === '' ? null : +l.se),
       forfait: l.forfait, heure: l.heure || (deja || {}).heure || '', salle: J.salle || (deja || {}).salle || '', remplace: deja ? deja.id : null};
   });
   const remplaces = neuves.map(n => n.remplace).filter(Boolean);
