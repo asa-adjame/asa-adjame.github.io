@@ -825,6 +825,8 @@ table.tab.lg-tab th,table.tab.lg-tab td{padding:9px 4px;white-space:nowrap}
 .lg-tab th:nth-child(2),.lg-tab td:nth-child(2){width:auto;overflow:hidden;text-overflow:ellipsis}
 .lg-tab th:nth-child(n+3),.lg-tab td:nth-child(n+3){width:34px}
 .lg-tab th:last-child,.lg-tab td:last-child{width:46px}
+.lg-ref th:nth-child(1),.lg-ref td:nth-child(1){width:auto}
+.lg-ref .lg-rc{width:100%;padding:6px 2px;text-align:center;font-size:14px}.lg-ref th:nth-child(n+2),.lg-ref td:nth-child(n+2){width:52px}.lg-ref td{padding:4px 2px}
 .lg-tab .carte-note{white-space:normal}.lg-f{flex:1;padding:7px 9px;font-size:12.5px}
 
 /* le diaporama : 16:9, aux couleurs du PDF du DT (nuit / crème / ambre) */
@@ -2589,6 +2591,7 @@ function vueAccueil(){
   /* 23/11/2026 — les résultats de la Ligue d'Or et le classement calculé (p3ya_ligue.js). */
   if (E.sous === 'ligue')           return vueLigue();
   if (E.sous === 'ligue-relecture') return vueLigueRelecture();
+  if (E.sous === 'ligue-officiel') return vueLigueRef();
 
   /* 27/10/2026 — DT, dirigeants, head coach : l'accueil allégé (p3o_accueil.js). */
   if (ACCUEIL_LEGER(E.role)) return vueAccueilLeger();
@@ -8490,7 +8493,7 @@ const LIB_TABLE = {
   exercices_variantes:'Adaptation d\'exercice', systemes:'Système du playbook',
   push_abonnements:'Abonnement aux notifications',
   notif_preferences:'Réglages des notifications',
-  videos_match:'Vidéo de match', briefings:'Briefing d\'après-match', resultats_ligue:'Résultat de la Ligue d\'Or',
+  videos_match:'Vidéo de match', briefings:'Briefing d\'après-match', resultats_ligue:'Résultat de la Ligue d\'Or', classement_ligue:'Classement officiel',
 };
 const libTable = t => LIB_TABLE[t] || t;
 
@@ -14650,7 +14653,7 @@ function diaporamaBriefing(id){
    ══════════════════════════════════════════════════════════════════════════ */
 
 const PEUT_LIGUE = r => r === 'dt' || r === 'as';
-const RL = {liste: null, charge: '', edite: null};
+const RL = {liste: null, charge: '', edite: null, ref: null, refEdite: null};
 const LIGUE_PAR_JOURNEE = 6;          // 12 clubs → 6 matchs par journée
 
 /* Les 12 clubs de la Ligue d'Or hommes (calendrier fédéral 2026-2027) et les
@@ -14710,6 +14713,12 @@ async function chargeLigue(){
       const l = await api('resultats_ligue?select=id,journee,date_match,domicile,exterieur,score_dom,score_ext,forfait,heure,salle&club_id=eq.'
         + SOURCE.clubId + '&order=date_match.asc&limit=400') || [];
       RL.liste = l.map(versLigue);
+      /* Le classement officiel de référence (table à part : le classeur ne
+         l'écrase pas). Absente tant que le script du 24/11 n'est pas passé. */
+      try {
+        const r = await api('classement_ligue?select=journee,date_ref,lignes&club_id=eq.' + SOURCE.clubId + '&limit=1');
+        RL.ref = (r && r[0]) ? versRef(r[0]) : null;
+      } catch (e){ RL.ref = RL.ref || null; }
     } else if (!RL.liste){
       RL.liste = [];
     }
@@ -14774,6 +14783,28 @@ function repriseResultatsASA(){
 const journeeDuTour = t => { const m = /J\s*(\d+)/i.exec(String(t || '')); return m ? +m[1] : null; };
 const joue = m => !!m.forfait || (m.sd != null && m.se != null && !isNaN(m.sd) && !isNaN(m.se) && m.sd !== m.se);
 
+/* ───────────────────────── le classement officiel de référence (24/11/2026)
+   Fathy envoie le classement fédéral de fin de J2 : « est-ce que tu peux tout
+   mettre à jour ». Une image de classement donne des TOTAUX (V, D, points
+   marqués et encaissés), pas les matchs : on ne peut pas en tirer les
+   résultats un par un. Elle devient donc le POINT DE DÉPART du calcul :
+   - chaque club part de ses chiffres officiels ;
+   - s'y ajoutent les seuls matchs joués APRÈS la date de référence (J3 et
+     suivantes, et un match en retard de J1/J2 joué plus tard) ;
+   - les matchs déjà dans la référence (J1, J2 de l'ASA) ne sont pas recomptés.
+   Avant, le calcul partait de zéro et ne voyait que les matchs saisis : le
+   classement affiché était faux pour tous les clubs dont personne n'avait
+   tapé les matchs. */
+const versRef = r => ({journee: +r.journee || 0, date: String(r.date_ref || '').slice(0, 10),
+  lignes: (Array.isArray(r.lignes) ? r.lignes : []).map(l => ({equipe: l.equipe, v: +l.v || 0, d: +l.d || 0, f: +l.f || 0, pp: +l.pp || 0, pc: +l.pc || 0}))});
+function refLigue(){
+  const R = RL.ref;
+  if (!R || !R.date || !R.lignes || !R.lignes.length) return null;
+  return R;
+}
+/* Un match compte en plus de la référence s'il a été joué après sa date. */
+const apresRef = m => { const R = refLigue(); return !R || (m.date || '') > R.date; };
+
 /* ───────────────────────── le classement (FIBA : 2-1-0, puis confrontations directes) */
 function issueLigue(m){
   if (m.forfait === 'dom') return {g: m.ext, p: m.dom, gp: 20, pp: 0, f: true};   // forfait : 20-0
@@ -14782,10 +14813,17 @@ function issueLigue(m){
 }
 function classementLigue(){
   const clubs = clubsLigue(), nous = nousLigue();
-  const ms = (RL.liste || []).filter(joue);
+  const tous = (RL.liste || []).filter(joue);
+  const ms = tous.filter(apresRef);
   const st = {};
   const ligne = c => st[c] = st[c] || {equipe: c, j: 0, v: 0, d: 0, pts: 0, pp: 0, pc: 0, nous: c === nous};
   clubs.forEach(ligne);
+  const R = refLigue();
+  if (R) R.lignes.forEach(l => {
+    const c = clubDe(l.equipe) || l.equipe, x = ligne(c);
+    x.v += l.v; x.d += l.d + l.f; x.j += l.v + l.d + l.f; x.pts += 2 * l.v + l.d;
+    x.pp += l.pp; x.pc += l.pc;
+  });
   ms.forEach(m => {
     const r = issueLigue(m), g = ligne(r.g), p = ligne(r.p);
     g.j++; g.v++; g.pts += 2; g.pp += r.gp; g.pc += r.pp;
@@ -14802,7 +14840,9 @@ function classementLigue(){
     if (g.length > 1){
       const noms = g.map(l => l.equipe), mini = {};
       noms.forEach(n => mini[n] = {pts: 0, diff: 0, pp: 0, n: 0});
-      ms.filter(m => noms.includes(m.dom) && noms.includes(m.ext)).forEach(m => {
+      /* Les confrontations directes : tous les matchs connus, y compris ceux
+         déjà comptés dans la référence (ils ont bien eu lieu). */
+      tous.filter(m => noms.includes(m.dom) && noms.includes(m.ext)).forEach(m => {
         const r = issueLigue(m);
         mini[r.g].pts += 2; mini[r.p].pts += r.f ? 0 : 1; mini[r.g].n++; mini[r.p].n++;
         mini[r.g].diff += r.gp - r.pp; mini[r.p].diff += r.pp - r.gp;
@@ -14821,11 +14861,14 @@ function classementLigue(){
 function etatJournees(){
   const parJ = {};
   (RL.liste || []).forEach(m => { const j = m.journee || 0; (parJ[j] = parJ[j] || []).push(m); });
-  const max = Math.max(0, ...Object.keys(parJ).map(Number));
+  const R = refLigue(), nRef = R ? R.journee : 0;
+  const max = Math.max(0, nRef, ...Object.keys(parJ).map(Number));
   const l = [];
   for (let j = 1; j <= max; j++){
     const ms = parJ[j] || [];
-    l.push({j, n: ms.length, joues: ms.filter(joue).length, date: (ms.find(m => m.date) || {}).date || ''});
+    /* Une journée couverte par le classement officiel n'a plus de « manquants » :
+       ses chiffres sont déjà dans la référence. */
+    l.push({j, n: ms.length, joues: ms.filter(joue).length, date: (ms.find(m => m.date) || {}).date || '', officiel: j <= nRef});
   }
   if (parJ[0]) l.push({j: 0, n: parJ[0].length, joues: parJ[0].filter(joue).length, date: ''});
   return l;
@@ -14853,11 +14896,12 @@ function appliqueLigue(){
      a supprimé) ne revient pas par ici. */
   RL.liste = RL.liste.filter(m => !m.repris);
   repriseResultatsASA();
-  if (!RL.liste.some(joue)){ C.resultats = propres; return; }
+  const R = refLigue();
+  if (!RL.liste.some(joue) && !R){ C.resultats = propres; return; }
   C.classement = C._clCalcule = classementLigue().map(l => ({equipe: l.equipe, j: l.j, v: l.v, d: l.d, pp: l.pp, pc: l.pc, pts: l.pts, nous: !!l.nous, depart: l.depart || ''}));
   C.classementCalcule = true;
-  const jj = RL.liste.filter(joue).map(m => m.journee || 0);
-  C.journee = Math.max(...jj, 0);
+  const jj = RL.liste.filter(m => joue(m) && apresRef(m)).map(m => m.journee || 0);
+  C.journee = Math.max(...jj, R ? R.journee : 0, 0);
   const nous = nousLigue();
   const res = propres.slice();
   /* Les feuilles de match reprises rejoignent aussi les derniers résultats ;
@@ -14883,8 +14927,8 @@ function rubriqueLigue(){
   if (!PEUT_LIGUE(E.role)) return '';
   if (!RL.charge) setTimeout(chargeLigue, 0);
   const ej = etatJournees().filter(x => x.j > 0);
-  const manque = ej.reduce((s, x) => s + Math.max(0, LIGUE_PAR_JOURNEE - x.joues), 0);
-  const der = ej.filter(x => x.joues).slice(-1)[0];
+  const manque = ej.filter(x => !x.officiel).reduce((s, x) => s + Math.max(0, LIGUE_PAR_JOURNEE - x.joues), 0);
+  const der = ej.filter(x => x.joues || x.officiel).slice(-1)[0];
   return rubrique('Résultats de la Ligue d\'Or', `ouvreSous('ligue')`, [
     [der ? 'J' + der.j : '—', 'dernière<br>journée saisie'],
     [(RL.liste || []).filter(joue).length, 'résultats<br>enregistrés'],
@@ -14900,7 +14944,8 @@ function vueLigue(){
   const ej = etatJournees();
   const cl = classementLigue();
   const nous = nousLigue();
-  const incomplet = ej.some(x => x.j && x.joues < LIGUE_PAR_JOURNEE);
+  const incomplet = ej.some(x => x.j && !x.officiel && x.joues < LIGUE_PAR_JOURNEE);
+  const R = refLigue();
   return `${retour('Accueil', 'fermeSous()')}
   <h1 class="vue-titre">Ligue d'Or — résultats</h1>
   <p class="vue-sous">Tous les matchs de chaque journée, pas seulement ceux de l'ASA : c'est ce qui fait le classement.</p>
@@ -14914,11 +14959,13 @@ function vueLigue(){
   ${ej.length ? `<div class="carte" style="padding:4px 14px">${ej.map(x => `<button class="fm-l" onclick="ouvreJourneeLigue(${x.j})">
       <span class="mono fm-d">${x.j ? 'J' + x.j : '—'}</span>
       <span class="fm-a"><b>${x.j ? 'Journée ' + x.j : 'Sans numéro de journée'}${x.date ? ' · ' + esc(jourFr(x.date).slice(0, 5)) : ''}</b>
-        <small style="color:${x.joues >= LIGUE_PAR_JOURNEE ? 'var(--physique)' : 'var(--alerte)'}">${x.joues}/${LIGUE_PAR_JOURNEE} résultats${x.n > x.joues ? ` · ${x.n - x.joues} sans score` : ''}</small></span>
+        ${x.officiel ? `<small style="color:var(--physique)">dans le classement officiel${x.joues ? ` · ${x.joues} match${x.joues > 1 ? 's' : ''} saisi${x.joues > 1 ? 's' : ''}` : ''}</small>`
+          : `<small style="color:${x.joues >= LIGUE_PAR_JOURNEE ? 'var(--physique)' : 'var(--alerte)'}">${x.joues}/${LIGUE_PAR_JOURNEE} résultats${x.n > x.joues ? ` · ${x.n - x.joues} sans score` : ''}</small>`}</span>
       <span class="jl-fleche">›</span></button>`).join('')}</div>` : '<div class="vide">Aucun match enregistré.</div>'}
 
   <div class="section-titre">Classement calculé</div>
-  <p class="carte-note" style="margin:-4px 0 8px">Victoire 2 pts · défaite 1 · forfait 0. À égalité : confrontation directe, puis différence générale.</p>
+  <p class="carte-note" style="margin:-4px 0 8px">${R ? `Part du <b>classement officiel de fin de J${R.journee}</b>, plus les matchs joués après le ${esc(jourFr(R.date).slice(0, 5))}. ` : ''}Victoire 2 pts · défaite 1 · forfait 0. À égalité : confrontation directe, puis différence générale.</p>
+  <button class="bouton fant plein" style="margin-bottom:10px" onclick="ouvreRefLigue()">${R ? `Classement officiel J${R.journee} — remplacer par un plus récent` : '+ Partir d\'un classement officiel'}</button>
   ${incomplet ? `<p class="lg-alerte">Il manque des résultats : le classement ne sera juste qu'une fois toutes les journées complètes.</p>` : ''}
   <div class="tab-enrob"><table class="tab lg-tab">
     <thead><tr><th>#</th><th>Équipe</th><th class="num">Pts</th><th class="num">J</th><th class="num">V</th><th class="num">D</th><th class="num">Diff.</th></tr></thead>
@@ -15122,6 +15169,62 @@ async function enregistreJourneeLigue(){
   const nb = neuves.filter(joue).length;
   toast(`Journée ${J.journee} enregistrée — ${nb} résultat${nb > 1 ? 's' : ''}`);
   RL.edite = null;
+  ouvreSous('ligue');
+}
+
+/* ───────────────────────── saisir un classement officiel (24/11/2026)
+   L'image fédérale du classement, recopiée ligne à ligne : victoires,
+   défaites, points marqués, points encaissés. Elle remplace la référence
+   précédente ; les matchs joués après sa date s'y ajoutent. Une ligne par
+   club, gardée dans la table classement_ligue (une ligne par club ASA), à
+   l'abri des envois du classeur. */
+function ouvreRefLigue(){
+  const R = refLigue();
+  const base = R ? R.lignes : [];
+  RL.refEdite = {journee: R ? R.journee + 1 : 1, date: '',
+    lignes: clubsLigue().map(c => {
+      const l = base.find(x => (clubDe(x.equipe) || x.equipe) === c) || {};
+      return {equipe: c, v: l.v != null ? String(l.v) : '', d: l.d != null ? String(l.d) : '', pp: l.pp != null ? String(l.pp) : '', pc: l.pc != null ? String(l.pc) : ''};
+    })};
+  ouvreSous('ligue-officiel');
+}
+function vueLigueRef(){
+  const X = RL.refEdite;
+  if (!X) return `${retour('Résultats', "ouvreSous('ligue')")}<div class="vide">Rien à saisir.</div>`;
+  const c = (i, k) => `<td class="num"><input class="champ mono lg-rc" inputmode="numeric" value="${esc(X.lignes[i][k])}" oninput="RL.refEdite.lignes[${i}].${k}=this.value"></td>`;
+  return `${retour('Résultats', "ouvreSous('ligue')")}
+  <h1 class="vue-titre">Classement officiel</h1>
+  <p class="vue-sous">Recopie l'affiche fédérale du classement. Elle devient le point de départ : les matchs joués après la date indiquée s'y ajoutent.</p>
+  <div class="g2">
+    <div><label class="label">Fin de la journée</label><input class="champ" type="number" min="1" max="40" value="${X.journee || ''}" oninput="RL.refEdite.journee=+this.value||null"></div>
+    <div><label class="label">Date du dernier match</label><input class="champ" type="date" value="${esc(X.date)}" oninput="RL.refEdite.date=this.value"></div>
+  </div>
+  <div class="tab-enrob"><table class="tab lg-tab lg-ref">
+    <thead><tr><th>Équipe</th><th class="num">V</th><th class="num">D</th><th class="num">Marq.</th><th class="num">Enc.</th></tr></thead>
+    <tbody>${X.lignes.map((l, i) => `<tr><td class="tab-nom">${esc(l.equipe)}</td>${c(i, 'v')}${c(i, 'd')}${c(i, 'pp')}${c(i, 'pc')}</tr>`).join('')}</tbody>
+  </table></div>
+  <button class="bouton plein" style="margin-top:12px" onclick="enregistreRefLigue()">Enregistrer le classement officiel</button>
+  <p class="carte-note" style="margin-top:8px;text-align:center">Les points se calculent seuls : 2 par victoire, 1 par défaite.</p>`;
+}
+async function enregistreRefLigue(){
+  const X = RL.refEdite;
+  if (!X) return;
+  if (!X.journee){ toast('Indique la journée'); return; }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(X.date || '')){ toast('Indique la date du dernier match de la journée'); return; }
+  const lignes = [];
+  for (const l of X.lignes){
+    const n = ['v', 'd', 'pp', 'pc'].map(k => String(l[k]).trim() === '' ? 0 : +l[k]);
+    if (n.some(x => isNaN(x) || x < 0 || x > 9999 || x !== Math.floor(x))){ toast('Chiffre impossible pour ' + l.equipe); return; }
+    if (n[0] + n[1] > 40){ toast('Trop de matchs pour ' + l.equipe); return; }
+    if (n[0] + n[1] === 0 && (n[2] || n[3])){ toast(l.equipe + ' : des points sans match'); return; }
+    lignes.push({equipe: l.equipe, v: n[0], d: n[1], pp: n[2], pc: n[3]});
+  }
+  const V = lignes.reduce((s, l) => s + l.v, 0), D = lignes.reduce((s, l) => s + l.d, 0);
+  if (V !== D){ toast(`Victoires (${V}) et défaites (${D}) ne tombent pas juste : vérifie l'affiche`); return; }
+  RL.ref = {journee: X.journee, date: X.date, lignes};
+  await enregistrer('classement_ligue', {journee: X.journee, date_ref: X.date, lignes}, 'club_id');
+  toast(`Classement officiel J${X.journee} enregistré`);
+  RL.refEdite = null;
   ouvreSous('ligue');
 }
 
